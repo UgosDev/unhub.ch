@@ -1,0 +1,23 @@
+{
+  "name": "scansioni.ch",
+  "short_name": "Scansioni",
+  "description": "Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata su un'architettura 'human-in-the-loop' e un'economia interna basata su 'ScanCoin'.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#9e5bfe",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable_icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

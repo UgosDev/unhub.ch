@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+  <meta name="theme-color" content="#9e5bfe" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+
+  <title>scansioni.ch</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
+
+  <!-- Anti-FOUC (tema) -->
+  <script>
+    (function () {
+      const pref = localStorage.getItem('theme') || 'system';
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', pref === 'dark' || (pref === 'system' && dark));
+    })();
+  </script>
+
+  <!-- Lib esterne async -->
+  <script async src="https://docs.opencv.org/4.x/opencv.js" onload="dispatchEvent(new CustomEvent('opencv-ready'))"></script>
+  <script async defer src="https://accounts.google.com/gsi/client"></script>
+  <script async defer src="https://apis.google.com/js/api.js" onload="dispatchEvent(new CustomEvent('gapi-ready'))"></script>
+
+  <!-- Import-map -->
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.1.1",
+    "react/jsx-runtime": "https://esm.sh/react@19.1.1/jsx-runtime",
+    "react-dom": "https://esm.sh/react-dom@19.1.1",
+    "react-dom/client": "https://esm.sh/react-dom@19.1.1/client",
+    "@google/genai": "https://esm.sh/@google/genai@^1.9.0?external=firebase",
+    "react-dropzone": "https://esm.sh/react-dropzone@^14.3.8",
+    "pdfjs-dist": "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs",
+    "jszip": "https://esm.sh/jszip@3.10.1",
+    "file-saver": "https://esm.sh/file-saver@2.0.5",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "jspdf-autotable": "https://esm.sh/jspdf-autotable@3.8.2",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "firebase/": "https://esm.sh/firebase@^12.1.0/",
+    "otpauth": "https://esm.sh/otpauth@9.2.2",
+    "qrcode": "https://esm.sh/qrcode@1.5.3",
+    "tesseract.js": "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js"
+  }
+}
+</script>
+
+  <style>
+    html{scroll-behavior:smooth}
+    body{
+      font-family:'Plus Jakarta Sans',sans-serif;
+      background-image:
+        linear-gradient(rgba(168,85,247,.04)1px,transparent 1px),
+        linear-gradient(90deg,rgba(168,85,247,.04)1px,transparent 1px);
+      background-size:40px 40px;
+      background-attachment:fixed;
+    }
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+      vertical-align: middle;
+      user-select: none;
+    }
+    @keyframes highlight-pulse {
+      0%, 100% { background-color: transparent; box-shadow: 0 0 0 0 rgba(168,85,247,.4); }
+      50% { background-color: rgba(168,85,247,.1); box-shadow: 0 0 0 15px rgba(168,85,247,0); }
+    }
+    .highlight-section-animation { animation: highlight-pulse 2.5s ease-in-out; }
+
+    /* --- Scanner BG & lines (per WaitlistPage) --- */
+    .waitlist-bg-grid{
+      position:absolute; inset:0; pointer-events:none; opacity:.2;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size:24px 24px;
+    }
+    @keyframes scan-down{
+      0%{ top:-10%; opacity:0 }
+      10%{ opacity:1 }
+      90%{ opacity:1 }
+      100%{ top:110%; opacity:0 }
+    }
+    .scanner-line{
+      position:absolute; left:0; right:0; height:2px; top:-10%;
+      pointer-events:none; mix-blend-mode:screen;
+      background:linear-gradient(90deg, rgba(0,255,255,0), rgba(0,255,255,.9), rgba(0,255,255,0));
+      box-shadow:0 0 10px rgba(0,255,255,.7), 0 0 22px rgba(0,255,255,.35);
+      animation:scan-down 6.5s linear infinite;
+    }
+    .scanner-line.line1{ animation-duration:5.2s; animation-delay:0s }
+    .scanner-line.line2{ animation-duration:7.1s; animation-delay:.9s }
+    .scanner-line.line3{ animation-duration:6.3s; animation-delay:1.8s }
+    .scanner-line.line4{ animation-duration:8s;   animation-delay:2.7s }
+
+    .mouse-scanner-line{
+      position:absolute; left:0; width:100%; height:1px; opacity:0;
+      pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
+      background:linear-gradient(90deg, rgba(0,255,255,0), rgba(0,255,255,.8), rgba(0,255,255,0));
+      box-shadow:0 0 8px rgba(0,255,255,.6), 0 0 18px rgba(0,255,255,.3);
+      mix-blend-mode:screen;
+    }
+
+    /* --- Stile per animazione tritacarte (per WaitlistPage di disdette.ch) --- */
+    .shredder-container {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    @keyframes shred-fall {
+        0% { transform: translateY(-100vh); }
+        100% { transform: translateY(100vh); }
+    }
+    .shred-strip {
+        position: absolute;
+        top: 0;
+        height: 100vh;
+        background-color: rgba(134, 239, 172, 0.3); /* green-300 con opacità */
+        animation-name: shred-fall;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+    }
+    .mouse-shredder-line {
+      position:absolute; left:0; width:100%; height:1px; opacity:0;
+      pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
+      background:linear-gradient(90deg, rgba(34, 197, 94, 0), rgba(34, 197, 94, .8), rgba(34, 197, 94, 0)); /* green-500 */
+      box-shadow:0 0 8px rgba(34, 197, 94, .6), 0 0 18px rgba(34, 197, 94, .3);
+      mix-blend-mode:screen;
+    }
+
+    /* --- Stile per animazione cassaforte (per WaitlistPage di archivio.ch) --- */
+    .vault-bg {
+      position: absolute;
+      inset: 0;
+      background-color: #1a202c; /* gray-900 */
+      background-image: radial-gradient(circle at center, #4a5568 0%, #1a202c 70%); /* gray-600 to gray-900 */
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vault-dial {
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background-image: 
+        radial-gradient(circle at center, #718096, #2d3748),
+        repeating-conic-gradient(#4a5568 0% 0.5%, transparent 0.5% 3.6%); /* Ticks for 100 marks */
+      border: 10px solid #2d3748;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 30px rgba(0,0,0,0.5);
+      position: relative;
+      animation: rotate-vault 15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    }
+    @keyframes rotate-vault {
+      0% { transform: rotate(0deg); }
+      30% { transform: rotate(380deg); } /* First spin CW */
+      35% { transform: rotate(375deg); } /* Click back */
+      65% { transform: rotate(-120deg); } /* Second spin CCW */
+      70% { transform: rotate(-115deg); } /* Click back */
+      95% { transform: rotate(85deg); } /* Third spin CW */
+      100% { transform: rotate(90deg); } /* Final click */
+    }
+    .mouse-vault-line {
+      position:absolute; left:0; width:100%; height:1px; opacity:0;
+      pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
+      background:linear-gradient(90deg, rgba(254, 63, 39, 0), rgba(254, 63, 39, .8), rgba(254, 63, 39, 0)); /* red-500 */
+      box-shadow:0 0 8px rgba(254, 63, 39, .6), 0 0 18px rgba(254, 63, 39, .3);
+      mix-blend-mode:screen;
+    }
+    
+    /* --- NUOVO: Stile per animazione griglia esagonale (per WaitlistPage di polizze.ch) --- */
+    .polizze-bg {
+      position: absolute;
+      inset: 0;
+      background-color: #0c4a6e; /* sky-900 */
+      overflow: hidden;
+    }
+    @keyframes pulse-glow {
+        0%, 100% { opacity: 0.15; }
+        50% { opacity: 0.35; }
+    }
+    .hex-grid {
+        width: 120%;
+        height: 120%;
+        position: absolute;
+        top: -10%;
+        left: -10%;
+        background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="115.47"><path d="M50 0L100 28.867v57.735L50 115.47 0 86.602V28.867zM0 28.867L50 57.735 100 28.867M50 57.735v57.735" fill="none" stroke="%2306b6d4" stroke-width="2"/></svg>');
+        background-size: 100px 115.47px;
+        opacity: 0.15;
+        animation: pulse-glow 8s ease-in-out infinite;
+    }
+    .mouse-polizze-line {
+      position:absolute; left:0; width:100%; height:1px; opacity:0;
+      pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
+      background:linear-gradient(90deg, rgba(6, 182, 212, 0), rgba(6, 182, 212, .8), rgba(6, 182, 212, 0)); /* cyan-500 */
+      box-shadow:0 0 8px rgba(6, 182, 212, .6), 0 0 18px rgba(6, 182, 212, .3);
+      mix-blend-mode:screen;
+    }
+
+    /* Shimmer del bottone */
+    @keyframes shimmer{ 0%{transform:translateX(-120%)} 100%{transform:translateX(120%)} }
+    .shimmer-effect{
+      position:absolute; inset:0; transform:translateX(-120%);
+      background:linear-gradient(120deg, transparent, rgba(255,255,255,.35), transparent);
+      animation:shimmer 2.4s infinite; pointer-events:none;
+    }
+
+    /* Shake del form */
+    @keyframes shake {
+      10%,90%{ transform:translateX(-1px) }
+      20%,80%{ transform:translateX( 2px) }
+      30%,50%,70%{ transform:translateX(-4px) }
+      40%,60%{ transform:translateX( 4px) }
+    }
+    .animate-shake{ animation:shake .45s cubic-bezier(.36,.07,.19,.97) both }
+    
+    /* Toast Animations */
+    @keyframes toast-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes toast-out {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+    .animate-toast-in { animation: toast-in 0.5s ease-out forwards; }
+    .animate-toast-out { animation: toast-out 0.5s ease-out forwards; }
+    
+    /* --- NUOVO: Stile per feedback su elemento --- */
+    .feedback-highlight-target {
+      outline: 3px dashed #a855f7 !important; /* purple-500 */
+      outline-offset: 3px !important;
+      transition: outline 0.1s ease-in-out;
+      cursor: crosshair !important;
+      border-radius: 4px;
+    }
+
+
+    /* Riduzione animazioni se richiesto dall'utente */
+    @media (prefers-reduced-motion: reduce){
+      .scanner-line,.mouse-scanner-line,.shimmer-effect,.animate-shake,
+      .animate-toast-in, .animate-toast-out, .shred-strip, .vault-dial, .hex-grid {
+        animation:none !important; transition:none !important;
+      }
+    }
+  </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-900">
+  <noscript>Devi abilitare JavaScript per usare questo sito.</noscript>
+  <div id="root"></div>
+
+  <script type="module" src="/index.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator && !/usercontent.goog/.test(location.hostname)) {
+      addEventListener('load', () => navigator.serviceWorker
+        .register('/service-worker.js')
+        .then(r => console.log('[SW] OK', r))
+        .catch(e => console.log('[SW] KO', e)));
+    }
+  </script>
+</body>
+</html>
