@@ -29,7 +29,8 @@ interface AuthContextType {
     cancel2fa: () => Promise<void>;
     reauthenticate: (password: string) => Promise<void>;
     deleteCurrentUserAccount: () => Promise<void>;
-    deleteAccountAndSetupTransfer: (secretWord: string) => Promise<string>;
+    setupCoinTransfer: (secretWord: string) => Promise<string>;
+    redeemCoinTransferCode: (code: string, secretWord: string) => Promise<number>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -122,6 +123,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             // The very first sign-in for a new user is logged here
                             const isFirstSignIn = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
                             if (isFirstSignIn) {
+                                try {
+                                    sessionStorage.setItem('isNewUserSession_v1', 'true');
+                                } catch (e) { console.warn('sessionStorage not available'); }
                                 const method = firebaseUser.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Password';
                                 await logSuccessfulLogin(method, firebaseUser);
                             }
@@ -328,17 +332,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await authService.reauthenticate(password);
     };
 
+    const setupCoinTransfer = async (secretWord: string): Promise<string> => {
+        if (!user) throw new Error("Utente non loggato.");
+        const code = await authService.createCoinTransferRecord(user.subscription.scanCoinBalance, secretWord);
+        return code;
+    };
+
     const deleteCurrentUserAccount = async () => {
         await authService.deleteCurrentUserAccount();
         // onAuthStateChanged will handle the rest by setting user to null.
     };
-    
-    const deleteAccountAndSetupTransfer = async (secretWord: string): Promise<string> => {
-        if (!user) throw new Error("Utente non loggato.");
-        const code = await authService.createCoinTransferRecord(user.subscription.scanCoinBalance, secretWord);
-        await authService.deleteCurrentUserAccount();
-        // onAuthStateChanged will handle UI changes to logout state.
-        return code;
+
+    const redeemCoinTransferCode = async (code: string, secretWord: string): Promise<number> => {
+        return await authService.redeemCoinTransferCode(code, secretWord);
     };
 
 
@@ -358,7 +364,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         cancel2fa,
         reauthenticate,
         deleteCurrentUserAccount,
-        deleteAccountAndSetupTransfer
+        setupCoinTransfer,
+        redeemCoinTransferCode
     };
 
     return (

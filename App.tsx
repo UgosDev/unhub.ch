@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -631,6 +625,7 @@ function AuthenticatedApp() {
   const [currentTutorialStep, setCurrentTutorialStep] = useState(0);
   const [showStartTutorialModal, setShowStartTutorialModal] = useState(false);
   const [activeTutorialSteps, setActiveTutorialSteps] = useState(tutorialSteps);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   
   // --- STATI MENU CONTESTUALI ---
   const [circularMenu, setCircularMenu] = useState<{ isOpen: boolean; position: { x: number; y: number }; groupId: string | null }>({ isOpen: false, position: { x: 0, y: 0 }, groupId: null });
@@ -1055,7 +1050,7 @@ function AuthenticatedApp() {
         .catch(error => console.error('Failed to load metadata:', error));
     }, []);
 
-  // Mostra il banner del tutorial solo alla prima visita in un'area di lavoro vuota.
+    // Mostra il banner del tutorial solo alla prima visita in un'area di lavoro vuota.
     useEffect(() => {
         const tutorialSeen = localStorage.getItem('tutorialSeen');
         // Mostra il banner se non è stato visto E l'area di lavoro è vuota.
@@ -2975,8 +2970,8 @@ function AuthenticatedApp() {
     }, [chatHistory, handleUpdateSettings, processUgoMessage, isDemoMode, user]);
 
     const handleFeedbackResponse = useCallback(async (feedback: 'good' | 'bad') => {
-        const lastUserMessage = [...chatHistory].reverse().find(m => m.role === 'user')?.text;
-        const lastBotResponse = [...chatHistory].reverse().find(m => m.role === 'model' && !m.isFeedbackRequest)?.text;
+        const lastUserMessage = [...chatHistory].reverse().find(m => m.role === 'user')?.text ?? '';
+        const lastBotResponse = [...chatHistory].reverse().find(m => m.role === 'model' && !m.isFeedbackRequest)?.text ?? '';
     
         const contextForFeedback = {
             feedback,
@@ -3301,6 +3296,22 @@ function AuthenticatedApp() {
             setIsReauthenticating(false);
             setReauthPassword('');
         }
+    };
+
+    // --- NUOVO: Gestione Modale di Benvenuto ---
+    useEffect(() => {
+        try {
+            if (sessionStorage.getItem('isNewUserSession_v1') === 'true') {
+                setShowWelcomeModal(true);
+            }
+        } catch (e) { console.warn('sessionStorage not available'); }
+    }, []);
+
+    const handleCloseWelcomeModal = () => {
+        setShowWelcomeModal(false);
+        try {
+            sessionStorage.removeItem('isNewUserSession_v1');
+        } catch (e) { console.warn('sessionStorage not available'); }
     };
 
 
@@ -3634,6 +3645,36 @@ function AuthenticatedApp() {
 
             {/* --- OVERLAYS & MODALS --- */}
              {confirmationModal && <ConfirmationModal {...confirmationModal} />}
+
+            {showWelcomeModal && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={handleCloseWelcomeModal}>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl text-center w-full max-w-md" onClick={e => e.stopPropagation()}>
+                        <SparklesIcon className="w-12 h-12 text-purple-500 mx-auto mb-3" />
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Benvenuto in scansioni.ch!</h2>
+                        <p className="mt-2 text-slate-600 dark:text-slate-300">
+                            Per darti il benvenuto, ti abbiamo accreditato <strong>1.000 ScanCoin gratuiti</strong>.
+                            Ti consigliamo di iniziare con il nostro tour guidato per scoprire tutte le funzionalità.
+                        </p>
+                        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={handleCloseWelcomeModal}
+                                className="w-full px-4 py-2 font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600"
+                            >
+                                Esplora da solo
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleStartTutorial();
+                                    handleCloseWelcomeModal();
+                                }}
+                                className="w-full px-4 py-2 font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                            >
+                                Inizia il Tour Guidato
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {isReauthModalOpen && (
                 <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setIsReauthModalOpen(false)}>

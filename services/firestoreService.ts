@@ -94,7 +94,10 @@ export const onUserProfileUpdate = (userId: string, callback: (user: Omit<User, 
 
 export const createUserProfile = async (userId: string, name: string, email: string, defaultSubscription: Subscription): Promise<void> => {
     const userDocRef = db.collection("users").doc(userId);
-    await userDocRef.set({ 
+    const batch = db.batch();
+
+    // 1. Set user profile
+    batch.set(userDocRef, { 
         name, 
         email,
         address: '',
@@ -109,7 +112,22 @@ export const createUserProfile = async (userId: string, name: string, email: str
         familyId: userId,
         settings: defaultSettings,
     });
+
+    // 2. Add initial credit to history
+    const historyCollectionRef = userDocRef.collection('scanHistory');
+    const initialCreditEntry: Omit<ScanHistoryEntry, 'id'> = {
+        timestamp: new Date().toISOString(),
+        description: 'Credito iniziale di benvenuto',
+        amountInCoins: 1000,
+        status: 'Credited',
+        type: 'promo'
+    };
+    batch.set(historyCollectionRef.doc(), initialCreditEntry);
+
+    // Commit both operations
+    await batch.commit();
 };
+
 
 export const updateUserProfile = async (userId: string, updates: Partial<Omit<User, 'uid'>>): Promise<void> => {
     const userDocRef = db.collection("users").doc(userId);
@@ -173,6 +191,63 @@ export const createCoinTransferRecord = async (userId: string, balance: number, 
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         originalEmail: firebase.auth().currentUser?.email // for reference/support
     });
+};
+
+export const redeemCoinTransferCode = async (currentUserId: string, code: string, secretWord: string): Promise<number> => {
+    const transferCollectionRef = db.collection('coinTransfers');
+    const query = transferCollectionRef.where('code', '==', code).where('claimed', '==', false).limit(1);
+
+    const snapshot = await query.get();
+
+    if (snapshot.empty) {
+        throw new Error("Codice di trasferimento non valido o già utilizzato.");
+    }
+
+    const transferDoc = snapshot.docs[0];
+    const transferData = transferDoc.data();
+    const secretWordHash = await sha256(secretWord);
+
+    if (transferData.secretWordHash !== secretWordHash) {
+        throw new Error("Parola segreta non corretta.");
+    }
+    
+    const currentUserRef = db.collection('users').doc(currentUserId);
+    const historyCollectionRef = db.collection(`users/${currentUserId}/scanHistory`);
+
+    let transferredAmount = 0;
+
+    await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(currentUserRef);
+        if (!userDoc.exists) {
+            throw new Error("Utente corrente non trovato.");
+        }
+        
+        const userData = userDoc.data() as User;
+        transferredAmount = transferData.balance;
+        const newBalance = (userData.subscription.scanCoinBalance || 0) + transferredAmount;
+
+        // 1. Update user's balance
+        transaction.update(currentUserRef, { 'subscription.scanCoinBalance': newBalance });
+        
+        // 2. Mark transfer as claimed
+        transaction.update(transferDoc.ref, { 
+            claimed: true,
+            claimedByUid: currentUserId,
+            claimedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 3. Add a history entry for the credit
+        const historyEntry: Omit<ScanHistoryEntry, 'id'> = {
+            timestamp: new Date().toISOString(),
+            description: `Crediti recuperati da account precedente (ID: ...${transferDoc.id.slice(-6)})`,
+            amountInCoins: transferredAmount,
+            status: 'Credited',
+            type: 'promo', // Or a new 'transfer' type
+        };
+        transaction.set(historyCollectionRef.doc(), historyEntry);
+    });
+    
+    return transferredAmount;
 };
 
 

@@ -7,7 +7,8 @@ import {
     DocumentTextIcon, BoltIcon, CreditCardIcon, SparklesIcon, BuildingOffice2Icon, BookOpenIcon, 
     DocumentPlusIcon, ClipboardDocumentIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DownloadIcon,
     UserCircleIcon, InformationCircleIcon, TrashIcon, ChatBubbleLeftRightIcon, XMarkIcon, ClockIcon,
-    EyeIcon, ShieldCheckIcon, DocumentDuplicateIcon, CheckCircleIcon, UsersIcon, MapPinIcon, QuestionMarkCircleIcon
+    EyeIcon, ShieldCheckIcon, DocumentDuplicateIcon, CheckCircleIcon, UsersIcon, MapPinIcon, QuestionMarkCircleIcon,
+    CoinIcon
 } from '../components/icons';
 import type { AppSettings } from '../services/settingsService';
 import { ProcessingModeSelector } from '../components/ProcessingModeSelector';
@@ -437,7 +438,7 @@ const InstallHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 );
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavigate, settings, onUpdateSettings, onStartTutorial, archivedChats, onDeleteArchivedChat, setScanHistory, onResetChat, scrollToSection, onScrolledToSection, accessLogs }) => {
-    const { user, updateUser, reauthenticate, deleteAccountAndSetupTransfer } = useAuth();
+    const { user, updateUser, reauthenticate, setupCoinTransfer, deleteCurrentUserAccount, redeemCoinTransferCode } = useAuth();
     const { isInstallable, isInstalled, triggerInstall } = usePWA();
     const [isSaving, setIsSaving] = useState(false);
     const [viewingChat, setViewingChat] = useState<ArchivedChat | null>(null);
@@ -468,6 +469,13 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
     const [deleteError, setDeleteError] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const [generatedTransferCode, setGeneratedTransferCode] = useState('');
+    
+    // NUOVO: State per il recupero coin
+    const [transferCode, setTransferCode] = useState('');
+    const [secretWord, setSecretWord] = useState('');
+    const [redemptionMessage, setRedemptionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [isRedeemingTransfer, setIsRedeemingTransfer] = useState(false);
+
 
     useEffect(() => {
         if (scrollToSection) {
@@ -677,7 +685,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
         return <div className="flex justify-center p-8"><LoadingSpinner /></div>;
     }
 
-    const handleDeleteAccountSubmit = async (e: React.FormEvent) => {
+    const handleStartDeletionProcess = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!transferSecret.trim()) {
             setDeleteError("La parola segreta è obbligatoria per il futuro recupero dei coin.");
@@ -687,14 +695,26 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
         setDeleteError('');
         try {
             await reauthenticate(deletePassword);
-            const code = await deleteAccountAndSetupTransfer(transferSecret);
+            const code = await setupCoinTransfer(transferSecret);
             setGeneratedTransferCode(code);
             setDeleteStep('success');
         } catch (err) {
             setDeleteError("Password non corretta o errore durante l'eliminazione. Riprova.");
-            setIsDeleting(false);
             setDeletePassword('');
             setTransferSecret('');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleFinalizeDeletion = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteCurrentUserAccount();
+            // No need for further actions, onAuthStateChanged will handle the logout and UI change.
+        } catch (err) {
+            setDeleteError("Errore durante l'eliminazione finale dell'account. Copia il codice e riprova, o contatta il supporto.");
+            setIsDeleting(false);
         }
     };
     
@@ -724,6 +744,25 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
         if (confirm("Sei sicuro di voler unirti a questa famiglia? Potrai vedere i loro documenti condivisi e loro vedranno i tuoi.")) {
             updateUser(prev => prev ? ({ ...prev, familyId: familyIdToJoin.trim() }) : null);
             setFamilyIdToJoin('');
+        }
+    };
+
+    const handleRedeemTransferSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!transferCode.trim() || !secretWord.trim()) return;
+
+        setIsRedeemingTransfer(true);
+        setRedemptionMessage(null);
+        try {
+            const amount = await redeemCoinTransferCode(transferCode, secretWord);
+            setRedemptionMessage({ type: 'success', text: `Successo! ${amount.toLocaleString('it-CH')} ScanCoin sono stati aggiunti al tuo saldo.` });
+            setTransferCode('');
+            setSecretWord('');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Si è verificato un errore.';
+            setRedemptionMessage({ type: 'error', text: message });
+        } finally {
+            setIsRedeemingTransfer(false);
         }
     };
 
@@ -873,6 +912,48 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                             {isRedeeming ? <LoadingSpinner className="w-5 h-5" /> : 'Riscatta'}
                         </button>
                     </div>
+                </div>
+                
+                 <div id="profile-section-recovery" className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-6 md:p-8">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-3"><CoinIcon className="w-7 h-7"/> Recupero ScanCoin</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Se hai eliminato un account precedente, inserisci qui il codice di trasferimento e la parola segreta per recuperare il tuo saldo ScanCoin rimanente.</p>
+                     {redemptionMessage && (
+                        <div className={`p-3 rounded-md text-sm mb-4 ${redemptionMessage.type === 'success' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'}`}>
+                            {redemptionMessage.text}
+                        </div>
+                    )}
+                    <form onSubmit={handleRedeemTransferSubmit} className="space-y-4">
+                         <div className="flex flex-col sm:flex-row gap-4">
+                             <div className="flex-1">
+                                <label htmlFor="transfer-code" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Codice di Trasferimento (6 lettere)</label>
+                                <input
+                                    id="transfer-code"
+                                    type="text"
+                                    value={transferCode}
+                                    onChange={(e) => setTransferCode(e.target.value.toUpperCase())}
+                                    maxLength={6}
+                                    className="mt-1 w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-lg font-mono tracking-widest"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label htmlFor="secret-word" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Parola Segreta</label>
+                                <input
+                                    id="secret-word"
+                                    type="password"
+                                    value={secretWord}
+                                    onChange={(e) => setSecretWord(e.target.value)}
+                                    className="mt-1 w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-lg"
+                                />
+                            </div>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={isRedeemingTransfer || !transferCode.trim() || !secretWord.trim()}
+                            className="w-full sm:w-auto px-6 py-2 font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-400"
+                        >
+                           {isRedeemingTransfer ? 'Verifica...' : 'Riscatta Coin'}
+                        </button>
+                    </form>
                 </div>
 
                 <div id="profile-section-preferences" className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-6 md:p-8">
@@ -1252,10 +1333,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
             )}
 
             {deleteStep !== 'closed' && (
-                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={deleteStep !== 'confirm' ? onLogout : () => setDeleteStep('closed')}>
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setDeleteStep('closed')}>
                     <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
                         {deleteStep === 'confirm' ? (
-                            <form onSubmit={handleDeleteAccountSubmit}>
+                            <form onSubmit={handleStartDeletionProcess}>
                                 <div className="p-6">
                                     <div className="text-center">
                                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
@@ -1284,7 +1365,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                                 <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-3 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 rounded-b-2xl">
                                     <button type="button" onClick={() => setDeleteStep('closed')} className="w-full sm:w-auto px-4 py-2 text-sm font-semibold rounded-md">Annulla</button>
                                     <button type="submit" disabled={isDeleting} className="w-full sm:w-auto px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-slate-400">
-                                        {isDeleting ? 'Eliminazione...' : 'Elimina Definitivamente'}
+                                        {isDeleting ? 'Preparazione...' : 'Conferma e Visualizza Codice'}
                                     </button>
                                 </div>
                             </form>
@@ -1293,17 +1374,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
                                     <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
                                 </div>
-                                <h3 className="mt-4 text-xl font-bold text-slate-900 dark:text-slate-100">Account Eliminato con Successo</h3>
+                                <h3 className="mt-4 text-xl font-bold text-slate-900 dark:text-slate-100">Passo Finale: Salva il tuo Codice</h3>
                                 <div className="mt-4 text-sm text-slate-500 dark:text-slate-400 space-y-3">
-                                    <p>Il tuo account e tutti i dati associati sono stati eliminati in modo permanente.</p>
+                                    <p>Il tuo account sta per essere eliminato. Salva queste informazioni in un luogo sicuro per poter recuperare i tuoi ScanCoin in futuro.</p>
                                     <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg">
                                         <p className="font-semibold">Salva queste informazioni per recuperare i tuoi ScanCoin:</p>
                                         <p className="mt-2">Il tuo codice di trasferimento è:</p>
                                         <p className="text-2xl font-bold tracking-widest text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-800 p-2 rounded-md my-2">{generatedTransferCode}</p>
                                         <p>Ricorda anche la <strong>parola segreta</strong> che hai impostato. Ti verranno chiesti entrambi al momento della registrazione di un nuovo account.</p>
                                     </div>
+                                    {deleteError && <p className="mt-2 text-sm text-red-500">{deleteError}</p>}
                                 </div>
-                                <button onClick={onLogout} className="mt-6 w-full px-4 py-2 text-sm font-semibold bg-purple-600 text-white rounded-md">OK, ho capito</button>
+                                <button onClick={handleFinalizeDeletion} disabled={isDeleting} className="mt-6 w-full px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-slate-400">
+                                    {isDeleting ? 'Eliminazione...' : "Ho salvato il codice, elimina l'account"}
+                                </button>
                             </div>
                         )}
                     </div>

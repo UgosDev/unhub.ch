@@ -131,7 +131,8 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
 
 
 /**
- * Registra un nuovo utente con email e password in Firebase e crea immediatamente il profilo in Firestore.
+ * Registra un nuovo utente con email e password in Firebase.
+ * Il profilo utente verrà creato dal listener onAuthStateChanged tramite getAppUser.
  * @param name Il nome visualizzato dell'utente.
  * @param email L'email dell'utente.
  * @param password La password dell'utente.
@@ -143,17 +144,10 @@ export async function register(name: string, email: string, password: string): P
 
     await firebaseUser.updateProfile({ displayName: name });
     
-    // Create Firestore profile immediately to prevent race conditions
-    const defaultSubscription: Subscription = {
-        plan: 'Personale',
-        scansUsed: 0,
-        scansTotal: 100,
-        totalCostEver: 0,
-        scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0 },
-        scanCoinBalance: 1000,
-        addressMismatchCount: 0,
-    };
-    await firestoreService.createUserProfile(firebaseUser.uid, name, email, defaultSubscription);
+    // NOTA: La creazione del profilo Firestore è ora gestita esclusivamente
+    // dalla funzione getAppUser, che viene attivata dal listener onAuthStateChanged.
+    // Questo centralizza la logica e previene la creazione di profili duplicati
+    // e il doppio accredito di coin di benvenuto.
 }
 
 /**
@@ -302,6 +296,20 @@ export async function createCoinTransferRecord(balance: number, secretWord: stri
 
     await firestoreService.createCoinTransferRecord(user.uid, balance, code, secretWord);
     return code;
+}
+
+/**
+ * Redeems a coin transfer code, adding the balance to the current user's account.
+ * @param code The 6-letter transfer code.
+ * @param secretWord The secret word created during account deletion.
+ * @returns The amount of coins transferred.
+ */
+export async function redeemCoinTransferCode(code: string, secretWord: string): Promise<number> {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("Devi essere loggato per riscattare un codice.");
+    }
+    return await firestoreService.redeemCoinTransferCode(user.uid, code, secretWord);
 }
 
 

@@ -68,6 +68,11 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
 
+# Note del 10/10/2025 - v8.7.1
+- Eseguito l'aggiornamento della versione a 8.7.1.
+- Questo rilascio di manutenzione aggiorna le dipendenze interne e il versioning della cache del service worker.
+- Aggiornati i file di documentazione (README, CHANGELOG, metadata) per riflettere la nuova versione.
+
 # Note del 09/10/2025 - v8.7.0
 - Implementata la richiesta dell'utente di semplificare il flusso di lavoro.
 - **Flusso Invertito**: Rimosso il selettore di modalità globale dal passo 1. L'utente ora aggiunge prima i documenti.
@@ -271,3 +276,11 @@ Cronologia delle note di lavoro per ogni versione rilasciata.
 - La nuova pagina è dinamica, con un selettore per la fatturazione mensile o annuale.
 - Questa modifica implementa il punto 1.1 della roadmap ("Introduzione Pagamenti e Piani"), spostandolo di fatto nel log di sviluppo. L'integrazione di un sistema di pagamento reale (es. Stripe) rimane come prossimo passo logico.
 - Aggiornata tutta la documentazione e la versione a 6.26.0.
+
+# Note del 09/09/2025 - v6.25.0
+- Implementate le "funzionalità nascoste" per il chatbot Ugo come richiesto.
+- **Gestione Reclami e Rimborsi**: Ugo ora rileva i reclami, fornisce un rimborso una tantum per sessione e informa che il feedback verrà utilizzato per migliorare il servizio.
+- **Invito Community**: Dopo 5 feedback costruttivi, Ugo invita l'utente a una community Telegram esclusiva.
+- **Supporto Dialetti**: Ugo ora riconosce e risponde nei dialetti svizzeri con un tono umile.
+- **Documentazione**: Creato un nuovo file `Privato/ChatbotNotes.txt` per documentare in dettaglio queste logiche per riferimenti futuri.
+- Aggiornata tutta la documentazione e la versione a 6.25.0.
