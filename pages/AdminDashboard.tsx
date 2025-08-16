@@ -4,10 +4,11 @@ import type { User } from '../services/authService';
 import { COIN_TO_CHF_RATE } from '../services/geminiService';
 import { 
     HandThumbUpIcon, HandThumbDownIcon, SparklesIcon, EyeIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, 
-    XMarkIcon, UsersIcon, DocumentDuplicateIcon, CoinIcon, ArrowUpIcon, ArrowDownIcon
+    XMarkIcon, UsersIcon, DocumentDuplicateIcon, CoinIcon, ArrowUpIcon, ArrowDownIcon, PaperAirplaneIcon
 } from '../components/icons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { GoogleGenAI } from "@google/genai";
+import { newsletterContent } from './newsletter/content';
 
 // Inizializzazione API Gemini per analisi
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -108,6 +109,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ feedbackData, allUsersD
     const [aiAnalysisResult, setAiAnalysisResult] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [aiError, setAiError] = useState('');
+
+    // State per la simulazione dell'invio newsletter
+    const [selectedNewsletterId, setSelectedNewsletterId] = useState<string>(newsletterContent[0].id.toString());
+    const [testEmail, setTestEmail] = useState('');
+    const [isSending, setIsSending] = useState(false);
+    const [sendStatus, setSendStatus] = useState<{ type: 'success' | 'info' | 'error', message: string } | null>(null);
+
+    const handleSendTestEmail = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!testEmail) return;
+        
+        setIsSending(true);
+        setSendStatus(null);
+
+        setTimeout(() => {
+            setIsSending(false);
+            setSendStatus({ type: 'success', message: `Email di test inviata a ${testEmail}. (Simulazione)` });
+            setTestEmail('');
+            setTimeout(() => setSendStatus(null), 4000);
+        }, 1500);
+    };
+
+    const handleSendToAll = () => {
+        const selectedNewsletter = newsletterContent.find(n => n.id.toString() === selectedNewsletterId);
+        if (!selectedNewsletter) return;
+
+        if (window.confirm(`Sei sicuro di voler inviare la newsletter "${selectedNewsletter.title}" a tutti gli iscritti? (Questa è una simulazione)`)) {
+            setIsSending(true);
+            setSendStatus(null);
+
+            setTimeout(() => {
+                setIsSending(false);
+                setSendStatus({ type: 'success', message: `Newsletter "${selectedNewsletter.title}" accodata per l'invio a tutti gli iscritti. (Simulazione)` });
+                setTimeout(() => setSendStatus(null), 5000);
+            }, 2500);
+        }
+    };
 
     const stats = useMemo(() => {
         const totalFeedback = feedbackData.length;
@@ -266,6 +304,68 @@ ${feedbackSummary}
                     <div className="flex-grow min-h-[200px]">
                         <FeedbackTypeBarChart scanCount={stats.scanFeedbackCount} chatCount={stats.chatFeedbackCount} />
                     </div>
+                </div>
+            </div>
+
+            {/* Newsletter Sending Card */}
+            <div className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-6">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Gestione Invio Newsletter (Simulazione Resend)</h2>
+                
+                <div className="p-3 mb-4 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-sm">
+                    <strong>Nota:</strong> Questa è un'interfaccia di simulazione. Le email non verranno inviate realmente. Per l'invio effettivo è necessaria l'integrazione di un backend sicuro (es. funzione serverless) con le API di Resend.
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="newsletter-select" className="block text-sm font-medium text-slate-700 dark:text-slate-300">1. Seleziona la Newsletter da Inviare</label>
+                        <select
+                            id="newsletter-select"
+                            value={selectedNewsletterId}
+                            onChange={e => setSelectedNewsletterId(e.target.value)}
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md bg-white dark:bg-slate-800"
+                        >
+                            {newsletterContent.map(issue => (
+                                <option key={issue.id} value={issue.id}>{`#${issue.id}: ${issue.title}`}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">2. Invia un Test</h3>
+                        <form onSubmit={handleSendTestEmail} className="mt-1 flex gap-2">
+                            <input
+                                type="email"
+                                value={testEmail}
+                                onChange={e => setTestEmail(e.target.value)}
+                                placeholder="Indirizzo email di test"
+                                className="flex-grow w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm placeholder-slate-400"
+                            />
+                            <button type="submit" disabled={isSending || !testEmail} className="px-4 py-2 text-sm font-bold bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:bg-slate-400">
+                                Invia Test
+                            </button>
+                        </form>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">3. Invia a Tutti gli Iscritti</h3>
+                        <button onClick={handleSendToAll} disabled={isSending} className="mt-1 w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors disabled:bg-slate-400">
+                            <PaperAirplaneIcon className="w-5 h-5" />
+                            Invia Newsletter a Tutti
+                        </button>
+                    </div>
+
+                    {isSending && (
+                        <div className="flex items-center justify-center gap-2 p-3 text-slate-600 dark:text-slate-300">
+                            <LoadingSpinner className="w-5 h-5" />
+                            <span>Invio in corso... (Simulazione)</span>
+                        </div>
+                    )}
+                    
+                    {sendStatus && (
+                        <div className={`p-3 rounded-md text-sm ${sendStatus.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' : 'bg-red-100 text-red-800'}`}>
+                            {sendStatus.message}
+                        </div>
+                    )}
                 </div>
             </div>
 

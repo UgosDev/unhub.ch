@@ -1,7 +1,9 @@
 {
-  "name": "UnHub.ch",
+  "name": "UnHub.ch | Gestione Documenti Intelligente",
   "version": "8.7.0",
-  "description": "",
+  "description": "UnHub.ch unifica scansioni.ch, archivio.ch, polizze.ch e disdette.ch in un'unica piattaforma per la gestione intelligente dei documenti. Scansiona, analizza e organizza fatture, polizze e contratti con l'AI.",
+  "keywords": "scansioni, archivio digitale, gestione polizze, disdette contratti, OCR, AI, Gemini, gestione documentale, Svizzera, UnHub",
+  "author": "scansioni.ch",
   "requestFramePermissions": [
     "camera"
   ],
