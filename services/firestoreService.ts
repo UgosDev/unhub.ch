@@ -308,6 +308,7 @@ export const moveDocsBetweenCollections = async (userId: string, docUuids: strin
                 if (options?.embeddings && options.embeddings[docSnap.id]) {
                     data.embedding = options.embeddings[docSnap.id];
                 }
+                data.folderPath = '/'; // Initialize at root
             }
             
             const toDocRef = toCollectionRef.doc(docSnap.id);

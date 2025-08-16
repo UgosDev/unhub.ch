@@ -50,7 +50,7 @@ export const ScansioniChWordmarkIcon: FC<ScansioniChWordmarkIconProps> = ({ ligh
       <path fill={darkFill || "#9e5bfe"} d="M267.22,12.23c-1.42-1.36-2.13-3.06-2.13-5.09s.71-3.73,2.13-5.09c1.42-1.36,3.21-2.04,5.35-2.04s3.93.68,5.35,2.04c1.42,1.36,2.13,3.06,2.13,5.09s-.71,3.73-2.13,5.09c-1.42-1.36-3.21,2.05-5.35,2.05s-3.93-.68-5.35-2.05ZM278.58,20.02v48.21h-12.18V20.02h12.18Z"/>
       <path fill={darkFill || "#9e5bfe"} d="M299.47,65.93c-3.71-2.06-6.63-4.97-8.75-8.75-2.12-3.77-3.18-8.12-3.18-13.05s1.09-9.28,3.26-13.05c2.18-3.77,5.15-6.69,8.92-8.75,3.77-2.06,7.98-3.09,12.62-3.09s8.85,1.03,12.62,3.09c3.77,2.06,6.75,4.98,8.92,8.75,2.18,3.77,3.26,8.12,3.26,13.05s-1.12,9.28-3.35,13.05c-2.23,3.77-5.25,6.69-9.05,8.75-3.8,2.06-8.05,3.09-12.75,3.09s-8.82-1.03-12.53-3.09ZM318.22,56.79c1.94-1.07,3.49-2.68,4.65-4.83,1.16-2.14,1.74-4.76,1.74-7.83,0-4.58-1.2-8.11-3.61-10.57-2.41-2.47-5.35-3.7-8.83-3.7s-6.4,1.23-8.75,3.7c-2.35,2.47-3.52,5.99-3.52,10.57s1.14,8.11,3.44,10.57c2.29,2.47,5.18,3.7,8.66,3.7,2.21,0,4.28-.54,6.22-1.61Z"/>
       <path fill={darkFill || "#9e5bfe"} d="M386.76,24.76c3.54,3.63,5.31,8.69,5.31,15.19v28.29h-12.18v-26.63c0-3.83-.96-6.77-2.87-8.83-1.91-2.06-4.52-3.09-7.83-3.09s-6.02,1.03-7.96,3.09c-1.94,2.06-2.92,5-2.92,8.83v26.63h-12.18V20.02h12.18v6c1.62-2.09,3.7-3.73,6.22-4.92,2.53-1.19,5.3-1.79,8.31-1.79,5.74,0,10.38,1.81,13.92,5.44Z"/>
-      <path fill={darkFill || "#9e5bfe"} d="M404.47,12.23c-1.42-1.36-2.13-3.06-2.13-5.09s.71-3.73,2.13-5.09c1.42-1.36,3.21-2.04,5.35-2.04s3.93.68,5.35,2.04c1.42,1.36,2.13,3.06,2.13,5.09s-.71,3.73-2.13,5.09c-1.42-1.36-3.21,2.05-5.35,2.05s-3.93-.68-5.35-2.05ZM415.82,20.02v48.21h-12.18V20.02h12.18Z"/>
+      <path fill={darkFill || "#9e5bfe"} d="M404.47,12.23c-1.42-1.36-2.13-3.06-2.13-5.09s.71-3.73,2.13-5.09c1.42-1.36,3.21-2.04,5.35-2.04s3.93.68,5.35,2.04c1.42,1.36,2.13,3.06,2.13,5.09s-.71,3.73-2.13,5.09c-1.42,1.36-3.21-2.05-5.35-2.05s-3.93-.68-5.35-2.05ZM415.82,20.02v48.21h-12.18V20.02h12.18Z"/>
     </g>
     <g>
       <path fill={lightFill || "#c6a1fc"} d="M427.79,66.79c-1.42-1.36-2.13-3.06-2.13-5.09s.71-3.73,2.13-5.09c1.42-1.36,3.23-2.04,5.44-2.04s3.92.68,5.31,2.04c1.39,1.36,2.09,3.06,2.09,5.09s-.7,3.73-2.09,5.09c-1.39,1.36-3.16,2.05-5.31,2.05s-4.02-.68-5.44-2.05Z"/>
@@ -217,6 +217,7 @@ export const EyeIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWra
 export const FastForwardIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>fast_forward</IconWrapper>);
 export const FileIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>insert_drive_file</IconWrapper>);
 export const FolderIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>folder</IconWrapper>);
+export const FolderPlusIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>create_new_folder</IconWrapper>);
 export const HandThumbDownIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>thumb_down</IconWrapper>);
 export const HandThumbUpIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>thumb_up</IconWrapper>);
 export const InformationCircleIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>info</IconWrapper>);
@@ -233,6 +234,7 @@ export const PlayIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWr
 export const PlusCircleIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>add_circle</IconWrapper>);
 export const QuestionMarkCircleIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>help</IconWrapper>);
 export const RectangleStackIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>stacks</IconWrapper>);
+export const RestoreFromTrashIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>restore_from_trash</IconWrapper>);
 export const RocketLaunchIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>rocket_launch</IconWrapper>);
 export const ShieldCheckIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>verified_user</IconWrapper>);
 export const ShieldExclamationIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>gpp_bad</IconWrapper>);

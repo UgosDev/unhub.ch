@@ -79,6 +79,9 @@ export interface ProcessedPageResult {
     ownerUid?: string;
     ownerName?: string;
     embedding?: number[];
+    folderPath?: string;
+    fascicolo?: string | null;
+    deletedAt?: string | null;
 }
 
 export interface DocumentGroup {

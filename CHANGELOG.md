@@ -4,6 +4,11 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.1.0]
+
+### Migliorato
+* Rilascio di manutenzione per aggiornare le dipendenze interne e migliorare le performance generali dell'infrastruttura.
+
 ## [9.0.0]
 
 ### Aggiunto

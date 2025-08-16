@@ -1,3 +1,5 @@
+
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -33,7 +35,7 @@ import { CookieBanner } from './components/CookieBanner';
 import { CircularContextMenu } from './components/CircularContextMenu';
 import { ListContextMenu, type ContextMenuAction } from './components/ListContextMenu';
 import { TutorialManager, type TutorialStep } from './components/TutorialManager';
-import { ChatBubbleLeftRightIcon, SunIcon, MoonIcon, ComputerDesktopIcon, CameraIcon, EnvelopeIcon, Squares2X2Icon, UserCircleIcon, BookOpenIcon, MagnifyingGlassIcon, ArrowPathIcon, DocumentTextIcon, SparklesIcon, LockClosedIcon, ShieldExclamationIcon, CoinIcon } from './components/icons';
+import { ChatBubbleLeftRightIcon, SunIcon, MoonIcon, ComputerDesktopIcon, CameraIcon, EnvelopeIcon, Squares2X2Icon, UserCircleIcon, BookOpenIcon, MagnifyingGlassIcon, ArrowPathIcon, DocumentTextIcon, SparklesIcon, LockClosedIcon, ShieldExclamationIcon, CoinIcon, DocumentPlusIcon, DocumentDuplicateIcon } from './components/icons';
 import { PrototypeBanner } from './components/PrototypeBanner';
 
 // Nuove pagine
@@ -3231,6 +3233,10 @@ function AuthenticatedApp() {
         }
     }, []);
 
+    const handleUpdateArchivedDocument = useCallback(async (doc: ProcessedPageResult) => {
+        await db.updateArchivedDoc(doc);
+    }, []);
+
     // --- NUOVO: useEffect per la modalità di selezione elemento ---
     useEffect(() => {
         if (highlightedElementForFeedback) {
@@ -3303,8 +3309,7 @@ function AuthenticatedApp() {
         };
     }, [elementSelectionForFeedback, user, highlightedElementForFeedback]);
 
-    const handleReauthSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleReauthSubmit = async () => {
         if (!reauthPassword) return;
         setIsReauthenticating(true);
         setReauthError(null);
@@ -3354,6 +3359,7 @@ function AuthenticatedApp() {
                             archivedDocs={archivedDocs} 
                             onMoveDocument={handleMoveArchivedDocument}
                             onDeleteDocument={handleDeleteArchivedDocument}
+                            onUpdateDocument={handleUpdateArchivedDocument}
                         />;
             case 'polizze':
                 return <Polizze polizzeDocs={polizzeDocs} />;
@@ -3575,336 +3581,242 @@ function AuthenticatedApp() {
                     onUgoSummarize={handleUgoSummarize}
                 />;
         }
-    }
-    
-    const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan';
+    };
 
-    const targetGroup = useMemo(() => documentGroups.find(g => g.id === circularMenu.groupId), [documentGroups, circularMenu.groupId]);
-
-    const globalContextMenuActions = useMemo((): ContextMenuAction[] => [
-        { label: 'Tema Chiaro', icon: <SunIcon className="w-5 h-5"/>, handler: () => handleUpdateSettings({ theme: 'light'}) },
-        { label: 'Tema Scuro', icon: <MoonIcon className="w-5 h-5"/>, handler: () => handleUpdateSettings({ theme: 'dark'}) },
-        { label: 'Tema di Sistema', icon: <ComputerDesktopIcon className="w-5 h-5"/>, handler: () => handleUpdateSettings({ theme: 'system'}) },
-        { type: 'separator' },
-        { label: 'Avvia Scansione Fotocamera', icon: <CameraIcon className="w-5 h-5"/>, handler: () => setIsCameraOpen(true) },
-        { label: 'Importa da Email', icon: <EnvelopeIcon className="w-5 h-5"/>, handler: () => setIsEmailImportOpen(true) },
-        { type: 'separator' },
-        { label: 'Vai alla Dashboard', icon: <Squares2X2Icon className="w-5 h-5"/>, handler: () => navigate('dashboard') },
-        { label: 'Vai al Profilo', icon: <UserCircleIcon className="w-5 h-5"/>, handler: () => navigate('profile') },
-    ], [handleUpdateSettings, navigate]);
-
-    const historyContextMenuActions = useMemo((): ContextMenuAction[] => {
-        if (!historyMenu.targetScan) return [];
-        const { targetScan } = historyMenu;
-
-        const actions: ContextMenuAction[] = [];
-
-        if (targetScan.uuid && targetScan.type === 'scan') {
-            actions.push({
-                label: 'Trova Fascicolo Correlato',
-                icon: <MagnifyingGlassIcon className="w-5 h-5"/>,
-                handler: () => {
-                    const result = results.find(r => r.uuid === targetScan.uuid);
-                    if(result) {
-                        const subject = result.analysis.groupingSubjectNormalized?.trim() || 'SoggettoNonDefinito';
-                        const identifier = result.analysis.groupingIdentifier?.trim() || 'IDNonDefinito';
-                        const key = result.sourceFileId ? `file-${result.sourceFileId}` : `ai-${subject}_${identifier}`;
-                        setScrollToGroupId(key);
-                        navigate('scan');
-                    } else {
-                        alert("Il documento correlato non è più nell'area di lavoro corrente.");
-                    }
-                }
-            });
-        }
-        
-        actions.push({
-            label: 'Segnala un Problema',
-            icon: <DocumentTextIcon className="w-5 h-5" />,
-            handler: () => {
-                handleAskUgo(`Ho un problema con la scansione: ${targetScan.description}`);
-            }
-        });
-
-        if (targetScan.type === 'scan') {
-             actions.push({ type: 'separator' });
-             actions.push({
-                 label: 'Crea Scansione Simile',
-                 icon: <DocumentTextIcon className="w-5 h-5" />,
-                 handler: () => {
-                    if (targetScan.processingMode) {
-                        setProcessingMode(targetScan.processingMode);
-                    }
-                    navigate('scan');
-                 }
-             });
-        }
-        
-        return actions;
-
-    }, [historyMenu.targetScan, results, navigate, handleAskUgo, setProcessingMode]);
-
-    if (isInitialLoading) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-                <div className="flex flex-col items-center gap-4">
-                    <LoadingSpinner className="w-16 h-16" />
-                    <span className="text-slate-500 dark:text-slate-400 font-semibold">
-                        Sincronizzazione dati...
-                    </span>
-                </div>
-            </div>
-        );
-    }
-    
     return (
-        <div className="flex min-h-screen flex-col">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
+             {/* Dynamic Global Styles */}
+            <style>{`
+                .highlight-animation {
+                    animation: pulse-purple 2s infinite;
+                }
+                @keyframes pulse-purple {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
+                    70% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
+                }
+                .feedback-highlight-target {
+                    outline: 2px dashed #9333ea;
+                    outline-offset: 2px;
+                    box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+                    border-radius: 4px;
+                    transition: outline 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+                }
+                .highlight-section-animation {
+                    animation: pulse-bg-purple 2.5s 1;
+                }
+                 @keyframes pulse-bg-purple {
+                    0% { background-color: transparent; }
+                    30% { background-color: rgba(216, 180, 254, 0.3); } /* purple-200/30 */
+                    100% { background-color: transparent; }
+                }
+                .dark .highlight-section-animation {
+                     @keyframes pulse-bg-purple-dark {
+                        0% { background-color: transparent; }
+                        30% { background-color: rgba(107, 33, 168, 0.3); } /* purple-800/30 */
+                        100% { background-color: transparent; }
+                    }
+                    animation-name: pulse-bg-purple-dark;
+                }
+            `}</style>
+            
             <Header currentPage={currentPage} onNavigate={navigate} onLogout={logout} isSyncing={isSyncing} />
-            <PrototypeBanner onAskUgo={handleOpenChat} />
-            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <PrototypeBanner onAskUgo={() => setIsChatOpen(true)} />
+            
+            <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
                 {renderPage()}
             </main>
-            <Footer onNavigate={navigate} isAuth={true} brandKey={brandKey} appLastUpdated={appLastUpdated} />
-
-            {/* --- OVERLAYS & MODALS --- */}
-             {confirmationModal && <ConfirmationModal {...confirmationModal} />}
-
-            {showWelcomeModal && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={handleCloseWelcomeModal}>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl text-center w-full max-w-md" onClick={e => e.stopPropagation()}>
-                        <SparklesIcon className="w-12 h-12 text-purple-500 mx-auto mb-3" />
-                        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Benvenuto in scansioni.ch!</h2>
-                        <p className="mt-2 text-slate-600 dark:text-slate-300">
-                            Per darti il benvenuto, ti abbiamo accreditato <strong>1.000 ScanCoin gratuiti</strong>.
-                            Ti consigliamo di iniziare con il nostro tour guidato per scoprire tutte le funzionalità.
-                        </p>
-                        <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                            <button
-                                onClick={handleCloseWelcomeModal}
-                                className="w-full px-4 py-2 font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600"
-                            >
-                                Esplora da solo
-                            </button>
-                            <button
-                                onClick={() => {
-                                    handleStartTutorial();
-                                    handleCloseWelcomeModal();
-                                }}
-                                className="w-full px-4 py-2 font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                            >
-                                Inizia il Tour Guidato
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {isReauthModalOpen && (
-                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setIsReauthModalOpen(false)}>
-                    <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <form onSubmit={handleReauthSubmit}>
-                            <div className="p-6 text-center">
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
-                                    <LockClosedIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <h3 className="mt-4 text-xl font-bold text-slate-900 dark:text-slate-100">Accesso Sicuro Richiesto</h3>
-                                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                                    Per la tua sicurezza, inserisci nuovamente la password per accedere alla dashboard di amministrazione.
-                                </p>
-                                <div className="mt-5">
-                                    <input
-                                        type="password"
-                                        value={reauthPassword}
-                                        onChange={(e) => setReauthPassword(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                                        placeholder="La tua password"
-                                        required
-                                        autoFocus
-                                    />
-                                    {reauthError && <p className="mt-2 text-sm text-red-500">{reauthError}</p>}
-                                </div>
-                            </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-3 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 rounded-b-2xl">
-                                <button type="button" onClick={() => setIsReauthModalOpen(false)} className="w-full sm:w-auto px-4 py-2 text-sm font-semibold bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600">
-                                    Annulla
-                                </button>
-                                <button type="submit" disabled={isReauthenticating} className="w-full sm:w-auto px-4 py-2 text-sm font-semibold bg-purple-600 text-white rounded-md shadow-sm hover:bg-purple-700 disabled:bg-slate-400">
-                                    {isReauthenticating ? 'Verifica...' : 'Conferma e Accedi'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            <CircularContextMenu
-                isOpen={circularMenu.isOpen}
-                position={circularMenu.position}
-                targetGroup={targetGroup}
-                isSelected={!!targetGroup && selectedGroupIds.includes(targetGroup.id)}
-                isExpanded={!!targetGroup && expandedGroups.includes(targetGroup.id)}
-                onClose={() => setCircularMenu(prev => ({ ...prev, isOpen: false }))}
-                onSelect={() => targetGroup && handleSelectGroup(targetGroup.id)}
-                onExpand={() => targetGroup && onToggleExpandGroup(targetGroup.id)}
-                onSendToApp={handleMoveDocumentsToModule}
-                onDownloadZip={handleDownloadGroupZip}
-                onDownloadPdf={handleDownloadGroupPdf}
-                onUngroup={() => targetGroup && handleUngroup(targetGroup.id)}
-                actionsConfig={appSettings.circularMenuActions}
-            />
-
-            <ListContextMenu
-                isOpen={globalMenu.isOpen}
-                position={globalMenu.position}
-                actions={globalContextMenuActions}
-                onClose={() => setGlobalMenu({ isOpen: false, position: {x: 0, y: 0}})}
-            />
             
-            <ListContextMenu
-                isOpen={historyMenu.isOpen}
-                position={historyMenu.position}
-                actions={historyContextMenuActions}
-                onClose={() => setHistoryMenu({ isOpen: false, position: {x: 0, y: 0}, targetScan: null })}
-            />
+            <Footer onNavigate={navigate} isAuth={true} brandKey={['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan'} appLastUpdated={appLastUpdated} />
 
-            {isTutorialActive && (
+            {/* Modals and Overlays */}
+            {isCameraOpen && <CameraView onClose={() => setIsCameraOpen(false)} onFinish={handleCameraFinish} processingMode={processingMode} />}
+            {isEmailImportOpen && <EmailImportView onClose={() => setIsEmailImportOpen(false)} onQueueFiles={(files, mode) => {
+                // This is a simplified handler. The new workflow uses pendingFileTasks.
+                // We'll create pending tasks and immediately queue them.
+                const tasks: PendingFileTask[] = files.map(file => ({
+                    id: crypto.randomUUID(), file, mode, suggestedMode: null, isSuggesting: false, shouldExtractImages: shouldExtractImages
+                }));
+                addFilesToQueue(tasks);
+                setIsEmailImportOpen(false);
+            }} />}
+
+            {isChatOpen && (
+                <Chatbot 
+                    history={chatHistory} 
+                    isLoading={isChatLoading} 
+                    onClose={() => setIsChatOpen(false)} 
+                    onSendMessage={handleSendMessage}
+                    onUpdateHistory={setChatHistory}
+                    onFeedbackResponse={handleFeedbackResponse}
+                    onArchive={handleArchiveChat}
+                    onNavigateToSettings={() => { setIsChatOpen(false); navigate('profile'); setScrollToSection('chatbot'); }}
+                />
+            )}
+             <button
+                id="tutorial-chatbot"
+                onClick={handleOpenChat}
+                className={`fixed bottom-6 right-6 w-16 h-16 bg-purple-600 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-purple-700 transition-transform transform hover:scale-110 ${isChatOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}
+                aria-label="Apri assistente Ugo"
+            >
+                {unreadChatMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white dark:border-slate-800">
+                        {unreadChatMessages}
+                    </span>
+                )}
+                <ChatBubbleLeftRightIcon className="w-8 h-8"/>
+            </button>
+            
+            {showCookieBanner && <CookieBanner onAccept={handleAcceptCookies} onNavigateToPrivacy={() => navigate('privacy')} brandKey={['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan'} />}
+
+            {circularMenu.isOpen && (
+                <CircularContextMenu 
+                    isOpen={circularMenu.isOpen}
+                    position={circularMenu.position}
+                    targetGroup={documentGroups.find(g => g.id === circularMenu.groupId)}
+                    isSelected={!!circularMenu.groupId && selectedGroupIds.includes(circularMenu.groupId)}
+                    isExpanded={!!circularMenu.groupId && expandedGroups.includes(circularMenu.groupId)}
+                    onClose={() => setCircularMenu(c => ({...c, isOpen: false}))}
+                    onSelect={() => circularMenu.groupId && handleSelectGroup(circularMenu.groupId)}
+                    onExpand={() => circularMenu.groupId && onToggleExpandGroup(circularMenu.groupId)}
+                    onSendToApp={(group, app) => handleMoveDocumentsToModule(group, app.split('.')[0] as any)}
+                    onDownloadZip={(group) => handleDownloadGroupZip(group)}
+                    onDownloadPdf={(group) => handleDownloadGroupPdf(group)}
+                    onUngroup={() => circularMenu.groupId && handleUngroup(circularMenu.groupId)}
+                    actionsConfig={appSettings.circularMenuActions}
+                />
+            )}
+            
+            {globalMenu.isOpen && (
+                <ListContextMenu
+                    isOpen={globalMenu.isOpen}
+                    position={globalMenu.position}
+                    onClose={() => setGlobalMenu(c => ({...c, isOpen: false}))}
+                    actions={[
+                        { label: 'Aggiungi File', icon: <DocumentPlusIcon className="w-5 h-5"/>, handler: () => document.querySelector<HTMLElement>('#tutorial-file-dropzone')?.click() },
+                        { label: 'Scatta Foto', icon: <CameraIcon className="w-5 h-5"/>, handler: () => setIsCameraOpen(true) },
+                        { type: 'separator' },
+                        { label: 'Parla con Ugo', icon: <ChatBubbleLeftRightIcon className="w-5 h-5"/>, handler: () => setIsChatOpen(true) },
+                        { label: 'Avvia Tour Guidato', icon: <SparklesIcon className="w-5 h-5"/>, handler: handleStartTutorial },
+                        { type: 'separator' },
+                        { label: 'Naviga a...', icon: <Squares2X2Icon className="w-5 h-5"/>, submenu: [
+                            { label: 'Dashboard', handler: () => navigate('dashboard')},
+                            { label: 'Profilo', handler: () => navigate('profile')},
+                            { label: 'Guida', handler: () => navigate('guide')},
+                        ] },
+                    ]}
+                />
+            )}
+            
+            {historyMenu.isOpen && historyMenu.targetScan && (
+                 <ListContextMenu
+                    isOpen={historyMenu.isOpen}
+                    position={historyMenu.position}
+                    onClose={() => setHistoryMenu(c => ({...c, isOpen: false}))}
+                    actions={[
+                        { label: 'Visualizza Documento Correlato', icon: <DocumentTextIcon className="w-5 h-5"/>, handler: () => {
+                            const group = documentGroups.find(g => g.pages.some(p => p.uuid === historyMenu.targetScan?.uuid));
+                            if (group) {
+                                navigate('scan');
+                                setScrollToGroupId(group.id);
+                                if (!expandedGroups.includes(group.id)) {
+                                    onToggleExpandGroup(group.id);
+                                }
+                            } else {
+                                alert("Documento non più presente nell'area di lavoro.");
+                            }
+                        }},
+                        { label: 'Copia ID Transazione', icon: <DocumentDuplicateIcon className="w-5 h-5"/>, handler: () => {
+                            if (historyMenu.targetScan?.uuid) navigator.clipboard.writeText(historyMenu.targetScan.uuid);
+                        }},
+                    ]}
+                />
+            )}
+
+             {isTutorialActive && (
                 <TutorialManager 
                     isActive={isTutorialActive}
                     steps={activeTutorialSteps}
                     currentStepIndex={currentTutorialStep}
                     onNext={() => handleTutorialStepChange(currentTutorialStep + 1)}
                     onPrev={() => handleTutorialStepChange(currentTutorialStep - 1)}
-                    onStop={() => setIsTutorialActive(false)}
+                    onStop={() => {
+                        setIsTutorialActive(false);
+                        if(isDemoMode) {
+                            setResults(prev => prev.filter(r => !r.isDemo));
+                            setIsDemoMode(false);
+                        }
+                    }}
+                />
+             )}
+              {isReauthModalOpen && (
+                 <ConfirmationModal
+                    isOpen={isReauthModalOpen}
+                    title="Accesso Amministratore Richiesto"
+                    onCancel={() => setIsReauthModalOpen(false)}
+                    onConfirm={handleReauthSubmit}
+                    confirmText="Conferma"
+                    message={
+                        <form onSubmit={(e) => { e.preventDefault(); handleReauthSubmit(); }}>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Per accedere a questa sezione protetta, inserisci nuovamente la tua password.</p>
+                             <input
+                                id="reauth-password"
+                                type="password"
+                                value={reauthPassword}
+                                onChange={(e) => setReauthPassword(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm"
+                                required
+                                autoFocus
+                            />
+                            {reauthError && <p className="text-sm text-red-500 mt-2">{reauthError}</p>}
+                        </form>
+                    }
+                />
+             )}
+             {confirmationModal && (
+                <ConfirmationModal
+                    isOpen={confirmationModal.isOpen}
+                    title={confirmationModal.title}
+                    message={confirmationModal.message}
+                    confirmText={confirmationModal.confirmText}
+                    cancelText={confirmationModal.cancelText}
+                    onConfirm={confirmationModal.onConfirm}
+                    onCancel={confirmationModal.onCancel}
+                    confirmButtonClass={confirmationModal.confirmButtonClass}
+                    icon={confirmationModal.icon}
+                />
+             )}
+            {showWelcomeModal && (
+                <ConfirmationModal
+                    isOpen={true}
+                    title={`Benvenuto in scansioni.ch, ${user?.name}!`}
+                    message={
+                        <>
+                            Siamo felici di vederti! Per iniziare, ti abbiamo accreditato <strong>1.000 ScanCoin gratuiti</strong>.
+                            <br/><br/>
+                            Ti consigliamo di iniziare con il nostro <strong>tour guidato interattivo</strong> per scoprire tutte le funzionalità.
+                        </>
+                    }
+                    confirmText="Inizia il Tour Guidato"
+                    cancelText="Esplora da solo"
+                    onConfirm={() => { handleCloseWelcomeModal(); handleStartTutorial(); }}
+                    onCancel={handleCloseWelcomeModal}
+                    icon={<SparklesIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
                 />
             )}
-
-            {showStartTutorialModal && (
-              <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowStartTutorialModal(false)}>
-                <div 
-                  className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl text-center w-full max-w-sm"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <SparklesIcon className="w-12 h-12 text-purple-500 mx-auto mb-3" />
-                  <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Demo Caricata!</h2>
-                  <p className="mt-2 text-slate-600 dark:text-slate-300">Vuoi iniziare il tour guidato interattivo per scoprire le funzionalità principali?</p>
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                    <button 
-                      onClick={() => setShowStartTutorialModal(false)}
-                      className="w-full px-4 py-2 font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600"
-                    >
-                      No, esploro da solo
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setShowStartTutorialModal(false); 
-                        handleStartTutorial();
-                      }} 
-                      className="w-full px-4 py-2 font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                    >
-                      Sì, iniziamo!
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {isCameraOpen && <CameraView onFinish={handleCameraFinish} onClose={() => setIsCameraOpen(false)} processingMode={processingMode} />}
-            {isEmailImportOpen && <EmailImportView onQueueFiles={(files, mode) => addFilesToQueue(files.map(f => ({id: '', file: f, mode, suggestedMode: null, isSuggesting: false, shouldExtractImages: false})))} onClose={() => setIsEmailImportOpen(false)} />}
-            
-            {/* --- FLOATING ACTION BUTTONS (FAB) --- */}
-            <div id="tutorial-chatbot" className="fixed bottom-6 right-6 z-40">
-                <button
-                    onClick={handleOpenChat}
-                    className="relative flex items-center justify-center w-16 h-16 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-transform transform hover:scale-110"
-                    aria-label="Apri assistente AI Ugo"
-                >
-                    {unreadChatMessages > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold border-2 border-white dark:border-slate-800">
-                            {unreadChatMessages}
-                        </span>
-                    )}
-                    <ChatBubbleLeftRightIcon className="w-8 h-8" />
-                </button>
-            </div>
-            
-            {isChatOpen && <Chatbot history={chatHistory} isLoading={isChatLoading} onClose={() => setIsChatOpen(false)} onSendMessage={handleSendMessage} onUpdateHistory={setChatHistory} onFeedbackResponse={handleFeedbackResponse} onArchive={handleArchiveChat} onNavigateToSettings={() => navigate('profile')} />}
-            {showCookieBanner && <CookieBanner onAccept={handleAcceptCookies} onNavigateToPrivacy={() => navigate('privacy')} brandKey={getBrandKey()} />}
         </div>
     );
 }
 
-function UnauthenticatedApp() {
-    const { isAwaiting2fa } = useAuth();
+// --- UN-AUTHENTICATED APP ---
+function UnauthenticatedApp({ brandKey }: { brandKey: BrandKey }) {
     const [page, setPage] = useState('landing');
     const [currentNewsletter, setCurrentNewsletter] = useState<number | null>(null);
-    const [brandKey, setBrandKey] = useState<BrandKey>(getBrandKey());
-    
-    const [isAccessGranted, setIsAccessGranted] = useState(() => {
-        try {
-            return sessionStorage.getItem('accessGranted_v1') === 'true';
-        } catch {
-            return false;
-        }
-    });
-    const [showCookieBanner, setShowCookieBanner] = useState(false);
-    const [appLastUpdated, setAppLastUpdated] = useState<string>(''); // Aggiunto per coerenza con AuthenticatedApp
-    
-    useEffect(() => {
-        fetch('./metadata.json')
-            .then(response => response.json())
-            .then(data => {
-                if (data?.lastUpdated) {
-                    setAppLastUpdated(data.lastUpdated);
-                }
-            })
-            .catch(error => console.error('Failed to load metadata:', error));
-    }, []);
+    const { user } = useAuth(); // Needed to pass isAuth to footer
 
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const joinFamilyId = urlParams.get('joinFamily');
-        if (joinFamilyId) {
-            // This is handled in AuthenticatedApp, but for an unauthenticated user,
-            // we can store it and handle after login, or just navigate to register.
-            // For now, let's just navigate to register.
-            setPage('register');
-        }
-
-        // A small delay to avoid banner flash on load
-        const timer = setTimeout(() => {
-            try {
-                if (!localStorage.getItem('cookies_accepted_v1')) {
-                    setShowCookieBanner(true);
-                }
-            } catch (e) {
-                console.warn('Could not access localStorage for cookies.', e);
-            }
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, []);
-
-    const handleAcceptCookies = () => {
-        try {
-            localStorage.setItem('cookies_accepted_v1', 'true');
-            setShowCookieBanner(false);
-        } catch (e) {
-            console.warn('Could not save cookie acceptance to localStorage.', e);
-        }
-    };
-
-    const grantAccess = () => {
-        try {
-            sessionStorage.setItem('accessGranted_v1', 'true');
-        } catch (e) {
-            console.error("Impossibile salvare il permesso di accesso:", e);
-        }
-        setIsAccessGranted(true);
-    };
-    
-    const navigate = (page: string) => {
-        setCurrentNewsletter(null);
-        if (page.startsWith('newsletter/')) {
-            const issueId = parseInt(page.split('/')[1], 10);
+    const handleNavigate = (targetPage: string) => {
+        setCurrentNewsletter(null); // Reset newsletter view on any navigation
+        if (targetPage.startsWith('newsletter/')) {
+            const issueId = parseInt(targetPage.split('/')[1], 10);
             if (!isNaN(issueId) && newsletterContent[issueId - 1]) {
                 setCurrentNewsletter(issueId);
                 setPage('newsletter');
@@ -3912,100 +3824,64 @@ function UnauthenticatedApp() {
                 setPage('newsletter'); // Fallback to index
             }
         } else {
-            setPage(page);
+            setPage(targetPage);
         }
     };
-
-    const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-        <>
-            {children}
-            {showCookieBanner && <CookieBanner onAccept={handleAcceptCookies} onNavigateToPrivacy={() => navigate('privacy')} brandKey={brandKey} />}
-        </>
-    );
-
-    if (!isAccessGranted) {
-        if (page === 'unhub') {
-            return <PageWrapper><UnHubPage /></PageWrapper>;
-        }
-        return <PageWrapper><WaitlistPage onAccessGranted={grantAccess} brandKey={brandKey} appLastUpdated={appLastUpdated} onNavigate={navigate} /></PageWrapper>;
-    }
     
-    if (isAwaiting2fa) {
-        return <PageWrapper><LoginPage onNavigateToRegister={() => navigate('register')} onNavigate={navigate} brandKey={brandKey} /></PageWrapper>;
+    // Show waitlist for specific brands if not authenticated
+    const isWaitlistBrand = ['archivio', 'polizze', 'disdette'].includes(brandKey);
+    if (!user && isWaitlistBrand) {
+         return <WaitlistPage onAccessGranted={() => { /* This might need a state lift in a real scenario */ }} brandKey={brandKey} onNavigate={handleNavigate} />;
     }
 
     if (page === 'newsletter') {
-        const NewsletterContent = currentNewsletter ? newsletterContent[currentNewsletter - 1]?.component : null;
-        const pageContent = NewsletterContent 
-            ? <NewsletterContent onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} />
-            : <NewsletterIndexPage onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} />;
-        return <PageWrapper>{pageContent}</PageWrapper>;
+        const NewsletterComponent = currentNewsletter ? newsletterContent[currentNewsletter - 1].component : null;
+        return NewsletterComponent
+            ? <NewsletterComponent onNavigate={handleNavigate} isStandalonePage={true} brandKey={brandKey} />
+            : <NewsletterIndexPage onNavigate={handleNavigate} isStandalonePage={true} brandKey={brandKey} />;
     }
 
-
     switch (page) {
-        case 'unhub':
-            return <PageWrapper><UnHubPage /></PageWrapper>;
         case 'login':
-            return <PageWrapper><LoginPage onNavigateToRegister={() => navigate('register')} onNavigate={navigate} brandKey={brandKey} /></PageWrapper>;
+            return <LoginPage onNavigateToRegister={() => setPage('register')} onNavigate={handleNavigate} brandKey={brandKey} />;
         case 'register':
-            return <PageWrapper><RegisterPage 
-                        onNavigateToLogin={() => navigate('login')} 
-                        onNavigateToTerms={() => navigate('terms')}
-                        onNavigateToPrivacy={() => navigate('privacy')}
-                        onNavigate={navigate} 
-                        brandKey={brandKey}
-                    /></PageWrapper>;
+            return <RegisterPage onNavigateToLogin={() => setPage('login')} onNavigateToTerms={() => setPage('terms')} onNavigateToPrivacy={() => setPage('privacy')} onNavigate={handleNavigate} brandKey={brandKey} />;
         case 'pricing':
-            return <PageWrapper><PricingPage onNavigateToRegister={() => navigate('register')} onNavigateBack={() => navigate('landing')} onNavigate={navigate} isInsideApp={false} brandKey={brandKey} /></PageWrapper>;
+            return <PricingPage onNavigateToRegister={() => setPage('register')} onNavigateBack={() => setPage('landing')} isInsideApp={false} onNavigate={handleNavigate} brandKey={brandKey} />;
         case 'changelog':
-             return <PageWrapper><ChangelogPage onNavigateBack={() => navigate('landing')} onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} /></PageWrapper>;
+             return <ChangelogPage onNavigateBack={() => setPage('landing')} isStandalonePage={true} onNavigate={handleNavigate} brandKey={brandKey}/>;
         case 'terms':
-            return <PageWrapper><TermsOfServicePage onNavigateBack={() => navigate('landing')} onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} /></PageWrapper>;
+            return <TermsOfServicePage onNavigateBack={() => setPage('landing')} isStandalonePage={true} onNavigate={handleNavigate} brandKey={brandKey}/>;
         case 'privacy':
-            return <PageWrapper><PrivacyPolicyPage onNavigateBack={() => navigate('landing')} onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} /></PageWrapper>;
+            return <PrivacyPolicyPage onNavigateBack={() => setPage('landing')} isStandalonePage={true} onNavigate={handleNavigate} brandKey={brandKey} />;
+        case 'unhub':
+            return <UnHubPage />;
         case 'landing':
-            return <PageWrapper><LandingPage onNavigate={navigate as any} brandKey={brandKey} /></PageWrapper>;
         default:
-            return <PageWrapper><UnHubPage /></PageWrapper>;
+            return <LandingPage onNavigate={handleNavigate} brandKey={brandKey} />;
     }
 }
 
 
+// --- MAIN APP COMPONENT ---
 function App() {
-  const { user, isLoading, isAuthenticating } = useAuth();
+  const { user, isLoading } = useAuth();
+  const [brandKey, setBrandKey] = useState<BrandKey>('default');
 
   useEffect(() => {
-    // Gestione invito famiglia per utenti già autenticati
-    if (user) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const joinFamilyId = urlParams.get('joinFamily');
-        if (joinFamilyId && joinFamilyId !== user.familyId) {
-            if (confirm(`Sei stato invitato a unirti a una nuova famiglia. Accettando, condividerai il tuo archivio con loro. Procedere?`)) {
-                firestoreService.updateUserProfile(user.uid, { familyId: joinFamilyId })
-                    .then(() => {
-                        // Rimuovi il parametro dall'URL per evitare che si riattivi al refresh
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    });
-            }
-        }
-    }
-  }, [user]);
-  
-  if (isLoading || isAuthenticating) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="flex flex-col items-center gap-4">
-            <LoadingSpinner className="w-16 h-16" />
-            <span className="text-slate-500 dark:text-slate-400 font-semibold">
-                {isAuthenticating ? 'Accesso in corso...' : 'Caricamento...'}
-            </span>
-        </div>
-      </div>
-    );
+    setBrandKey(getBrandKey());
+  }, []);
+
+
+  if (isLoading) {
+    return <div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-900"><LoadingSpinner /></div>;
   }
 
-  return user ? <AuthenticatedApp /> : <UnauthenticatedApp />;
+  if (!user) {
+    return <UnauthenticatedApp brandKey={brandKey} />;
+  }
+
+  return <AuthenticatedApp />;
 }
 
 export default App;

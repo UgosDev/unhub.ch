@@ -10,6 +10,7 @@ interface PricingPageProps {
     onNavigateBack: () => void;
     onNavigate: (page: string) => void;
     isInsideApp?: boolean;
+    isStandalonePage?: boolean;
     brandKey?: BrandKey;
 }
 

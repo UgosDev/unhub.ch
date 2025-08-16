@@ -26,13 +26,8 @@ const FileDropzone: React.FC<{
 }> = ({ onFilesSelected, onOpenCamera, onOpenEmailImport }) => {
     const [isGapiReady, setIsGapiReady] = useState(false);
     const [isFetchingFromDrive, setIsFetchingFromDrive] = useState(false);
-    const [isDriveConfigured, setIsDriveConfigured] = useState(false);
 
     useEffect(() => {
-        if (process.env.GOOGLE_CLIENT_ID && process.env.API_KEY) {
-            setIsDriveConfigured(true);
-        }
-        
         const handleGapiReady = () => gapi.load('picker', () => setIsGapiReady(true));
         window.addEventListener('gapi-ready', handleGapiReady);
         if (typeof gapi !== 'undefined' && gapi.load) handleGapiReady();
@@ -44,10 +39,21 @@ const FileDropzone: React.FC<{
     }, [onFilesSelected]);
 
     const handleDriveImport = useCallback(() => {
+        if (!process.env.GOOGLE_CLIENT_ID || !process.env.API_KEY) {
+            alert("La funzionalità Google Drive non è configurata correttamente. Contatta l'amministratore.");
+            return;
+        }
+
         const tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: process.env.GOOGLE_CLIENT_ID!,
             scope: 'https://www.googleapis.com/auth/drive.readonly',
             callback: (tokenResponse: any) => {
+                if (tokenResponse.error) {
+                    console.error('Google Auth Error:', tokenResponse);
+                    alert(`Errore di autorizzazione con Google: ${tokenResponse.error_description || tokenResponse.error}`);
+                    return;
+                }
+
                 if (tokenResponse?.access_token) {
                     const view = new google.picker.View(google.picker.ViewId.DOCS);
                     view.setMimeTypes("application/pdf,image/png,image/jpeg,image/webp");
@@ -61,12 +67,16 @@ const FileDropzone: React.FC<{
                                 try {
                                     const files = await Promise.all(data.docs.map(async (doc: any) => {
                                         const res = await fetch(`https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media`, { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } });
+                                        if (!res.ok) {
+                                            throw new Error(`Impossibile scaricare '${doc.name}': ${res.statusText}`);
+                                        }
                                         const blob = await res.blob();
                                         return new File([blob], doc.name, { type: doc.mimeType });
                                     }));
                                     onFilesSelected(files);
                                 } catch (error) {
-                                    alert("Errore durante il download da Google Drive.");
+                                    console.error("Errore durante il download da Google Drive:", error);
+                                    alert(`Errore durante il download da Google Drive: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
                                 } finally {
                                     setIsFetchingFromDrive(false);
                                 }
@@ -84,7 +94,7 @@ const FileDropzone: React.FC<{
 
     return (
         <div className="w-full flex flex-col items-center justify-center p-4 text-center bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
-            <div {...getRootProps()} className={`w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors duration-300 ease-in-out ${isDragActive ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+            <div {...getRootProps()} id="tutorial-file-dropzone" className={`w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors duration-300 ease-in-out ${isDragActive ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
                 <input {...getInputProps()} />
                 <div className="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
                     <FileIcon className="w-12 h-12 mb-3 text-slate-400 dark:text-slate-500" />
@@ -99,7 +109,7 @@ const FileDropzone: React.FC<{
             <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button onClick={onOpenCamera} className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors"><CameraIcon className="w-6 h-6" /><span>Fotocamera</span></button>
                 <button onClick={onOpenEmailImport} className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 transition-colors"><DocumentPlusIcon className="w-6 h-6" /> <span>Email</span></button>
-                <button onClick={handleDriveImport} disabled={!isDriveConfigured || !isGapiReady || isFetchingFromDrive} title={!isDriveConfigured ? "Funzionalità Google Drive non configurata." : "Importa da Google Drive"} className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">
+                <button onClick={handleDriveImport} disabled={!isGapiReady || isFetchingFromDrive} title="Importa da Google Drive" className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">
                     {isFetchingFromDrive ? <LoadingSpinner className="w-6 h-6" /> : <GoogleIcon className="w-6 h-6" />}<span>Drive</span>
                 </button>
             </div>
