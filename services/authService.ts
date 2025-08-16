@@ -284,3 +284,42 @@ export async function reauthenticate(password: string): Promise<void> {
     const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
     await user.reauthenticateWithCredential(credential);
 }
+
+/**
+ * Creates a record to allow transferring coin balance after account deletion.
+ * @param balance The current coin balance.
+ * @param secretWord The user-provided word to secure the transfer.
+ * @returns The generated 6-letter transfer code.
+ */
+export async function createCoinTransferRecord(balance: number, secretWord: string): Promise<string> {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("Utente non loggato.");
+    }
+
+    // Generate 6-letter uppercase code
+    const code = Array(6).fill(0).map(() => String.fromCharCode(Math.floor(Math.random() * 26) + 65)).join('');
+
+    await firestoreService.createCoinTransferRecord(user.uid, balance, code, secretWord);
+    return code;
+}
+
+
+/**
+ * Deletes the current user's account and all associated data.
+ * Requires recent authentication.
+ */
+export async function deleteCurrentUserAccount(): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("Nessun utente loggato. Impossibile eliminare l'account.");
+    }
+
+    const userId = user.uid;
+
+    // First, delete all Firestore data for the user.
+    await firestoreService.deleteAllUserData(userId);
+
+    // Then, delete the user from Firebase Authentication.
+    await user.delete();
+}

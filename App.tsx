@@ -2,6 +2,8 @@
 
 
 
+
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -131,6 +133,7 @@ RULES & CAPABILITIES:
   - **Ugo Vision (Camera Assist)**: An advanced, always-on AI camera mode that provides real-time feedback on lighting, stability, and framing, helping the user take the perfect scan automatically with a 'Lock-On' feature.
   - **Real-time Sync**: The app instantly syncs all scans, history, and settings across all the user's logged-in devices.
   - **Security**: The app includes features like 2-Factor Authentication (2FA) and Auto-Logout, which can be configured in the Profile page.
+  - **Account Deletion & Coin Transfer**: If a user deletes their account from the Profile page, their ScanCoins are not refundable for cash. However, they can be transferred to a new account created by the same user. During the secure deletion process, the user will create a secret word and receive a unique 6-letter transfer code. Both the secret word and the code are required to claim the remaining coins on a new account. For legal reasons, coins are strictly personal and cannot be transferred to third parties.
   - **Email Import**: Users can send documents to a temporary, unique email address to import them directly into the app.
   - **Offline Fallback Mode**: A setting in the Profile page. When enabled, it processes documents locally (for free) if the internet is lost.
   - **PWA**: The app can be installed on desktop and mobile for a faster, offline-first experience.

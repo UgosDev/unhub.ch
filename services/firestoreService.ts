@@ -34,6 +34,14 @@ export interface AccessLogEntry {
     location: string;
 }
 
+// Helper for hashing
+async function sha256(message: string): Promise<string> {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 
 // --- Anonymous Feedback ---
 export const submitAnonymousFeedback = async (feedbackData: object): Promise<void> => {
@@ -131,6 +139,42 @@ const deleteCollection = async (userId: string, collectionName: string) => {
         throw e;
     }
 };
+
+export const deleteAllUserData = async (userId: string): Promise<void> => {
+    const collections = [
+        'workspace', 'archivio', 'polizze', 'disdette', 
+        'scanHistory', 'chat', 'archivedChats', 'stats', 'accessLogs'
+    ];
+    
+    // Delete all subcollections
+    const deletionPromises = collections.map(name => deleteCollection(userId, name));
+    await Promise.all(deletionPromises);
+    
+    // Delete the main user document
+    const userDocRef = db.collection("users").doc(userId);
+    await userDocRef.delete();
+};
+
+
+// --- Coin Transfer on Deletion ---
+export const createCoinTransferRecord = async (userId: string, balance: number, code: string, secretWord: string): Promise<void> => {
+    if (balance <= 0) {
+        // Don't create a record if there's nothing to transfer
+        return;
+    }
+    const transferDocRef = db.collection("coinTransfers").doc(userId);
+    const secretWordHash = await sha256(secretWord);
+
+    await transferDocRef.set({
+        balance,
+        code,
+        secretWordHash,
+        claimed: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        originalEmail: firebase.auth().currentUser?.email // for reference/support
+    });
+};
+
 
 // --- Workspace (ex-Results) ---
 export const onWorkspaceUpdate = (userId: string, callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => {
