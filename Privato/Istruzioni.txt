@@ -1,0 +1,13 @@
+Lista di istruzio personalizzate. Questa lista è solo in lettura e non in scrittura. Non deve mai essere modificata.
+
+Scrivi sempre in italiano. Se puoi ragiona anche in italiano.
+Se in chat rispondo solamente utilizzando numeri allora fai riferimento alla lista. Se il messaggio è 1.e significa che devi eseguire 2 comandi, il comando 1 e il comando 3.
+
+Prompt base:
+
+Apri il file Istruzioni ed esegui l'istruzione numero 1
+
+1. Analizza il file NotePersonali e fai un elenco di una o più integrazioni che puoi fare al mommento.
+2. Non modificare i file, parliamone.
+3. Implementa subito le modifiche proposte.
+4. Se necessario aggiorna i file README, CHANGELOG, NotePersonali e versioning in metadata.

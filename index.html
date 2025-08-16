@@ -264,16 +264,124 @@
       border-radius: 4px;
     }
 
+    /* --- NUOVO: Stile per UnHubPage --- */
+    .unhub-nexus-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #0d0d1a; /* Dark deep blue */
+      --unhub-purple: #a855f7;
+      --unhub-red: #ef4444;
+      --unhub-cyan: #06b6d4;
+      --unhub-green: #22c55e;
+      --unhub-gray: #6b7280;
+    }
+    .unhub-nexus-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    @keyframes node-pulse-glow {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px 0px var(--node-color); }
+      50% { transform: scale(1.05); box-shadow: 0 0 30px 10px var(--node-color); }
+    }
+    .unhub-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      cursor: pointer;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .unhub-node-core {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: var(--node-color);
+      box-shadow: 0 0 20px 0px var(--node-color);
+      animation: node-pulse-glow 5s infinite ease-in-out;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      will-change: transform, box-shadow;
+    }
+    .unhub-node:hover .unhub-node-core {
+      transform: scale(1.5);
+      box-shadow: 0 0 40px 15px var(--node-color);
+      animation-play-state: paused;
+    }
+    .unhub-node-info {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease-in-out;
+      will-change: opacity;
+    }
+    .unhub-node:hover .unhub-node-info {
+      opacity: 1;
+    }
+    .unhub-node-info .material-symbols-outlined {
+        font-size: 32px;
+    }
+    .unhub-node-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-shadow: 0 0 5px black;
+      white-space: nowrap;
+    }
+    @media (max-width: 768px) {
+      .unhub-nexus-container > main {
+        height: 60vh;
+        justify-content: center;
+      }
+      .unhub-node {
+        width: 60px;
+        height: 60px;
+      }
+      .unhub-node-core {
+        width: 30px;
+        height: 30px;
+      }
+      .unhub-node-scan    { top: 85% !important; left: 15% !important; }
+      .unhub-node-archivio { top: 85% !important; left: 32.5% !important; }
+      .unhub-node-polizze  { top: 85% !important; left: 50% !important; }
+      .unhub-node-disdette { top: 85% !important; left: 67.5% !important; }
+      .unhub-node-soon     { top: 85% !important; left: 85% !important; }
+
+      .unhub-node:hover .unhub-node-info {
+          transform: translate(-50%, -120%);
+      }
+      .unhub-node-name {
+          font-size: 0.75rem;
+      }
+      .unhub-node-info .material-symbols-outlined {
+          font-size: 24px;
+      }
+    }
+
 
     /* Riduzione animazioni se richiesto dall'utente */
     @media (prefers-reduced-motion: reduce){
       .scanner-line,.mouse-scanner-line,.shimmer-effect,.animate-shake,
-      .animate-toast-in, .animate-toast-out, .shred-strip, .vault-dial, .hex-grid {
+      .animate-toast-in, .animate-toast-out, .shred-strip, .vault-dial, .hex-grid,
+      .unhub-node-core {
         animation:none !important; transition:none !important;
       }
     }
   </style>
-<link rel="stylesheet" href="/index.css">
 </head>
 
 <body class="bg-slate-50 dark:bg-slate-900">

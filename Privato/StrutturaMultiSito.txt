@@ -1,0 +1,58 @@
+# Piano di Transizione: Ecosistema Unificato
+
+Questo documento delinea la roadmap e le specifiche tecniche per la trasformazione di scansioni.ch in una piattaforma modulare unificata che integra archivio.ch, polizze.ch e disdette.ch.
+
+---
+
+## ARCHITETTURA PROPOSTA E APPROVATA
+
+L'approccio scelto è un modello ibrido:
+- **Piattaforma Unica**: Un'unica applicazione web, un unico codebase.
+- **Domini Multipli**: L'app rileva il dominio di accesso (`scansioni.ch`, `archivio.ch`, etc.) per presentare il modulo corretto come vista principale.
+- **Struttura Dati Modulare (Firestore)**: I dati sono separati logicamente in sotto-collezioni per garantire massima sicurezza e scalabilità.
+  ```
+  users/{uid}/
+    ├── workspace/  (Area di lavoro per nuove scansioni, ex 'results')
+    ├── archivio/   (Documenti archiviati)
+    ├── polizze/    (Polizze assicurative)
+    └── disdette/   (Bozze e lettere di disdetta)
+  ```
+- **Permessi Granulari**: La condivisione (es. con familiari o broker) avverrà tramite campi di permessi (`sharedWith: [uid1, uid2]`) a livello di singolo documento, non spostando o duplicando i file. Le Regole di Sicurezza di Firestore saranno applicate a livello di collezione per un controllo rigoroso.
+
+---
+
+## ROADMAP DI IMPLEMENTAZIONE
+
+### FASE 1: REFACTORING DELLE FONDAMENTA (COMPLETATA)
+**Obiettivo**: Ristrutturare l'applicazione per supportare i moduli, senza alterare drasticamente l'esperienza utente esistente.
+
+- [X] **Ristrutturazione Firestore**: Rinominare la collezione `results` in `workspace`. Creare le strutture per `archivio`, `polizze`, `disdette`.
+- [X] **Aggiornamento Servizi Dati**: Modificare `firestoreService.ts` e `db.ts` per operare sulla nuova struttura.
+- [X] **Logica di Spostamento**: Creare la funzione `moveDocsToModule` per spostare i documenti dal `workspace` ai moduli di destinazione.
+- [X] **Routing basato su Dominio**: Implementare la logica in `App.tsx` per rilevare il dominio e impostare la pagina iniziale di conseguenza.
+- [X] **Creazione Pagine Modulo**: Creare le viste di base per i nuovi moduli (`Archivio.tsx`, `Polizze.tsx`, `Disdette.tsx`) con branding specifico.
+- [X] **Navigazione tra Moduli**: Aggiungere un selettore di moduli dinamico nell'header (`Header.tsx`).
+- [X] **Aggiornamento Azioni Utente**: Sostituire la logica di invio `inter-app` con la nuova logica di spostamento interna.
+- [X] **Test Completo**: Verificato che il flusso di scansione, visualizzazione e spostamento nei moduli funzioni correttamente.
+
+### FASE 2: IMPLEMENTAZIONE MODULI `ARCHIVIO` E `POLIZZE` (IN CORSO)
+**Obiettivo**: Costruire le interfacce complete per i moduli di visualizzazione e gestione, inclusa la condivisione.
+
+- [ ] **UI Archivio**: Sviluppare la UI completa per `Archivio.tsx` con funzioni di ricerca, filtro e visualizzazione.
+- [ ] **UI Polizze**: Sviluppare la UI completa per `Polizze.tsx`, con un focus sulla visualizzazione delle scadenze e dei dettagli specifici delle polizze.
+- [ ] **Logica di Condivisione**: Implementare l'interfaccia per condividere un documento con un altro utente (aggiungendo il suo UID al campo `sharedWith`).
+- [ ] **Vista Condivisa**: Implementare la logica che permette a un utente (es. un broker) di vedere i documenti condivisi con lui.
+
+### FASE 3: SVILUPPO MODULO `DISDETTE.CH`
+**Obiettivo**: Creare il nuovo modulo per la gestione proattiva delle disdette.
+
+- [ ] **UI Disdette**: Sviluppare l'interfaccia per la creazione guidata di lettere di disdetta.
+- [ ] **Integrazione Dati**: Collegare il modulo ai dati presenti in `polizze` e `archivio`.
+- [ ] **Generazione Template**: Implementare la logica per pre-compilare i modelli di lettera.
+- [ ] **Gestione Scadenze**: Creare un sistema di notifiche per i contratti in scadenza.
+
+### FASE 4: CONTESTO UNIFICATO DI UGO
+**Obiettivo**: Rendere l'assistente AI consapevole dell'intero ecosistema di dati dell'utente.
+
+- [ ] **Aggregazione Contesto**: Modificare la logica di `App.tsx` per fornire a Ugo un riepilogo dei documenti da *tutti* i moduli rilevanti.
+- [ ] **Azioni Cross-Modulo**: Potenziare Ugo per eseguire comandi che coinvolgono più moduli (es. "Prepara la disdetta per la mia polizza auto").

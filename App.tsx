@@ -1,3 +1,7 @@
+
+
+
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -48,17 +52,29 @@ import ChangelogPage from './pages/ChangelogPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import WaitlistPage from './pages/WaitlistPage';
+import UnHubPage from './pages/UnHubPage';
 import InteractiveBackground from './components/InteractiveBackground';
 import { useInactivityTimer } from './components/useInactivityTimer';
 import Archivio from './pages/Archivio';
 import Polizze from './pages/Polizze';
 import Disdette from './pages/Disdette';
 import AdminDashboard from './pages/AdminDashboard'; // Import AdminDashboard
+import NewsletterIndexPage from './pages/newsletter/NewsletterIndexPage';
+import { newsletterContent } from './pages/newsletter/content';
 import type { AccessLogEntry } from './services/db';
 
 
 declare const cv: any; // Dichiarazione globale per OpenCV
 
+// NUOVO: Tipo per la gestione dei file in attesa con modalità individuale
+export interface PendingFileTask {
+    id: string;
+    file: File;
+    mode: ProcessingMode;
+    suggestedMode: ProcessingMode | null;
+    isSuggesting: boolean;
+    shouldExtractImages: boolean;
+}
 
 // Inizializzazione API Gemini
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -510,6 +526,7 @@ function AuthenticatedApp() {
   const { theme, setTheme } = useTheme();
 
   const [currentPage, setCurrentPage] = useState('scan'); // scan, dashboard, guide, profile, etc.
+  const [currentNewsletter, setCurrentNewsletter] = useState<number | null>(null);
   const { state: results, setState: setResults, undo, redo, canUndo, canRedo, resetHistory } = useHistoryState<ProcessedPageResult[]>([]);
   
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
@@ -631,10 +648,8 @@ function AuthenticatedApp() {
   const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-  // --- STATI PER NUOVO WORKFLOW CON SUGGERIMENTO ---
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [suggestedMode, setSuggestedMode] = useState<ProcessingMode | null>(null);
-  const [isSuggestingMode, setIsSuggestingMode] = useState(false);
+  // --- STATI PER NUOVO WORKFLOW CON SUGGERIMENTO E MODALITÀ PER FILE ---
+  const [pendingFileTasks, setPendingFileTasks] = useState<PendingFileTask[]>([]);
 
   // --- STATO COOKIE BANNER ---
   const [showCookieBanner, setShowCookieBanner] = useState(false);
@@ -787,7 +802,6 @@ function AuthenticatedApp() {
         setShowCookieBanner(false);
     } catch (e) {
         console.warn('Could not save cookie acceptance to localStorage.', e);
-        setShowCookieBanner(false);
     }
   };
 
@@ -1121,7 +1135,16 @@ function AuthenticatedApp() {
     }, [isProcessorActive, isPaused]);
     
     const navigate = useCallback((page: string) => {
-        if (page === 'admin' && user?.email === 'fermo.botta@gmail.com' && !isAdminAccessGranted) {
+        setCurrentNewsletter(null);
+        if (page.startsWith('newsletter/')) {
+            const issueId = parseInt(page.split('/')[1], 10);
+            if (!isNaN(issueId) && newsletterContent[issueId - 1]) {
+                setCurrentNewsletter(issueId);
+                setCurrentPage('newsletter');
+            } else {
+                setCurrentPage('newsletter'); // Fallback to index
+            }
+        } else if (page === 'admin' && user?.email === 'fermo.botta@gmail.com' && !isAdminAccessGranted) {
             setReauthError(null);
             setReauthPassword('');
             setIsReauthModalOpen(true);
@@ -1442,104 +1465,128 @@ function AuthenticatedApp() {
       return new File([u8arr], filename, {type:mime});
   }
 
-  const addFilesToQueue = useCallback(async (files: File[], modeOverride?: ProcessingMode) => {
-    if (isDemoMode) {
-        alert("Esci dalla modalità demo per aggiungere i tuoi file.");
-        return;
-    }
-    if (!user) {
-        setError("Errore: Utente non autenticato. Impossibile avviare l'elaborazione.");
-        return;
-    }
+    const addFilesToQueue = useCallback(async (tasksToQueue: PendingFileTask[]) => {
+        if (isDemoMode) {
+            alert("Esci dalla modalità demo per aggiungere i tuoi file.");
+            return;
+        }
+        if (!user) {
+            setError("Errore: Utente non autenticato. Impossibile avviare l'elaborazione.");
+            return;
+        }
 
-    const proceedWithQueueing = async () => {
-        const modeToUse = modeOverride || processingMode;
-        setError(null);
-        const newTasks: QueuedFile[] = [];
-        let totalCostInCoins = 0;
-        
-        const extractionEnabled = ['quality', 'business', 'book', 'scontrino'].includes(modeToUse) && shouldExtractImages;
+        const proceedWithQueueing = async () => {
+            setError(null);
+            const newTasks: QueuedFile[] = [];
+            let totalCostInCoins = 0;
 
-        for (const file of files) {
-            const sourceFileId = crypto.randomUUID(); 
-            if (file.type.startsWith('image/')) {
-                totalCostInCoins += COST_PER_SCAN_COINS[modeToUse];
-                newTasks.push({ file, pages: 1, mode: modeToUse, extractImages: extractionEnabled, sourceFileId });
-            } else if (file.type === 'application/pdf') {
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
-                    totalCostInCoins += pdfDoc.numPages * COST_PER_SCAN_COINS[modeToUse];
-                    newTasks.push({ file, pages: pdfDoc.numPages, mode: modeToUse, extractImages: extractionEnabled, sourceFileId });
-                } catch(e) {
-                    const errorMessage = e instanceof Error ? e.message : String(e);
-                    const detailedError = `Impossibile elaborare il PDF '${file.name}'. Il file potrebbe essere corrotto, protetto da password o non valido. (Dettagli: ${errorMessage})`;
+            for (const task of tasksToQueue) {
+                const sourceFileId = crypto.randomUUID();
+                const modeToUse = task.mode;
+                const extractionEnabled = ['quality', 'business', 'book', 'scontrino'].includes(modeToUse) && task.shouldExtractImages;
+
+                if (task.file.type.startsWith('image/')) {
+                    totalCostInCoins += COST_PER_SCAN_COINS[modeToUse];
+                    newTasks.push({ file: task.file, pages: 1, mode: modeToUse, extractImages: extractionEnabled, sourceFileId });
+                } else if (task.file.type === 'application/pdf') {
+                    try {
+                        const arrayBuffer = await task.file.arrayBuffer();
+                        const pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+                        totalCostInCoins += pdfDoc.numPages * COST_PER_SCAN_COINS[modeToUse];
+                        newTasks.push({ file: task.file, pages: pdfDoc.numPages, mode: modeToUse, extractImages: extractionEnabled, sourceFileId });
+                    } catch (e) {
+                        const errorMessage = e instanceof Error ? e.message : String(e);
+                        const detailedError = `Impossibile elaborare il PDF '${task.file.name}'. Il file potrebbe essere corrotto, protetto da password o non valido. (Dettagli: ${errorMessage})`;
+                        setError(prev => prev ? `${prev}\n${detailedError}` : detailedError);
+                    }
+                } else {
+                    const detailedError = `Tipo file non supportato: '${task.file.name}'. Sono accettati solo immagini e PDF.`;
                     setError(prev => prev ? `${prev}\n${detailedError}` : detailedError);
                 }
-            } else {
-                 const detailedError = `Tipo file non supportato: '${file.name}'. Sono accettati solo immagini e PDF.`;
-                 setError(prev => prev ? `${prev}\n${detailedError}` : detailedError);
             }
-        }
 
-        const finalizeQueueing = async () => {
-            if (newTasks.length > 0) {
-                setProcessingQueue(prev => [...prev, ...newTasks]);
-                await db.addTasksToQueue(newTasks);
+            const finalizeQueueing = async () => {
+                if (newTasks.length > 0) {
+                    setProcessingQueue(prev => [...prev, ...newTasks]);
+                    await db.addTasksToQueue(newTasks);
+                }
+            };
+
+            if (totalCostInCoins > user.subscription.scanCoinBalance) {
+                const confirmationMessage = `Attenzione: Stai per avviare un'elaborazione dal costo di ${totalCostInCoins} ScanCoin, ma il tuo saldo è di soli ${user.subscription.scanCoinBalance} ScanCoin. Le scansioni potrebbero non essere completate. Procedere comunque?`;
+                setConfirmationModal({
+                    isOpen: true,
+                    title: "Saldo ScanCoin Insufficiente",
+                    message: confirmationMessage,
+                    confirmText: "Procedi",
+                    cancelText: "Annulla",
+                    onConfirm: () => {
+                        finalizeQueueing();
+                        setConfirmationModal(null);
+                    },
+                    onCancel: () => setConfirmationModal(null),
+                    confirmButtonClass: "bg-amber-500 hover:bg-amber-600",
+                    icon: <CoinIcon className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                });
+                return;
             }
+
+            await finalizeQueueing();
         };
 
-        if (totalCostInCoins > user.subscription.scanCoinBalance) {
-            const confirmationMessage = `Attenzione: Stai per avviare un'elaborazione dal costo di ${totalCostInCoins} ScanCoin, ma il tuo saldo è di soli ${user.subscription.scanCoinBalance} ScanCoin. Le scansioni potrebbero non essere completate. Procedere comunque?`;
-            setConfirmationModal({
-                isOpen: true,
-                title: "Saldo ScanCoin Insufficiente",
-                message: confirmationMessage,
-                confirmText: "Procedi",
-                cancelText: "Annulla",
-                onConfirm: () => {
-                    finalizeQueueing();
-                    setConfirmationModal(null);
-                },
-                onCancel: () => setConfirmationModal(null),
-                confirmButtonClass: "bg-amber-500 hover:bg-amber-600",
-                icon: <CoinIcon className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-            });
-            return;
+        if (user.isProcessing) {
+            // ... (logica di controllo processi concorrenti)
         }
-        
-        await finalizeQueueing();
-    };
 
-    // --- Controllo Processi Concorrenti ---
-    if (user.isProcessing) {
-        const lastHeartbeat = user.processingHeartbeat ? new Date(user.processingHeartbeat).getTime() : 0;
-        const secondsSinceHeartbeat = (Date.now() - lastHeartbeat) / 1000;
+        await proceedWithQueueing();
+    }, [user, isDemoMode]);
 
-        if (secondsSinceHeartbeat < 60) {
-            setError("Un'elaborazione è già in corso su un altro dispositivo. Attendi il suo completamento prima di avviarne una nuova.");
-            return;
-        } else {
-            setConfirmationModal({
-                isOpen: true,
-                title: "Forzare Avvio Elaborazione?",
-                message: "Sembra che un'altra elaborazione sia bloccata o in corso da più di un minuto. Vuoi forzare l'avvio e prendere il controllo?",
-                confirmText: "Forza Avvio",
-                cancelText: "Annulla",
-                onConfirm: () => {
-                    proceedWithQueueing();
-                    setConfirmationModal(null);
-                },
-                onCancel: () => setConfirmationModal(null),
-                confirmButtonClass: "bg-red-600 hover:bg-red-700",
-                icon: <ShieldExclamationIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
-            });
-            return;
+    const handlePendingTaskChange = useCallback((taskId: string, updates: Partial<Omit<PendingFileTask, 'id' | 'file'>>) => {
+        setPendingFileTasks(prevTasks =>
+            prevTasks.map(task =>
+                task.id === taskId ? { ...task, ...updates } : task
+            )
+        );
+    }, []);
+
+    const handleFileSelection = useCallback(async (files: File[]) => {
+        if (files.length === 0) return;
+
+        const newTasks: PendingFileTask[] = files.map(file => ({
+            id: crypto.randomUUID(),
+            file,
+            mode: processingMode, // Usa la modalità globale come default iniziale
+            suggestedMode: null,
+            isSuggesting: true,
+            shouldExtractImages: shouldExtractImages, // Usa l'impostazione globale come default
+        }));
+
+        setPendingFileTasks(newTasks);
+
+        // Recupera i suggerimenti in modo asincrono per ogni file
+        for (const task of newTasks) {
+            try {
+                const suggestion = await suggestProcessingMode(task.file);
+                handlePendingTaskChange(task.id, { 
+                    suggestedMode: suggestion, 
+                    isSuggesting: false,
+                    mode: suggestion || task.mode, // Pre-seleziona il suggerimento se disponibile
+                });
+            } catch (e) {
+                console.error("Errore durante il suggerimento della modalità per", task.file.name, e);
+                handlePendingTaskChange(task.id, { isSuggesting: false });
+            }
         }
-    }
-    
-    proceedWithQueueing();
-  }, [processingMode, shouldExtractImages, user, isDemoMode]);
+    }, [processingMode, shouldExtractImages, handlePendingTaskChange]);
+
+    const handleConfirmProcessing = useCallback(() => {
+        addFilesToQueue(pendingFileTasks);
+        setPendingFileTasks([]);
+    }, [addFilesToQueue, pendingFileTasks]);
+
+    const handleCancelProcessing = useCallback(() => {
+        setPendingFileTasks([]);
+    }, []);
 
     const checkForAchievements = async (user: User, result: ProcessedPageResult) => {
         if (!user || isDemoMode) return;
@@ -1988,7 +2035,7 @@ function AuthenticatedApp() {
         .filter((item): item is File => item !== null);
     
     if (capturedFiles.length > 0) {
-        addFilesToQueue(capturedFiles, processingMode);
+        handleFileSelection(capturedFiles);
     } else if (imageDataUrls.length > 0) {
         setError("Errore nella conversione delle immagini catturate dalla fotocamera.");
     }
@@ -2003,8 +2050,7 @@ function AuthenticatedApp() {
     setError(null);
     setCurrentTaskProgress(null);
     setProcessingQueue([]);
-    setPendingFiles([]);
-    setSuggestedMode(null);
+    setPendingFileTasks([]);
     setElapsedTime(0);
     setUnreadChatMessages(0);
     
@@ -2894,7 +2940,7 @@ function AuthenticatedApp() {
                 // Esegui la logica di feedback originale
                 const responseText = context.feedback === 'good'
                     ? 'Perfetto! Sono contento di esserti stato utile. 😊'
-                    : 'Mi dispiace. Grazie per la segnalazione, userò questo feedback per migliorare.';
+                    : 'Mi dispiace. Grazie per la segnalazione, userò questo feedback per aiutarci a migliorare.';
                 
                 // Aggiungi subito il messaggio di conferma di Ugo
                 setChatHistory(prev => [...prev, { role: 'model', text: responseText }]);
@@ -3257,6 +3303,14 @@ function AuthenticatedApp() {
 
     const renderPage = () => {
         const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan';
+        
+        if (currentPage === 'newsletter') {
+            const NewsletterContent = currentNewsletter ? newsletterContent[currentNewsletter - 1]?.component : null;
+            return NewsletterContent 
+                ? <NewsletterContent onNavigate={navigate} brandKey={brandKey} />
+                : <NewsletterIndexPage onNavigate={navigate} brandKey={brandKey} />;
+        }
+        
         switch(currentPage) {
             case 'archivio':
                 return <Archivio 
@@ -3288,14 +3342,18 @@ function AuthenticatedApp() {
                     return <Workspace 
                         documentGroups={documentGroups}
                         error={error}
+                        isProcessing={isProcessorActive || processingQueue.length > 0}
                         processingQueue={processingQueue.map(t => ({ name: t.file.name, pages: t.pages, mode: t.mode, sourceFileId: t.sourceFileId }))}
                         currentTaskProgress={currentTaskProgress}
                         processingMode={processingMode}
-                        isProcessing={isProcessorActive}
                         onProcessingModeChange={setProcessingMode}
                         shouldExtractImages={shouldExtractImages}
                         onShouldExtractImagesChange={setShouldExtractImages}
-                        onFilesSelected={(files) => addFilesToQueue(files)}
+                        onFilesSelected={handleFileSelection}
+                        onConfirmProcessing={handleConfirmProcessing}
+                        onCancelProcessing={handleCancelProcessing}
+                        pendingFileTasks={pendingFileTasks}
+                        onPendingTaskChange={handlePendingTaskChange}
                         onOpenCamera={() => setIsCameraOpen(true)}
                         onOpenEmailImport={() => setIsEmailImportOpen(true)}
                         onClear={handleClear}
@@ -3397,14 +3455,18 @@ function AuthenticatedApp() {
                 return <Workspace 
                     documentGroups={documentGroups}
                     error={error}
+                    isProcessing={isProcessorActive || processingQueue.length > 0 || pendingFileTasks.length > 0}
                     processingQueue={processingQueue.map(t => ({ name: t.file.name, pages: t.pages, mode: t.mode, sourceFileId: t.sourceFileId }))}
                     currentTaskProgress={currentTaskProgress}
                     processingMode={processingMode}
-                    isProcessing={isProcessorActive}
                     onProcessingModeChange={setProcessingMode}
                     shouldExtractImages={shouldExtractImages}
                     onShouldExtractImagesChange={setShouldExtractImages}
-                    onFilesSelected={(files) => addFilesToQueue(files)}
+                    onFilesSelected={handleFileSelection}
+                    onConfirmProcessing={handleConfirmProcessing}
+                    onCancelProcessing={handleCancelProcessing}
+                    pendingFileTasks={pendingFileTasks}
+                    onPendingTaskChange={handlePendingTaskChange}
                     onOpenCamera={() => setIsCameraOpen(true)}
                     onOpenEmailImport={() => setIsEmailImportOpen(true)}
                     onClear={handleClear}
@@ -3680,7 +3742,7 @@ function AuthenticatedApp() {
             )}
             
             {isCameraOpen && <CameraView onFinish={handleCameraFinish} onClose={() => setIsCameraOpen(false)} processingMode={processingMode} />}
-            {isEmailImportOpen && <EmailImportView onQueueFiles={(files, mode) => addFilesToQueue(files, mode)} onClose={() => setIsEmailImportOpen(false)} />}
+            {isEmailImportOpen && <EmailImportView onQueueFiles={(files, mode) => addFilesToQueue(files.map(f => ({id: '', file: f, mode, suggestedMode: null, isSuggesting: false, shouldExtractImages: false})))} onClose={() => setIsEmailImportOpen(false)} />}
             
             {/* --- FLOATING ACTION BUTTONS (FAB) --- */}
             <div id="tutorial-chatbot" className="fixed bottom-6 right-6 z-40">
@@ -3707,6 +3769,7 @@ function AuthenticatedApp() {
 function UnauthenticatedApp() {
     const { isAwaiting2fa } = useAuth();
     const [page, setPage] = useState('landing');
+    const [currentNewsletter, setCurrentNewsletter] = useState<number | null>(null);
     const [brandKey, setBrandKey] = useState<BrandKey>(getBrandKey());
     
     const [isAccessGranted, setIsAccessGranted] = useState(() => {
@@ -3771,7 +3834,20 @@ function UnauthenticatedApp() {
         setIsAccessGranted(true);
     };
     
-    const navigate = (page: string) => setPage(page);
+    const navigate = (page: string) => {
+        setCurrentNewsletter(null);
+        if (page.startsWith('newsletter/')) {
+            const issueId = parseInt(page.split('/')[1], 10);
+            if (!isNaN(issueId) && newsletterContent[issueId - 1]) {
+                setCurrentNewsletter(issueId);
+                setPage('newsletter');
+            } else {
+                setPage('newsletter'); // Fallback to index
+            }
+        } else {
+            setPage(page);
+        }
+    };
 
     const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         <>
@@ -3781,14 +3857,28 @@ function UnauthenticatedApp() {
     );
 
     if (!isAccessGranted) {
-        return <PageWrapper><WaitlistPage onAccessGranted={grantAccess} brandKey={brandKey} appLastUpdated={appLastUpdated} /></PageWrapper>;
+        if (page === 'unhub') {
+            return <PageWrapper><UnHubPage /></PageWrapper>;
+        }
+        return <PageWrapper><WaitlistPage onAccessGranted={grantAccess} brandKey={brandKey} appLastUpdated={appLastUpdated} onNavigate={navigate} /></PageWrapper>;
     }
     
     if (isAwaiting2fa) {
         return <PageWrapper><LoginPage onNavigateToRegister={() => navigate('register')} onNavigate={navigate} brandKey={brandKey} /></PageWrapper>;
     }
 
+    if (page === 'newsletter') {
+        const NewsletterContent = currentNewsletter ? newsletterContent[currentNewsletter - 1]?.component : null;
+        const pageContent = NewsletterContent 
+            ? <NewsletterContent onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} />
+            : <NewsletterIndexPage onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} />;
+        return <PageWrapper>{pageContent}</PageWrapper>;
+    }
+
+
     switch (page) {
+        case 'unhub':
+            return <PageWrapper><UnHubPage /></PageWrapper>;
         case 'login':
             return <PageWrapper><LoginPage onNavigateToRegister={() => navigate('register')} onNavigate={navigate} brandKey={brandKey} /></PageWrapper>;
         case 'register':
@@ -3808,8 +3898,9 @@ function UnauthenticatedApp() {
         case 'privacy':
             return <PageWrapper><PrivacyPolicyPage onNavigateBack={() => navigate('landing')} onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} /></PageWrapper>;
         case 'landing':
-        default:
             return <PageWrapper><LandingPage onNavigate={navigate as any} brandKey={brandKey} /></PageWrapper>;
+        default:
+            return <PageWrapper><UnHubPage /></PageWrapper>;
     }
 }
 

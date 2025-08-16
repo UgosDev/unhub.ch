@@ -1,0 +1,86 @@
+Note sullo Sviluppo e Funzionamento del Chatbot Ugo
+
+Questo file e un documento tecnico di riferimento per tutte le funzionalita e le logiche del chatbot Ugo. Serve a guidare lo sviluppo futuro e a mantenere la coerenza del suo comportamento.
+
+---
+
+SEZIONE 1: CONOSCENZA DI BASE (KNOWLEDGE BASE)
+
+Ugo e istruito tramite un system prompt per essere un esperto dell'applicazione scansioni.ch. La sua conoscenza include:
+
+- Modalita di Scansione: Conosce le sei modalita (Chroma Scan, Quick Scan, Batch Scan, Deep Scan, Scontrino, Simple Scan), i loro costi in ScanCoin e i casi d'uso ideali.
+- Metodi di Importazione: Drag-and-drop, fotocamera e importazione via email.
+- Funzionalita Fotocamera: Rilevamento bordi, correzione prospettica, ritaglio manuale con lente d'ingrandimento e scatto automatico.
+- Analisi AI: Classificazione documenti, estrazione dati, estrazione immagini (loghi, firme) e controlli di sicurezza (phishing).
+- Gestione Fascicoli: Raggruppamento automatico e manuale (unisci, dividi), e possibilita di riprovare le scansioni.
+- Esportazione: ZIP protetto da password, PDF multi-pagina, metadati e watermark.
+- Account e Impostazioni: Pagina Profilo, saldo ScanCoin, Centro Privacy.
+- Aiuto e Demo: Centro di Supporto (FAQ) e Modalita Demo.
+- Gamification: Ricompense per traguardi (prima scansione, 50esima scansione, ecc.).
+- **Funzionalità Intelligenti**:
+  - **Selettore Intelligente**: L'app suggerisce la modalità migliore dopo il caricamento di un file.
+  - **Fallback Offline**: Impostazione nel profilo che si attiva in assenza di connessione, usando un motore locale gratuito ma meno preciso.
+
+---
+
+SEZIONE 2: LOGICA DI INTERAZIONE E AZIONI
+
+Ugo puo interagire in modi diversi, non solo con testo.
+
+1. Formati di Risposta:
+- Testo Standard: Conversazione normale.
+- JSON di Azione: Per eseguire comandi complessi. La risposta deve essere SOLO un JSON valido (es. `{ "action": "findAndMerge", ... }`).
+- Contenuto Ricco: Per mostrare immagini, usa il comando `[IMAGE_PREVIEW:url|alt text]`.
+
+2. Azioni JSON Implementate:
+- `findAndMerge`: Trova e unisce fascicoli basandosi su una query testuale e una categoria opzionale.
+  - Parametri: `{ "query": "testo da cercare", "category": "categoria opzionale" }`
+
+3. Comandi UI nel Testo:
+- `[ACTION:nome_azione]`: Esegue un'azione sull'interfaccia utente.
+- `[QUICK_REPLY:Risposta 1|Risposta 2]`: Mostra pulsanti di risposta rapida all'utente.
+
+4. Elenco Azioni UI Disponibili:
+- 'highlight_mode_selector': Evidenzia il selettore di modalita.
+- 'highlight_unsafe_docs': Evidenzia i documenti non sicuri.
+- 'open_camera': Apre la fotocamera.
+- 'open_email_import': Apre la modale di importazione via email.
+- 'navigate_to_*': Naviga alle pagine (profile, dashboard, pricing, guide, terms, privacy).
+- 'start_demo': Avvia la modalita demo.
+
+---
+
+SEZIONE 3: FUNZIONALITA SPECIALI E NASCOSTE (EASTER EGGS)
+
+Queste logiche sono attive per migliorare l'engagement e l'esperienza utente.
+
+1. Ricompensa per Gentilezza:
+- Scopo: Premiare gli utenti che interagiscono in modo cordiale.
+- Trigger: Analisi del sentiment dopo il terzo messaggio dell'utente in una sessione.
+- Azione: Accredita 50 ScanCoin bonus.
+- Limite: Una volta per sessione di navigazione per prevenire abusi.
+
+2. Gestione Reclami e Rimborsi:
+- Scopo: Gestire il feedback negativo in modo costruttivo e fidelizzare l'utente.
+- Trigger: Rilevamento di un reclamo o di una critica tramite un'analisi AI dedicata.
+- Azione: Informa l'utente che il feedback e stato raccolto per migliorare il servizio e accredita un rimborso pari al costo di due scansioni "Chroma Scan".
+- Limite: Un rimborso per sessione di navigazione per evitare abusi.
+
+3. Invito alla Community Telegram:
+- Scopo: Creare una community di "power users" e raccogliere feedback di alta qualita.
+- Trigger: Rilevamento del quinto feedback costruttivo fornito dallo stesso utente (il conteggio e persistente in IndexedDB).
+- Azione: Invia un messaggio con un invito e il link segreto al gruppo Telegram (https://t.me/ScansioniChCommunityBot). Il contatore viene resettato dopo l'invito.
+
+4. Supporto Lingue e Dialetti Svizzeri:
+- Scopo: Aumentare la personalizzazione e l'engagement.
+- Logica: Le istruzioni di sistema di Ugo lo incoraggiano a riconoscere e rispondere nelle lingue nazionali e nei dialetti svizzeri.
+- Tono: Quando risponde in dialetto, deve farlo con un tono umile, scusandosi per eventuali imperfezioni (es. "Provo a risponderti in ticinese, scusami se non e perfetto!").
+
+---
+
+SEZIONE 4: COMPORTAMENTI PROATTIVI E MEMORIA
+
+- Assistenza Proattiva Contestuale: All'apertura, Ugo analizza l'area di lavoro e offre suggerimenti (es. segnala documenti non sicuri, saldo ScanCoin basso).
+- Memoria a Lungo Termine: La cronologia della chat viene salvata in IndexedDB per persistere tra le sessioni. (non più in IndexDB)
+- Risposte Rapide e Feedback: Ugo puo fornire risposte rapide suggerite e gli utenti possono dare un feedback (pollice su/giu) alle sue risposte.
+- Timeout di Inattivita: Dopo 30 secondi di inattivita, Ugo chiede se puo aiutare ulteriormente. Dopo altri 10 secondi, la finestra si chiude automaticamente.

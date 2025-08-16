@@ -1,6 +1,6 @@
 # scansioni.ch
 
-**Versione: 8.6.1**
+**Versione: 8.7.0**
 
 Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata su un'architettura "human-in-the-loop" e un'economia interna basata su "ScanCoin".
 
@@ -36,11 +36,13 @@ Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata 
   - **Adattamento Linguistico Avanzato**: Riconosce e risponde nelle lingue e dialetti svizzeri, aggiungendo personalità all'interazione.
 - **Download Sicuro e Flessibile**: Esporta i fascicoli come ZIP o come singoli PDF multi-pagina.
 - **Coda di Lavoro Flessibile e Modalità Multiple**: Aggiungi file a una coda continua e scegli la modalità di scansione per i prossimi caricamenti anche mentre altri file sono in elaborazione. Sono disponibili le modalità "Chroma Scan", "Quick Scan", "Batch Scan", "Deep Scan", "Scontrino" o la modalità gratuita "Simple Scan".
+- **Archivio Newsletter**: Una sezione dedicata dove gli utenti possono leggere tutti gli aggiornamenti passati, le guide e gli annunci.
 
-### Scansione da Fotocamera Professionale
-- **Rilevamento Bordi e Ritaglio Automatico (OpenCV.js)**: Rileva, ritaglia e raddrizza automaticamente i documenti.
-- **Ritaglio Manuale di Precisione**: Dopo lo scatto, puoi aggiustare manualmente i 4 angoli del documento con l'aiuto di una lente d'ingrandimento.
-- **Flash Automatico e Guida all'Allineamento**: La torcia si attiva da sola e una guida visiva aiuta a posizionare lo scatto.
+### Ugo Vision: Scansione da Fotocamera Professionale
+- **Motore di Scansione Avanzato (OpenCV.js)**: Rileva, ritaglia e raddrizza automaticamente i documenti con un motore ad alte prestazioni.
+- **Feedback Visivo "Holographic Mesh"**: Un overlay 3D dinamico e interattivo fornisce un feedback in tempo reale sulla qualità dello scatto, guidando l'utente verso la perfezione.
+- **Scatto Automatico "Lock-On"**: Il sistema cattura l'immagine automaticamente solo quando l'inquadratura, la stabilità e la luce sono ottimali, garantendo scansioni sempre perfette.
+- **Ritaglio Manuale di Precisione**: Dopo lo scatto, puoi aggiustare manualmente i 4 angoli del documento con l'aiuto di una lente d'ingrandimento per un controllo totale.
 
 ### Analisi AI con Gemini & Sicurezza
 - **Estrazione Dati Intelligente**: Utilizza **Google Gemini** per classificare il documento, estrarre dati chiave e generare riassunti.
@@ -72,6 +74,7 @@ L'applicazione è progettata per essere eseguita in un ambiente web statico.
 ├── components/
 ├── contexts/           # React Contexts (es. AuthContext, ThemeContext)
 ├── pages/              # Componenti per le pagine principali (Login, Dashboard, etc.)
+│   └── newsletter/     # Pagine per l'archivio newsletter
 ├── services/           # Servizi (chiamate API, DB, Auth, Inter-App)
 ├── App.tsx             # Componente principale e router
 ├── index.tsx

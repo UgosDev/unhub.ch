@@ -1,7 +1,7 @@
 {
-  "name": "scansioni.ch",
-  "version": "8.6.1",
-  "description": "Revisione completa della fotocamera con rilevamento bordi potenziato (Ugo Vision), interfaccia moderna, scatto automatico 'Lock-On' e unificazione dell'esperienza AI.",
+  "name": "UnHub.ch",
+  "version": "8.7.0",
+  "description": "",
   "requestFramePermissions": [
     "camera"
   ],
