@@ -68,6 +68,11 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
 
+# Note del 11/10/2025 - v9.0.0
+- **Major Version Bump**: Eseguito l'aggiornamento alla versione 9.0.0 per celebrare l'implementazione della nuova architettura di ricerca vettoriale.
+- **Motore di Ricerca con Embeddings**: La nuova versione consolida il passaggio da una ricerca semantica basata su prompt (costosa e lenta) a una basata su embeddings e un database vettoriale (istantanea e quasi gratuita), rendendo la funzione di ricerca in `archivio.ch` scalabile e sostenibile a lungo termine.
+- **Aggiornamento Documentazione**: Aggiornati tutti i file di versioning (metadata, README, service worker, changelog) per riflettere la nuova major release.
+
 # Note del 10/10/2025 - v8.7.1
 - Eseguito l'aggiornamento della versione a 8.7.1.
 - Questo rilascio di manutenzione aggiorna le dipendenze interne e il versioning della cache del service worker.

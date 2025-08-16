@@ -22,7 +22,7 @@ import { useTheme } from './contexts/ThemeContext';
 
 import { CameraView } from './components/CameraView';
 import { EmailImportView } from './components/EmailImportView'; // Importa la nuova vista
-import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, COIN_TO_CHF_RATE, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings } from './services/geminiService';
+import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, COIN_TO_CHF_RATE, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings, generateEmbedding } from './services/geminiService';
 import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage, QueuedFile, ScanHistoryEntry } from './services/geminiService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -2146,15 +2146,38 @@ function AuthenticatedApp() {
     }
 
     try {
+        let embeddingsToSave: Record<string, number[]> | undefined = undefined;
+
+        if (targetModule === 'archivio') {
+            const embeddingPromises = group.pages.map(async (page) => {
+                const textToEmbed = [
+                    page.analysis.titoloFascicolo,
+                    page.analysis.soggetto,
+                    page.analysis.riassunto,
+                    ...(page.analysis.datiEstratti?.map((d: { chiave: string; valore: string }) => `${d.chiave}: ${d.valore}`) || [])
+                ].filter(Boolean).join('\n');
+                
+                const embedding = await generateEmbedding(textToEmbed);
+                return { uuid: page.uuid, embedding };
+            });
+            
+            const results = await Promise.all(embeddingPromises);
+            
+            embeddingsToSave = results.reduce((acc, result) => {
+                acc[result.uuid] = result.embedding;
+                return acc;
+            }, {} as Record<string, number[]>);
+        }
+
         const docUuids = group.pages.map(p => p.uuid);
-        await db.moveDocsToModule(docUuids, targetModule, options);
-        // The real-time listener will handle removing the docs from the workspace UI
+        await db.moveDocsToModule(docUuids, targetModule, { ...options, embeddings: embeddingsToSave });
+        
         alert(`Fascicolo "${group.title}" spostato in ${targetModule} con successo!`);
     } catch (e) {
         const errorMessage = e instanceof Error ? e.message : String(e);
         setError(`Errore durante lo spostamento del fascicolo a ${targetModule}: ${errorMessage}`);
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, setError]);
 
   const handleCreateDisdetta = useCallback(async (data: DisdettaData) => {
     if (!user) {

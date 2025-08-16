@@ -290,7 +290,7 @@ export const onModuleUpdate = (userId: string, module: 'archivio' | 'polizze' | 
 };
 
 // --- Document Movement ---
-export const moveDocsBetweenCollections = async (userId: string, docUuids: string[], fromCollection: string, toCollection: string, options?: { isPrivate?: boolean }): Promise<void> => {
+export const moveDocsBetweenCollections = async (userId: string, docUuids: string[], fromCollection: string, toCollection: string, options?: { isPrivate?: boolean, embeddings?: Record<string, number[]> }): Promise<void> => {
     if (docUuids.length === 0) return;
     
     const batch = db.batch();
@@ -305,6 +305,9 @@ export const moveDocsBetweenCollections = async (userId: string, docUuids: strin
             
             if (toCollection === 'archivio') {
                 data.isPrivate = options?.isPrivate ?? false;
+                if (options?.embeddings && options.embeddings[docSnap.id]) {
+                    data.embedding = options.embeddings[docSnap.id];
+                }
             }
             
             const toDocRef = toCollectionRef.doc(docSnap.id);
@@ -318,7 +321,7 @@ export const moveDocsBetweenCollections = async (userId: string, docUuids: strin
     await batch.commit();
 };
 
-export const moveDocsToModule = async (userId: string, docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean }): Promise<void> => {
+export const moveDocsToModule = async (userId: string, docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean, embeddings?: Record<string, number[]> }): Promise<void> => {
     await moveDocsBetweenCollections(userId, docUuids, 'workspace', toModule, options);
 };
 
@@ -488,6 +491,58 @@ export const getAllUserProfilesForAdmin = async (): Promise<User[]> => {
     const usersCollection = db.collection("users");
     const snapshot = await usersCollection.get();
     return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }) as User);
+};
+
+
+// --- VECTOR SEARCH & EMBEDDINGS ---
+export const saveArchivioEmbedding = async (userId: string, docUuid: string, embedding: number[]): Promise<void> => {
+    const docRef = db.collection(`users/${userId}/archivio`).doc(docUuid);
+    // Use set with merge to create/update the embedding field
+    await docRef.set({ embedding }, { merge: true });
+};
+
+export const findNearestArchivedDocs = async (userId: string, queryVector: number[], limit: number): Promise<{uuid: string; distance: number}[]> => {
+    const archivioCollectionRef = db.collection(`users/${userId}/archivio`);
+    
+    // The findNearest method may not be in the default compat types, so we cast to any.
+    const query = (archivioCollectionRef as any).findNearest(
+        'embedding', 
+        firebase.firestore.Vector.fromArray(queryVector), 
+        {
+            limit: limit,
+            distanceMeasure: 'EUCLIDEAN'
+        }
+    );
+
+    const snapshot = await query.get();
+
+    return snapshot.docs.map((doc: any) => ({
+        uuid: doc.id,
+        distance: doc.distance, // Distance is returned on the document in the snapshot
+    }));
+};
+
+export const getArchivedDocsByUuids = async (userId: string, uuids: string[]): Promise<ProcessedPageResult[]> => {
+    if (uuids.length === 0) {
+        return [];
+    }
+    // Firestore 'in' query supports up to 30 elements in the array.
+    if (uuids.length > 30) {
+        console.warn("getArchivedDocsByUuids was called with more than 30 UUIDs. This is not supported by Firestore 'in' queries. The list will be truncated.");
+        uuids = uuids.slice(0, 30);
+    }
+    
+    const archivioCollectionRef = db.collection(`users/${userId}/archivio`);
+    const query = archivioCollectionRef.where(firebase.firestore.FieldPath.documentId(), 'in', uuids);
+    const snapshot = await query.get();
+    
+    // The order is not guaranteed by 'in' query, so we re-order based on the input uuids array.
+    const docsMap = new Map<string, ProcessedPageResult>();
+    snapshot.docs.forEach(doc => {
+        docsMap.set(doc.id, doc.data() as ProcessedPageResult);
+    });
+
+    return uuids.map(uuid => docsMap.get(uuid)).filter((doc): doc is ProcessedPageResult => !!doc);
 };
 
 

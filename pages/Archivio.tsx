@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { ProcessedPageResult } from '../services/geminiService';
 import { performSemanticSearch } from '../services/geminiService';
@@ -126,7 +124,7 @@ const Archivio: React.FC<ArchivioProps> = ({ archivedDocs, onMoveDocument, onDel
         setSearchError(null);
         setSearchResults(null);
         try {
-            const results = await performSemanticSearch(searchQuery, archivedDocs);
+            const results = await performSemanticSearch(searchQuery);
             setSearchResults(results);
         } catch (error) {
             console.error("Errore durante la ricerca semantica:", error);

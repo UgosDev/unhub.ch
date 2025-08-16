@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import Tesseract from 'tesseract.js';
+import * as db from './db'; // Import per la ricerca vettoriale
 
 const API_KEY = process.env.API_KEY;
 
@@ -77,6 +78,7 @@ export interface ProcessedPageResult {
     isPrivate?: boolean;
     ownerUid?: string;
     ownerName?: string;
+    embedding?: number[];
 }
 
 export interface DocumentGroup {
@@ -845,60 +847,51 @@ export async function processPageOffline(imageDataUrl: string): Promise<Pick<Pro
 
 
 /**
- * Esegue una ricerca semantica sui documenti forniti utilizzando Gemini.
+ * Genera un embedding vettoriale per un dato testo.
  */
-export async function performSemanticSearch(query: string, docs: ProcessedPageResult[]): Promise<ProcessedPageResult[]> {
-    if (docs.length === 0) {
+export async function generateEmbedding(text: string): Promise<number[]> {
+    try {
+        const response = await ai.models.embedContent({
+            model: 'text-embedding-004',
+            contents: text,
+        });
+        return (response as any).embedding.values;
+    } catch (error) {
+        console.error("Errore durante la generazione dell'embedding:", error);
+        throw new Error("Impossibile generare l'embedding vettoriale.");
+    }
+}
+
+
+/**
+ * Esegue una ricerca semantica basata su vettori.
+ */
+export async function performSemanticSearch(query: string): Promise<ProcessedPageResult[]> {
+    if (!query.trim()) {
         return [];
     }
 
-    // 1. Prepara i dati per l'AI, rendendoli concisi
-    const documentsForPrompt = docs.map(doc => ({
-        uuid: doc.uuid,
-        title: doc.analysis.soggetto || doc.analysis.titoloFascicolo || 'Senza Titolo',
-        summary: doc.analysis.riassunto || '',
-        data: doc.analysis.datiEstratti?.map((d: any) => `${d.chiave}: ${d.valore}`).join('; ') || ''
-    }));
-
-    // 2. Definisci lo schema di risposta atteso
-    const searchSchema = {
-        type: Type.OBJECT,
-        properties: {
-            relevantUuids: {
-                type: Type.ARRAY,
-                description: "Un array di stringhe UUID dei documenti più pertinenti, ordinati dal più al meno rilevante.",
-                items: { type: Type.STRING }
-            }
-        },
-        required: ["relevantUuids"]
-    };
-
-    // 3. Esegui la chiamata a Gemini
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `USER QUERY: "${query}"\n\nAVAILABLE DOCUMENTS:\n${JSON.stringify(documentsForPrompt)}`,
-            config: {
-                systemInstruction: "Sei un motore di ricerca semantica. Analizza la query dell'utente e la lista di documenti JSON. Restituisci SOLO un oggetto JSON contenente un array di UUID dei documenti che meglio corrispondono alla query, ordinati per pertinenza decrescente. Non includere documenti irrilevanti.",
-                responseMimeType: "application/json",
-                responseSchema: searchSchema,
-                safetySettings
-            }
-        });
+        // 1. Genera l'embedding per la query di ricerca
+        const queryVector = await generateEmbedding(query);
 
-        const jsonText = response.text;
-        const result = JSON.parse(jsonText);
-        const orderedUuids = result.relevantUuids as string[] || [];
+        // 2. Trova gli UUID dei documenti più vicini tramite il servizio DB
+        const nearestDocs = await db.findNearestArchivedDocs(queryVector, 10);
         
-        // 4. Mappa gli UUID ordinati ai documenti originali
-        const docsMap = new Map(docs.map(doc => [doc.uuid, doc]));
-        const sortedDocs = orderedUuids.map(uuid => docsMap.get(uuid)).filter((doc): doc is ProcessedPageResult => !!doc);
+        const nearestUuids = nearestDocs.map(d => d.uuid);
+
+        if (nearestUuids.length === 0) {
+            return [];
+        }
+
+        // 3. Recupera i documenti completi corrispondenti a quegli UUID
+        const sortedDocs = await db.getArchivedDocsByUuids(nearestUuids);
 
         return sortedDocs;
 
     } catch (error) {
-        console.error("Errore durante la ricerca semantica con Gemini:", error);
-        throw new Error("L'analisi della ricerca è fallita. Riprova più tardi.");
+        console.error("Errore durante la ricerca semantica vettoriale:", error);
+        throw new Error("La ricerca vettoriale è fallita. Riprova più tardi.");
     }
 }
 

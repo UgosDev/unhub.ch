@@ -4,6 +4,15 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.0.0]
+
+### Aggiunto
+* **Architettura di Ricerca Vettoriale**: Implementato un nuovo motore di ricerca semantica basato su "embeddings" e un database vettoriale. Questa modifica architetturale rende la ricerca in `archivio.ch` **istantanea** e **quasi gratuita**, indipendentemente dalla dimensione dell'archivio dell'utente.
+* **Indicizzazione Automatica**: I documenti vengono ora indicizzati semanticamente in modo automatico e una tantum al momento dell'archiviazione.
+
+### Modificato
+* **Major Release 9.0.0**: Questa versione segna un importante traguardo nella maturità e scalabilità della piattaforma, introducendo un'architettura di ricerca di livello enterprise.
+
 ## [8.7.1]
 
 ### Migliorato

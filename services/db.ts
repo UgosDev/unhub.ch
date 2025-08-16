@@ -116,7 +116,7 @@ export const deleteArchivedDoc = (uuid: string): Promise<void> => firestoreServi
 export const addDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.addDisdettaDoc(getUserId(), doc);
 export const deleteWorkspaceDoc = (resultUuid: string): Promise<void> => firestoreService.deleteWorkspaceDoc(getUserId(), resultUuid);
 export const clearWorkspace = (): Promise<void> => firestoreService.clearWorkspace(getUserId());
-export const moveDocsToModule = (docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean }): Promise<void> => firestoreService.moveDocsToModule(getUserId(), docUuids, toModule, options);
+export const moveDocsToModule = (docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean; embeddings?: Record<string, number[]> }): Promise<void> => firestoreService.moveDocsToModule(getUserId(), docUuids, toModule, options);
 export const moveDocsBetweenCollections = (docUuids: string[], from: string, to: string): Promise<void> => firestoreService.moveDocsBetweenCollections(getUserId(), docUuids, from, to);
 export const addScanHistoryEntry = (entry: ScanHistoryEntry): Promise<void> => firestoreService.addScanHistoryEntry(getUserId(), entry);
 export const saveChatHistory = (history: ChatMessage[]): Promise<void> => firestoreService.saveChatHistory(getUserId(), history);
@@ -127,6 +127,12 @@ export const deleteArchivedChat = (id: string): Promise<void> => firestoreServic
 export const getStat = (statName: string): Promise<any> => firestoreService.getStat(getUserId(), statName);
 export const setStat = (statName: string, value: any): Promise<void> => firestoreService.setStat(getUserId(), statName, value);
 export const addAccessLogEntry = (entryData: Omit<firestoreService.AccessLogEntry, 'id' | 'timestamp'>): Promise<void> => firestoreService.addAccessLogEntry(getUserId(), entryData);
+
+// --- VECTOR SEARCH & EMBEDDINGS ---
+export const saveArchivioEmbedding = (docUuid: string, embedding: number[]): Promise<void> => firestoreService.saveArchivioEmbedding(getUserId(), docUuid, embedding);
+export const findNearestArchivedDocs = (queryVector: number[], limit: number): Promise<{uuid: string; distance: number}[]> => firestoreService.findNearestArchivedDocs(getUserId(), queryVector, limit);
+export const getArchivedDocsByUuids = (uuids: string[]): Promise<ProcessedPageResult[]> => firestoreService.getArchivedDocsByUuids(getUserId(), uuids);
+
 
 // --- BATCH WRITERS ---
 export const batchAddWorkspaceAndHistory = (results: ProcessedPageResult[], historyEntries: ScanHistoryEntry[]): Promise<void> => firestoreService.batchAddWorkspaceAndHistory(getUserId(), results, historyEntries);
