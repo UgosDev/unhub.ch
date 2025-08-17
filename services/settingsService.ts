@@ -34,7 +34,7 @@ export const defaultSettings: AppSettings = {
     circularMenuActions: ['select', 'expand', 'send', 'downloadZip', 'downloadPdf', 'ungroup'],
     autoArchiveDocuments: false,
     ugoArchivioEnabled: false,
-    ugoDisdetteEnabled: false,
+    ugoDisdetteEnabled: true,
     ugoImplicitFeedbackEnabled: false,
 };
 

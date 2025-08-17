@@ -441,7 +441,11 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = (props) => {
     useEffect(() => {
         if (props.scrollToGroupId && groupRefs.current[props.scrollToGroupId]) {
             groupRefs.current[props.scrollToGroupId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            props.onScrolledToGroup();
+            groupRefs.current[props.scrollToGroupId]?.classList.add('highlight-section-animation');
+            setTimeout(() => {
+                groupRefs.current[props.scrollToGroupId]?.classList.remove('highlight-section-animation');
+                props.onScrolledToGroup();
+            }, 2500);
         }
     }, [props.scrollToGroupId, props.onScrolledToGroup]);
 

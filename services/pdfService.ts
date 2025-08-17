@@ -26,6 +26,7 @@ export function generateHistoryPdf(historyEntries: ScanHistoryEntry[]): void {
     business: 'Batch Scan',
     book: 'Deep Scan',
     scontrino: 'Scontrino',
+    identity: 'Doc. Identità',
     'no-ai': 'Simple Scan'
   };
 
@@ -163,42 +164,6 @@ export async function generateGroupPdf(group: DocumentGroup, appVersion: string)
     doc.save(`${pdfFileName}.pdf`);
 }
 
-export async function generateLegalPdf(title: string, contentElement: HTMLElement, appVersion: string): Promise<void> {
-    const doc = new jsPDF({
-        orientation: 'p',
-        unit: 'pt',
-        format: 'a4'
-    });
-
-    const pdfFileName = `${title.replace(/\s/g, '_')}_scansioni.ch_v${appVersion}.pdf`;
-
-    doc.setProperties({
-        title: `${title} - scansioni.ch v${appVersion}`,
-        author: 'scansioni.ch',
-        creator: `scansioni.ch v${appVersion}`
-    });
-    
-    // Use the html method to convert the article content
-    await doc.html(contentElement, {
-        callback: function (doc) {
-            // Add page numbers to all pages
-            const pageCount = (doc as any).internal.getNumberOfPages();
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(10);
-                doc.setTextColor(150);
-                doc.text(`Pagina ${i} di ${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 30, { align: 'center' });
-                 doc.text(`scansioni.ch v${appVersion}`, doc.internal.pageSize.width - 40, doc.internal.pageSize.height - 30, { align: 'right' });
-            }
-            doc.save(pdfFileName);
-        },
-        margin: [40, 40, 40, 40],
-        autoPaging: 'text',
-        width: 515, // A4 width (595.28) - margins (40*2)
-        windowWidth: contentElement.scrollWidth,
-    });
-}
-
 export interface DisdettaData {
     recipientName: string;
     recipientAddress: string;
@@ -254,4 +219,38 @@ Distinti saluti,
     doc.text(`(${userName})`, 80, 595);
 
     doc.save(`Disdetta_${contractDescription.replace(/\s+/g, '_')}.pdf`);
+};
+
+export const generateLegalPdf = (title: string, contentElement: HTMLElement, appVersion: string): void => {
+    const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'pt',
+        format: 'a4'
+    });
+
+    doc.setProperties({
+        title: title,
+        subject: `Documento legale per scansioni.ch v${appVersion}`,
+        author: 'scansioni.ch',
+        creator: `scansioni.ch v${appVersion}`
+    });
+
+    doc.html(contentElement, {
+        callback: function (doc) {
+            const pageCount = (doc as any).internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(9);
+                doc.setTextColor(128);
+                const pageText = `Pagina ${i} di ${pageCount} | ${title} - scansioni.ch v${appVersion}`;
+                doc.text(pageText, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 20, { align: 'center' });
+            }
+            const fileName = `${title.replace(/[\s/]/g, '_')}_scansioni-ch.pdf`;
+            doc.save(fileName);
+        },
+        margin: [40, 40, 40, 40],
+        autoPaging: 'text',
+        width: 515, // A4 width (595pt) - margins (40pt*2)
+        windowWidth: contentElement.scrollWidth,
+    });
 };

@@ -78,7 +78,7 @@ export const clearQueue = async (): Promise<void> => {
         const store = transaction.objectStore(QUEUE_STORE_NAME);
         const request = store.clear();
         request.onsuccess = () => resolve();
-        request.onerror = () => reject(transaction.error);
+        request.onerror = () => reject(request.error);
     });
 };
 
@@ -116,6 +116,8 @@ export const deleteArchivedDoc = (uuid: string): Promise<void> => firestoreServi
 export const updatePolizzaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updatePolizzaDoc(getUserId(), doc);
 export const deletePolizzaDoc = (uuid: string): Promise<void> => firestoreService.deletePolizzaDoc(getUserId(), uuid);
 export const addDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.addDisdettaDoc(getUserId(), doc);
+export const updateDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updateDisdettaDoc(getUserId(), doc);
+export const deleteDisdettaDoc = (uuid: string): Promise<void> => firestoreService.deleteDisdettaDoc(getUserId(), uuid);
 export const deleteWorkspaceDoc = (resultUuid: string): Promise<void> => firestoreService.deleteWorkspaceDoc(getUserId(), resultUuid);
 export const clearWorkspace = (): Promise<void> => firestoreService.clearWorkspace(getUserId());
 export const moveDocsToModule = (docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean; embeddings?: Record<string, number[]> }): Promise<void> => firestoreService.moveDocsToModule(getUserId(), docUuids, toModule, options);

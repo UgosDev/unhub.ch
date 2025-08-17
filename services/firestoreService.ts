@@ -354,6 +354,16 @@ export const addDisdettaDoc = async (userId: string, doc: ProcessedPageResult): 
     await docRef.set(doc);
 };
 
+export const updateDisdettaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {
+    const docRef = db.collection(`users/${userId}/disdette`).doc(doc.uuid);
+    await docRef.set(doc, { merge: true });
+};
+
+export const deleteDisdettaDoc = async (userId: string, uuid: string): Promise<void> => {
+    const docRef = db.collection(`users/${userId}/disdette`).doc(uuid);
+    await docRef.delete();
+};
+
 
 // --- Scan History ---
 export const onScanHistoryUpdate = (userId: string, callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => {

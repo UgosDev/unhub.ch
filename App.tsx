@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -547,6 +549,7 @@ function AuthenticatedApp() {
   const chatLoaded = useRef(false);
   const archivedLoaded = useRef(false);
   const polizzeLoaded = useRef(false); // NUOVO
+  const disdetteLoaded = useRef(false); // NUOVO
   const accessLogsLoaded = useRef(false);
   const feedbackLoaded = useRef(false);
 
@@ -907,12 +910,13 @@ function AuthenticatedApp() {
         historyLoaded.current = false;
         chatLoaded.current = false;
         archivedLoaded.current = false;
-        polizzeLoaded.current = false; // NUOVO
+        polizzeLoaded.current = false;
+        disdetteLoaded.current = false;
         accessLogsLoaded.current = false;
         feedbackLoaded.current = false;
 
         const checkAllLoaded = () => {
-            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && polizzeLoaded.current && accessLogsLoaded.current && feedbackLoaded.current) {
+            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && polizzeLoaded.current && disdetteLoaded.current && accessLogsLoaded.current && feedbackLoaded.current) {
                 setIsInitialLoading(false);
             }
         };
@@ -1011,6 +1015,10 @@ function AuthenticatedApp() {
         const unsubDisdette = db.onDisdetteUpdate(snapshot => {
             if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
             setDisdetteDocs(snapshot.docs.map(doc => doc.data() as ProcessedPageResult));
+            if (!disdetteLoaded.current) {
+                disdetteLoaded.current = true;
+                checkAllLoaded();
+            }
         });
 
 
@@ -2226,6 +2234,7 @@ function AuthenticatedApp() {
             ],
             documentCorners: [],
         },
+        status: 'Bozza',
         securityCheck: { isSafe: true, threatType: "Nessuna", explanation: "Documento generato dall'applicazione." },
         tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
         pageInfo: { currentPage: 1, totalPages: 1 },
@@ -2243,7 +2252,7 @@ function AuthenticatedApp() {
         const errorMessage = e instanceof Error ? e.message : String(e);
         setError(`Errore durante il salvataggio della disdetta: ${errorMessage}`);
     }
-  }, [user]);
+}, [user, setError]);
 
 
   const handleSendAll = async () => {
@@ -3243,7 +3252,7 @@ function AuthenticatedApp() {
         await db.updateArchivedDoc(doc);
     }, []);
     
-    // --- NUOVO: Funzioni di gestione per Polizze ---
+    // --- Funzioni di gestione per Polizze ---
     const handleUpdatePolizzaDocument = useCallback(async (doc: ProcessedPageResult) => {
         await db.updatePolizzaDoc(doc);
     }, []);
@@ -3253,9 +3262,20 @@ function AuthenticatedApp() {
             await db.deletePolizzaDoc(doc.uuid);
         }
     }, []);
+    
+    // --- Funzioni di gestione per Disdette ---
+    const handleUpdateDisdettaDocument = useCallback(async (doc: ProcessedPageResult) => {
+        await db.updateDisdettaDoc(doc);
+    }, []);
+
+    const handleDeleteDisdettaDocument = useCallback(async (doc: ProcessedPageResult) => {
+        if (confirm(`Sei sicuro di voler eliminare la disdetta "${doc.analysis.soggetto}"?`)) {
+            await db.deleteDisdettaDoc(doc.uuid);
+        }
+    }, []);
 
 
-    // --- NUOVO: useEffect per la modalità di selezione elemento ---
+    // --- useEffect per la modalità di selezione elemento ---
     useEffect(() => {
         if (highlightedElementForFeedback) {
             highlightedElementForFeedback.classList.remove('feedback-highlight-target');
@@ -3390,6 +3410,8 @@ function AuthenticatedApp() {
                             disdetteDocs={disdetteDocs}
                             user={user!}
                             onCreateDisdetta={handleCreateDisdetta}
+                            onUpdateDocument={handleUpdateDisdettaDocument}
+                            onDeleteDocument={handleDeleteDisdettaDocument}
                             isWizardOpen={isDisdettaWizardOpen}
                             onWizardOpen={() => setIsDisdettaWizardOpen(true)}
                             onWizardClose={() => {

@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import type { ProcessedPageResult, ScanHistoryEntry, ProcessingMode } from '../services/geminiService';
 import { DocumentTextIcon, ShieldCheckIcon, ChevronRightIcon, CoinIcon, BoltIcon, DownloadIcon, CreditCardIcon, CheckCircleIcon, XCircleIcon, SparklesIcon, ArrowUturnLeftIcon } from '../components/icons';
@@ -185,7 +184,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, history, isLoad
                     <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                         <thead className="bg-slate-50 dark:bg-slate-700/50 sticky top-0">
                             <tr>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data e Ora</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrizione</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Modalità</th>
                                 <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Variazione (SC)</th>
