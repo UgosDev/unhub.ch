@@ -22,6 +22,7 @@ Elenco delle prossime funzionalità su cui concentrarsi.
 Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 ### Espansione Ecosistema (Nuovi Moduli Potenziali)
+- **calendario.ch**: Un modulo calendario intelligente che estrae automaticamente scadenze, appuntamenti e date di rinnovo dai documenti analizzati (fatture, polizze, contratti) e li aggiunge a un calendario personale. Aiuta a non mancare mai un pagamento o una scadenza di rinnovo.
 - **fogli.ch**: Sistema di condivisione sicura di stampanti. Permette agli utenti di trovare e utilizzare stampanti nella loro zona quando non ne hanno una a disposizione, gestendo il processo di stampa in modo sicuro.
 - **rimborsi.ch**: Modulo per la gestione dei rimborsi spese. Funziona in modo simile a `polizze.ch`, permettendo di archiviare scontrini, fatture e ricevute e di generare facilmente richieste di rimborso (via PDF o email) da inviare a datori di lavoro o enti.
 
@@ -68,6 +69,14 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
 
+# Note del 13/10/2025 - v9.2.0
+- **Rilascio di Manutenzione**: Aggiornata la versione a 9.2.0.
+- Questo aggiornamento si concentra su miglioramenti interni, stabilità e aggiornamento delle dipendenze per garantire performance ottimali.
+- Aggiornati tutti i file di versioning.
+
+# Note del 12/10/2025 - v9.1.0
+- **Aggiornamento di Manutenzione**: Rilascio minore per aggiornare le dipendenze interne e migliorare le performance generali dell'infrastruttura. Aggiornata la versione a 9.1.0.
+
 # Note del 11/10/2025 - v9.0.0
 - **Major Version Bump**: Eseguito l'aggiornamento alla versione 9.0.0 per celebrare l'implementazione della nuova architettura di ricerca vettoriale.
 - **Motore di Ricerca con Embeddings**: La nuova versione consolida il passaggio da una ricerca semantica basata su prompt (costosa e lenta) a una basata su embeddings e un database vettoriale (istantanea e quasi gratuita), rendendo la funzione di ricerca in `archivio.ch` scalabile e sostenibile a lungo termine.
@@ -107,7 +116,7 @@ Cronologia delle note di lavoro per ogni versione rilasciata.
 # Note del 05/10/2025 - v7.4.3
 - **Modello di Consenso Opt-In**: Implementato un nuovo flusso di consenso per l'analisi dei documenti da parte di Ugo, basato su un modello "opt-in" per una maggiore protezione della privacy.
 - **Nuova Impostazione**: Aggiunta l'opzione `ugoContextAwarenessEnabled` (disattivata di default) in `services/settingsService.ts`.
-- **UI di Attivazione**: Aggiunto un interruttore dedicato in `pages/ProfilePage.tsx` per permettere all'utente di attivare/disattivare la funzionalità.
+- **UI di Attivazione**: Aggiunto un interruttore dedicato in `pages/ProfilePage.tsx` per permettere l'utente di attivare/disattivare la funzionalità.
 - **Logica Contestuale**: Modificata la funzione `handleSendMessage` in `App.tsx`. Se la funzione è disattivata, Ugo rileva le domande che richiedono contesto e risponde con un messaggio predefinito che invita l'utente ad attivare la funzione, includendo un'azione `[ACTION:navigate_to_profile]`.
 - **Istruzioni AI Aggiornate**: Il system prompt di Ugo è stato aggiornato per gestire correttamente entrambi gli scenari (con e senza contesto).
 - Aggiornata la documentazione e la versione a 7.4.3.

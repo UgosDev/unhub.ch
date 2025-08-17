@@ -337,6 +337,16 @@ export const deleteArchivedDoc = async (userId: string, uuid: string): Promise<v
     await docRef.delete();
 };
 
+// --- Polizze Specific Actions ---
+export const updatePolizzaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {
+    const docRef = db.collection(`users/${userId}/polizze`).doc(doc.uuid);
+    await docRef.set(doc, { merge: true });
+};
+
+export const deletePolizzaDoc = async (userId: string, uuid: string): Promise<void> => {
+    const docRef = db.collection(`users/${userId}/polizze`).doc(uuid);
+    await docRef.delete();
+};
 
 // --- Disdette ---
 export const addDisdettaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {

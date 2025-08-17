@@ -546,6 +546,7 @@ function AuthenticatedApp() {
   const historyLoaded = useRef(false);
   const chatLoaded = useRef(false);
   const archivedLoaded = useRef(false);
+  const polizzeLoaded = useRef(false); // NUOVO
   const accessLogsLoaded = useRef(false);
   const feedbackLoaded = useRef(false);
 
@@ -906,11 +907,12 @@ function AuthenticatedApp() {
         historyLoaded.current = false;
         chatLoaded.current = false;
         archivedLoaded.current = false;
+        polizzeLoaded.current = false; // NUOVO
         accessLogsLoaded.current = false;
         feedbackLoaded.current = false;
 
         const checkAllLoaded = () => {
-            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && accessLogsLoaded.current && feedbackLoaded.current) {
+            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && polizzeLoaded.current && accessLogsLoaded.current && feedbackLoaded.current) {
                 setIsInitialLoading(false);
             }
         };
@@ -1001,6 +1003,10 @@ function AuthenticatedApp() {
         const unsubPolizze = db.onPolizzeUpdate(snapshot => {
             if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
             setPolizzeDocs(snapshot.docs.map(doc => doc.data() as ProcessedPageResult));
+             if (!polizzeLoaded.current) {
+                polizzeLoaded.current = true;
+                checkAllLoaded();
+            }
         });
         const unsubDisdette = db.onDisdetteUpdate(snapshot => {
             if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
@@ -3236,6 +3242,18 @@ function AuthenticatedApp() {
     const handleUpdateArchivedDocument = useCallback(async (doc: ProcessedPageResult) => {
         await db.updateArchivedDoc(doc);
     }, []);
+    
+    // --- NUOVO: Funzioni di gestione per Polizze ---
+    const handleUpdatePolizzaDocument = useCallback(async (doc: ProcessedPageResult) => {
+        await db.updatePolizzaDoc(doc);
+    }, []);
+
+    const handleDeletePolizzaDocument = useCallback(async (doc: ProcessedPageResult) => {
+        if (confirm(`Sei sicuro di voler eliminare la polizza "${doc.analysis.soggetto}"?`)) {
+            await db.deletePolizzaDoc(doc.uuid);
+        }
+    }, []);
+
 
     // --- NUOVO: useEffect per la modalità di selezione elemento ---
     useEffect(() => {
@@ -3362,7 +3380,11 @@ function AuthenticatedApp() {
                             onUpdateDocument={handleUpdateArchivedDocument}
                         />;
             case 'polizze':
-                return <Polizze polizzeDocs={polizzeDocs} />;
+                return <Polizze 
+                            polizzeDocs={polizzeDocs}
+                            onUpdateDocument={handleUpdatePolizzaDocument}
+                            onDeleteDocument={handleDeletePolizzaDocument}
+                        />;
             case 'disdette':
                 return <Disdette
                             disdetteDocs={disdetteDocs}

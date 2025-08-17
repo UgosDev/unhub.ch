@@ -4,6 +4,11 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.2.0]
+
+### Migliorato
+* **Manutenzione e Stabilità**: Questo aggiornamento si concentra sul miglioramento della stabilità generale dell'applicazione e sull'aggiornamento delle dipendenze interne per garantire performance ottimali e sicurezza.
+
 ## [9.1.0]
 
 ### Migliorato
@@ -27,7 +32,7 @@ Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e
 
 ### Migliorato
 * **Flusso di Lavoro Semplificato**: Rimosso il selettore di modalità iniziale (passo 1). Ora si caricano prima i documenti e poi si sceglie la modalità di elaborazione per ciascun file individualmente.
-* **Selezione Modalità per File**: Ogni file nella vista di conferma ha ora il proprio selettore di modalità, permettendo di processare un batch di documenti con impostazioni diverse (es. una fattura in 'Chroma Scan' e uno scontrino in 'Modalità Scontrino' contemporaneamente).
+* **Selezione Modalità per File**: Ogni file nella vista di conferma ha un proprio selettore di modalità, permettendo di processare un batch di documenti con impostazioni diverse (es. una fattura in 'Chroma Scan' e uno scontrino in 'Modalità Scontrino' contemporaneamente).
 * **Interfaccia Pulita**: L'area di lavoro è stata riorganizzata per riflettere il nuovo flusso "prima i file, poi le modalità", risultando più intuitiva.
 
 ## [8.6.0]

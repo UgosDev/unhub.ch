@@ -113,6 +113,8 @@ export const onAccessLogsUpdate = (callback: (snapshot: firebase.firestore.Query
 export const addOrUpdateWorkspaceDoc = (result: ProcessedPageResult): Promise<void> => firestoreService.addOrUpdateWorkspaceDoc(getUserId(), result);
 export const updateArchivedDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updateArchivedDoc(getUserId(), doc);
 export const deleteArchivedDoc = (uuid: string): Promise<void> => firestoreService.deleteArchivedDoc(getUserId(), uuid);
+export const updatePolizzaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updatePolizzaDoc(getUserId(), doc);
+export const deletePolizzaDoc = (uuid: string): Promise<void> => firestoreService.deletePolizzaDoc(getUserId(), uuid);
 export const addDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.addDisdettaDoc(getUserId(), doc);
 export const deleteWorkspaceDoc = (resultUuid: string): Promise<void> => firestoreService.deleteWorkspaceDoc(getUserId(), resultUuid);
 export const clearWorkspace = (): Promise<void> => firestoreService.clearWorkspace(getUserId());
