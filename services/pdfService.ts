@@ -245,7 +245,7 @@ export const generateLegalPdf = (title: string, contentElement: HTMLElement, app
                 const pageText = `Pagina ${i} di ${pageCount} | ${title} - scansioni.ch v${appVersion}`;
                 doc.text(pageText, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 20, { align: 'center' });
             }
-            const fileName = `${title.replace(/[\s/]/g, '_')}_scansioni-ch.pdf`;
+            const fileName = `${title.replace(/[\s\/]/g, '_')}_scansioni-ch.pdf`;
             doc.save(fileName);
         },
         margin: [40, 40, 40, 40],

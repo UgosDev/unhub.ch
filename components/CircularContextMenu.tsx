@@ -15,9 +15,9 @@ interface CircularContextMenuProps {
     onClose: () => void;
     onSelect: () => void;
     onExpand: () => void;
-    onSendToApp: (group: DocumentGroup, targetApp: string) => void;
-    onDownloadZip: (group: DocumentGroup) => void;
-    onDownloadPdf: (group: DocumentGroup) => void;
+    onSendToApp: () => void;
+    onDownloadZip: () => void;
+    onDownloadPdf: () => void;
     onUngroup: () => void;
     actionsConfig: (MenuActionId | null)[];
 }
@@ -41,9 +41,9 @@ export const CircularContextMenu: React.FC<CircularContextMenuProps> = ({
     const masterActionList: Record<MenuActionId, { label: string; icon: React.ReactNode; handler: () => void; }> = {
         select: { label: isSelected ? 'Deseleziona' : 'Seleziona', icon: <CheckCircleIcon className="w-6 h-6" />, handler: () => handleAction(onSelect) },
         expand: { label: isExpanded ? 'Comprimi' : 'Espandi', icon: isExpanded ? <ChevronUpIcon className="w-6 h-6" /> : <ChevronDownIcon className="w-6 h-6" />, handler: () => handleAction(onExpand) },
-        send: { label: `Invia a ${targetApp}`, icon: <PaperAirplaneIcon className="w-6 h-6" />, handler: () => handleAction(() => onSendToApp(targetGroup, targetApp)) },
-        downloadZip: { label: 'Scarica ZIP', icon: <DownloadIcon className="w-6 h-6" />, handler: () => handleAction(() => onDownloadZip(targetGroup)) },
-        downloadPdf: { label: 'Scarica PDF', icon: <DocumentTextIcon className="w-6 h-6" />, handler: () => handleAction(() => onDownloadPdf(targetGroup)) },
+        send: { label: `Invia a ${targetApp}`, icon: <PaperAirplaneIcon className="w-6 h-6" />, handler: () => handleAction(onSendToApp) },
+        downloadZip: { label: 'Scarica ZIP', icon: <DownloadIcon className="w-6 h-6" />, handler: () => handleAction(onDownloadZip) },
+        downloadPdf: { label: 'Scarica PDF', icon: <DocumentTextIcon className="w-6 h-6" />, handler: () => handleAction(onDownloadPdf) },
         ungroup: { label: 'Dividi Fascicolo', icon: <LayersIcon className="w-6 h-6" />, handler: () => handleAction(onUngroup) },
     };
 

@@ -73,22 +73,42 @@ export type BrandColor = typeof brandAssets[BrandKey]['colorClass'];
 
 export const getBrandKey = (): BrandKey => {
     try {
+        // 1. Priorità massima al parametro URL per il testing
         const urlParams = new URLSearchParams(window.location.search);
         const brandParam = urlParams.get('brand');
-        if (brandParam && (brandParam === 'scan' || brandParam === 'archivio' || brandParam === 'polizze' || brandParam === 'disdette')) {
-            // Remove the query param from URL to not interfere with other logic
+        if (brandParam && ['scan', 'archivio', 'polizze', 'disdette'].includes(brandParam)) {
+            // Rimuove il parametro per non interferire con la navigazione successiva
             window.history.replaceState({}, document.title, window.location.pathname);
-            return brandParam;
+            return brandParam as BrandKey;
         }
+
+        // 2. Logica di produzione basata sull'hostname
+        const hostname = window.location.hostname;
+        if (hostname.includes('archivio.ch')) return 'archivio';
+        if (hostname.includes('polizze.ch')) return 'polizze';
+        if (hostname.includes('disdette.ch')) return 'disdette';
+        if (hostname.includes('scansioni.ch')) return 'scan';
+
+        // 3. Fallback per ambiente di sviluppo: rotazione automatica
+        const brandsInCycle: BrandKey[] = ['archivio', 'polizze', 'disdette', 'scan'];
+        const sessionKey = 'dev-brand-cycle-index';
+        
+        let currentIndex = parseInt(sessionStorage.getItem(sessionKey) || '0', 10);
+        if (isNaN(currentIndex) || currentIndex >= brandsInCycle.length) {
+            currentIndex = 0;
+        }
+
+        const currentBrand = brandsInCycle[currentIndex];
+        
+        const nextIndex = (currentIndex + 1) % brandsInCycle.length;
+        sessionStorage.setItem(sessionKey, nextIndex.toString());
+
+        return currentBrand;
+        
     } catch (e) {
-        console.error("Could not access URL parameters.", e);
+        console.error("Impossibile determinare il brand, si torna al default.", e);
+        return 'scan'; // Default sicuro
     }
-    
-    const hostname = window.location.hostname;
-    if (hostname.includes('archivio.ch')) return 'archivio';
-    if (hostname.includes('polizze.ch')) return 'polizze';
-    if (hostname.includes('disdette.ch')) return 'disdette';
-    return 'scan';
 };
 
 export const colorStyles: Record<BrandColor, Record<string, string>> = {

@@ -131,7 +131,8 @@ export const createUserProfile = async (userId: string, name: string, email: str
 
 export const updateUserProfile = async (userId: string, updates: Partial<Omit<User, 'uid'>>): Promise<void> => {
     const userDocRef = db.collection("users").doc(userId);
-    await userDocRef.update(updates);
+    // Using set with merge is more robust for updating complex objects and handling field deletions.
+    await userDocRef.set(updates, { merge: true });
 };
 
 export const updateUserProcessingStatus = async (userId: string, isProcessing: boolean, heartbeat: string | null): Promise<void> => {

@@ -138,18 +138,7 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
 
         const siteCommands = ['scansioni.ch', 'archivio.ch', 'polizze.ch', 'disdette.ch', 'unhub.ch'];
         if (siteCommands.includes(lowerCaseValue)) {
-             if (lowerCaseValue === 'scansioni.ch') {
-                setCurrentBrandKey('scan');
-            } else if (lowerCaseValue === 'archivio.ch') {
-                setCurrentBrandKey('archivio');
-            } else if (lowerCaseValue === 'polizze.ch') {
-                setCurrentBrandKey('polizze');
-            } else if (lowerCaseValue === 'disdette.ch') {
-                setCurrentBrandKey('disdette');
-            } else if (lowerCaseValue === 'unhub.ch') {
-                onNavigate('unhub');
-            }
-            setEmail('');
+            setEmail(''); // Clear the input after command execution
             return;
         }
 

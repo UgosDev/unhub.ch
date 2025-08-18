@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import Tesseract from 'tesseract.js';
 import * as db from './db'; // Import per la ricerca vettoriale
@@ -501,7 +502,7 @@ export const suggestProcessingMode = async (file: File): Promise<ProcessingMode 
         canvas.width = viewport.width;
         const context = canvas.getContext('2d');
         if (!context) return null;
-        await page.render({ canvasContext: context, viewport }).promise;
+        await page.render({ canvasContext: context, viewport: viewport, canvas: canvas }).promise;
         base64Preview = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
         mimeType = 'image/jpeg';
         page.cleanup();
@@ -631,48 +632,42 @@ export const performSemanticSearch = async (query: string): Promise<ProcessedPag
 };
 
 export const startUgoExperienceStream = async (base64Image: string, onChunk: (chunk: any) => void): Promise<void> => {
-    const prompt = `You are "Ugo Vision", a real-time assistant for a document scanning app. Analyze this single frame from a video stream. Provide concise, real-time feedback to help the user capture a perfect scan.
-    
-    RULES:
-    - Respond with a stream of JSON objects. Each object is a partial update.
-    - Your feedback should be calm and encouraging.
-    - The final JSON object MUST contain all keys.
-    
-    JSON Schema:
-    {
-      "isDocumentVisible": boolean,
-      "shotQuality": {
-        "lighting": "good" | "poor" | "ok",
-        "stability": "stable" | "blurry",
-        "framing": "good" | "partial" | "far"
-      },
-      "userFeedback": string
-    }
-    
-    Analyze the image and provide feedback.`;
+    const prompt = `You are "Ugo Vision", a real-time assistant for a document scanning app. Analyze this single frame from a video stream. Provide concise, real-time feedback to help the user take a perfect picture. Your entire response MUST be a single, valid JSON object, without any markdown formatting.
 
+The JSON schema must be:
+{
+  "isDocumentVisible": boolean,
+  "shotQuality": {
+    "lighting": "good" | "poor" | "ok",
+    "stability": "stable" | "blurry",
+    "framing": "good" | "partial" | "far"
+  },
+  "userFeedback": string,
+  "documentCorners": [{ "x": number, "y": number }, ...]
+}
+
+Analyze the image and provide the JSON response.`;
+
+    // Ugo Vision requires low latency. A non-streaming call for a single JSON object is more efficient.
     try {
-        const responseStream = await ai.models.generateContentStream({
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: [
-                { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-                { text: prompt }
-            ]
+            contents: {
+                parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType: 'image/jpeg', data: base64Image } }
+                ]
+            },
+            config: {
+                responseMimeType: 'application/json',
+                thinkingConfig: { thinkingBudget: 0 } // Low latency is critical
+            },
         });
 
-        let buffer = '';
-        for await (const chunk of responseStream) {
-            buffer += chunk.text;
-            try {
-                // This assumes the stream sends complete, parsable JSON objects.
-                const parsed = JSON.parse(buffer);
-                onChunk(parsed);
-                buffer = ''; // Reset buffer on success
-            } catch (e) {
-                // Incomplete JSON, wait for more chunks.
-            }
-        }
-    } catch (error) {
-        console.error("Error in Ugo Experience stream:", error);
+        const parsedJson = JSON.parse(response.text);
+        onChunk(parsedJson);
+    } catch (e) {
+        console.error("Failed to get or parse Ugo Vision response:", e);
+        // Do not call onChunk with invalid data. The hook will handle the error state.
     }
 };
