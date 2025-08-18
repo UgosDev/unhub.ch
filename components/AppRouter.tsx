@@ -72,6 +72,7 @@ export const AppRouter: React.FC<AppLogic> = (props) => {
                         onMoveDocument={handleMoveArchivedDocument}
                         onDeleteDocument={handleDeleteArchivedDocument}
                         onUpdateDocument={handleUpdateArchivedDocument}
+                        onNavigate={navigate}
                     />;
         case 'polizze':
             return <Polizze 

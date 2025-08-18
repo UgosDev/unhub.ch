@@ -1,6 +1,6 @@
 # scansioni.ch
 
-**Versione: 9.2.0**
+**Versione: 9.5.0**
 
 Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata su un'architettura "human-in-the-loop" e un'economia interna basata su "ScanCoin".
 
@@ -10,44 +10,26 @@ Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata 
 
 ## Caratteristiche Principali
 
-- **Piattaforma Modulare Unificata**: L'app integra i servizi di archivio, polizze e disdette, con un'interfaccia e un branding che si adattano dinamicamente al dominio di accesso (es. `archivio.ch`, `polizze.ch`).
-- **Sincronizzazione in Tempo Reale**: Le tue scansioni, lo storico, le preferenze e il saldo ScanCoin sono sincronizzati istantaneamente su tutti i tuoi dispositivi grazie a Firebase Firestore.
-- **Progressive Web App (PWA)**:
-  - **Installabile**: Aggiungi l'app alla tua schermata principale o al desktop per un accesso rapido.
-  - **Supporto Offline**: Grazie al caching intelligente e alla persistenza offline di Firestore, l'app si avvia istantaneamente e i dati precedentemente sincronizzati sono disponibili anche senza connessione internet.
-- **Miglioramenti UI/UX Personalizzabili**:
-  - **Tema Adattivo**: Un selettore completo (Chiaro, Scuro, Sistema) permette di personalizzare l'aspetto dell'interfaccia. La scelta viene salvata per garantire coerenza tra le sessioni.
-- **Framework Privacy e Consenso**: Consenso esplicito ai Termini di Servizio e Privacy Policy alla registrazione, con un nuovo "Centro Privacy" per la gestione dei dati.
-- **Metadati Avanzati**: Ogni file esportato (immagine, PDF, JSON) è arricchito con metadati visibili (watermark con ID univoco) e invisibili (proprietà del file conformi agli standard) per garantire tracciabilità, integrità e autenticità.
-- **Economia a "ScanCoin"**: L'app utilizza una valuta interna. Gli utenti acquistano pacchetti di ScanCoin per le loro esigenze o scelgono un abbonamento per ricevere una ricarica mensile a un prezzo vantaggioso. Ogni operazione ha un costo trasparente in monete.
-- **Importazione Multi-sorgente**: Offre moltepli modi per aggiungere documenti:
-  - **Drag-and-drop** e selezione file locale.
-  - **Importazione via Email**: Fornisce un indirizzo email temporaneo per ricevere documenti.
-  - **Importazione da Google Drive**: Integra Google Picker per importare file direttamente dal cloud.
-- **Modalità Demo Interattiva**: Un pulsante "Prova una Demo" popola istantaneamente l'app con un set di documenti di esempio (fatture, polizze, ecc.) con immagini generate dinamicamente.
-- **Rilevamento Duplicati "Human-in-the-loop"**: Il sistema contrassegna i potenziali duplicati e lascia all'utente la decisione finale tramite un comodo confronto visivo.
-- **Raggruppamento Deterministico e Manuale**: Le pagine vengono raggruppate in modo affidabile, con strumenti manuali per unire, dividere o correggere i fascicoli.
-- **Assistente AI "Ugo" Superpotenziato**: Un chatbot basato su Gemini che ora include:
-  - **Assistenza Proattiva**: Offre consigli contestuali basati sullo stato dell'area di lavoro (es. documenti non sicuri, saldo basso).
-  - **Esecuzione di Azioni**: Esegue comandi complessi dati in linguaggio naturale (es. "Unisci tutte le fatture di E-Corp").
-  - **Memoria a Lungo Termine**: La cronologia della chat persiste tra le sessioni, creando un'esperienza personalizzata.
-  - **Risposte Multimodali**: Può includere contenuti visivi (immagini) nelle sue risposte per una maggiore chiarezza.
-  - **Funzionalità Nascoste (Easter Eggs)**: Include un sistema di ricompense per la gentilezza, gestione dei reclami con rimborsi e inviti a una community per utenti fedeli.
-  - **Adattamento Linguistico Avanzato**: Riconosce e risponde nelle lingue e dialetti svizzeri, aggiungendo personalità all'interazione.
-- **Download Sicuro e Flessibile**: Esporta i fascicoli come ZIP o come singoli PDF multi-pagina.
-- **Coda di Lavoro Flessibile e Modalità Multiple**: Aggiungi file a una coda continua e scegli la modalità di scansione per i prossimi caricamenti anche mentre altri file sono in elaborazione. Sono disponibili le modalità "Chroma Scan", "Quick Scan", "Batch Scan", "Deep Scan", "Scontrino" o la modalità gratuita "Simple Scan".
-- **Archivio Newsletter**: Una sezione dedicata dove gli utenti possono leggere tutti gli aggiornamenti passati, le guide e gli annunci.
+### Piattaforma Modulare Unificata
+- **Branding Dinamico**: L'app integra i servizi di archivio, polizze e disdette, con un'interfaccia che si adatta dinamicamente al dominio di accesso (es. `archivio.ch`).
+- **Sincronizzazione in Tempo Reale**: I tuoi dati sono sincronizzati istantaneamente su tutti i tuoi dispositivi grazie a Firebase Firestore.
+- **Progressive Web App (PWA)**: Installabile su desktop e mobile, con supporto per l'avvio offline.
+- **Framework Privacy**: Consenso esplicito ai Termini di Servizio e Privacy Policy, con un "Centro Privacy" per la gestione dei dati.
 
 ### Ugo Vision: Scansione da Fotocamera Professionale
-- **Motore di Scansione Avanzato (OpenCV.js)**: Rileva, ritaglia e raddrizza automaticamente i documenti con un motore ad alte prestazioni.
+- **Motore di Scansione Avanzato (OpenCV.js)**: Rileva, ritaglia e raddrizza automaticamente i documenti con un motore ad alte prestazioni che funziona in tempo reale.
 - **Feedback Visivo "Holographic Mesh"**: Un overlay 3D dinamico e interattivo fornisce un feedback in tempo reale sulla qualità dello scatto, guidando l'utente verso la perfezione.
 - **Scatto Automatico "Lock-On"**: Il sistema cattura l'immagine automaticamente solo quando l'inquadratura, la stabilità e la luce sono ottimali, garantendo scansioni sempre perfette.
 - **Ritaglio Manuale di Precisione**: Dopo lo scatto, puoi aggiustare manualmente i 4 angoli del documento con l'aiuto di una lente d'ingrandimento per un controllo totale.
 
-### Analisi AI con Gemini & Sicurezza
+### Analisi AI & Gestione Documentale
 - **Estrazione Dati Intelligente**: Utilizza **Google Gemini** per classificare il documento, estrarre dati chiave e generare riassunti.
-- **Estrazione Immagini Opzionale**: Identifica ed estrae immagini (loghi, firme) direttamente dai documenti.
-- **Controllo di Sicurezza Integrato**: Ogni documento viene analizzato per minacce come **Phishing** e **SQL Injection**.
+- **Archivio HD**: Opzione a pagamento per conservare le scansioni originali in alta risoluzione, con garanzie a lungo termine.
+- **Raggruppamento Deterministico e Manuale**: Le pagine vengono raggruppate in modo affidabile, con strumenti manuali per unire, dividere o correggere i fascicoli.
+- **Assistente AI "Ugo"**: Un chatbot basato su Gemini che offre assistenza proattiva, esegue azioni e risponde a domande sui documenti.
+- **Importazione Multi-sorgente**: Aggiungi documenti tramite drag-and-drop, email, Google Drive o fotocamera.
+- **Modalità Demo Interattiva**: Un pulsante "Prova una Demo" popola l'app con dati di esempio per un tour guidato.
+- **Controllo di Sicurezza Integrato**: Ogni documento viene analizzato per minacce come **Phishing**.
 
 ## Stack Tecnologico
 

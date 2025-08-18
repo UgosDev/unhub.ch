@@ -22,15 +22,13 @@ Elenco delle prossime funzionalità su cui concentrarsi.
 Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 ### Funzionalità Principali
-- **Modalità Batch Asincrona**: Possibilità di inviare scansioni a un orario prestabilito (es. notte) a un costo ridotto. Richiede infrastruttura backend.
+- **Modalità Batch Asincrona**: Possibilità di inviare scansioni a un orario prestabiliti (es. notte) a un costo ridotto. Richiede infrastruttura backend.
 - **Potenziamento Esportazione PDF**: Aggiungere opzioni avanzate come la selezione della qualità, l'inclusione dei dati estratti e la protezione con password personalizzata per i PDF.
 - **Metadati Avanzati**: Espandere i metadati per includere dati EXIF/XMP completi nelle immagini, offrendo una tracciabilità di livello professionale.
 - **Integrazione Import da App di Messaggistica**: Aggiungere la possibilità di caricare documenti da scansionare direttamente da Telegram o WhatsApp. La prima fase si concentrerà solo sull'importazione (input), con la gestione delle risposte (invio file modificati) da implementare in un secondo momento.
 
 ### UI/UX & Fotocamera
 - **"Solidificazione" UI**: Revisione generale dell'interfaccia per migliorare la coerenza, gli spazi e l'impatto visivo.
-- **Scansione Doppia Pagina (Modalità Libro)**: La fotocamera dovrebbe mostrare una guida per inquadrare due pagine di un libro contemporaneamente e dividerle automaticamente.
-- **Pre-elaborazione Immagini**: Introdurre passaggi client-side (bianco e nero, contrasto, ottimizzazione peso) per migliorare la qualità dell'immagine inviata all'AI e ridurre i tempi di caricamento.
 
 ### Sicurezza, Monetizzazione e Infrastruttura
 - **Blocco Geografico e Rilevamento VPN**: Implementare un sistema backend per limitare l'accesso al servizio solo agli utenti in Svizzera e per bloccare l'uso di VPN/proxy per aggirare le restrizioni. Richiede integrazione con servizi di IP Intelligence.
@@ -47,224 +45,31 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
 
+# Note del 15/10/2025 - v9.5.0
+- **Implementazione Funzionalità Archivio HD**: Introdotta una nuova opzione di monetizzazione come richiesto.
+- **Logica di Archiviazione**: Verificato che il flusso di elaborazione attuale in `useAppLogic.ts` salva correttamente sia l'immagine originale (`originalImageDataUrl`) sia quella elaborata (`processedImageDataUrl`), ponendo le basi tecniche per il servizio.
+- **UI in Archivio.tsx**: Aggiunto un banner promozionale in `Archivio.tsx` per informare gli utenti della nuova opzione "Archivio HD", con dettagli sui costi e un link alla pagina dei prezzi.
+- **Aggiornamento Termini di Servizio**: Modificato `TermsOfServicePage.tsx` per includere una nuova sezione che formalizza l'offerta, definendo le condizioni di prezzo, la garanzia di servizio di 10 anni e la politica di esportazione dati in caso di chiusura.
+- **Documentazione e Versioning**: Aggiornati tutti i file rilevanti (`README.md`, `CHANGELOG.md`, `metadata.json`, `service-worker.js`) alla versione 9.5.0 per riflettere le nuove aggiunte.
+
+# Note del 14/10/2025 - v9.4.0
+- **Implementazione Scansione Video e Potenziamento OpenCV**: Introdotta una nuova modalità di scansione che analizza un feed video in tempo reale, concettualmente realizzando la richiesta di "spezzettare un video frame by frame".
+- **Nuovo Motore "Ugo Vision"**: Creato un `DocumentScannerEngine` basato su OpenCV.js, che esegue un rilevamento dei bordi dei documenti in tempo reale, più veloce e affidabile.
+- **Feedback Visivo "Holographic Mesh"**: Sostituito il vecchio contorno con un `DynamicMeshOverlay` interattivo, una maschera 3D che si adatta alla prospettiva e guida l'utente verso lo scatto perfetto.
+- **Riprogettazione `CameraView`**: La vista della fotocamera è stata completamente riscritta con un'estetica moderna, controlli ottimizzati e un'esperienza utente più fluida, integrando la nuova logica come esperienza standard e rimuovendo il selettore "Ugo Experience".
+- **Modularizzazione del Codice**: La logica della fotocamera è stata scomposta in custom hook (`useCameraStream`, `useDeviceTilt`, `useDocumentScanner`) per una migliore manutenibilità.
+- **Funzionalità Parzialmente Implementate**: Le idee "Scansione Doppia Pagina" e "Pre-elaborazione Immagini" sono state parzialmente affrontate con questo refactoring e spostate dal backlog allo storico.
+- Aggiornata tutta la documentazione e la versione a 9.4.0.
+
+# Note del 13/10/2025 - v9.2.0
+- **Rilascio di Manutenzione**: Aggiornata la versione a 9.2.0.
+- Questo aggiornamento si concentra su miglioramenti interni, stabilità e aggiornamento delle dipendenze per garantire performance ottimali.
+- Aggiornati tutti i file di versioning.
+
+# Note del 12/10/2025 - v9.1.0
+- **Aggiornamento di Manutenzione**: Rilascio minore per aggiornare le dipendenze interne e migliorare le performance generali dell'infrastruttura. Aggiornata la versione a 9.1.0.
+
 # Note del 11/10/2025 - v9.0.0
 - **Major Version Bump**: Eseguito l'aggiornamento alla versione 9.0.0 per celebrare l'implementazione della nuova architettura di ricerca vettoriale.
 - **Motore di Ricerca con Embeddings**: La nuova versione consolida il passaggio da una ricerca semantica basata su prompt (costosa e lenta) a una basata su embeddings e un database vettoriale (istantanea e quasi gratuita), rendendo la funzione di ricerca in `archivio.ch` scalabile e sostenibile a lungo termine.
 - **Aggiornamento Documentazione**: Aggiornati tutti i file di versioning (metadata, README, service worker, changelog) per riflettere la nuova major release.
-
-# Note del 10/10/2025 - v8.7.1
-- Eseguito l'aggiornamento della versione a 8.7.1.
-- Questo rilascio di manutenzione aggiorna le dipendenze interne e il versioning della cache del service worker.
-- Aggiornati i file di documentazione (README, CHANGELOG, metadata) per riflettere la nuova versione.
-
-# Note del 09/10/2025 - v8.7.0
-- Implementata la richiesta dell'utente di semplificare il flusso di lavoro.
-- **Flusso Invertito**: Rimosso il selettore di modalità globale dal passo 1. L'utente ora aggiunge prima i documenti.
-- **Selezione Modalità per File**: Nella nuova vista di conferma, ogni file ha un proprio selettore di modalità, permettendo elaborazioni diverse nello stesso batch. L'AI suggerisce la modalità migliore per ogni file.
-- **UI Semplificata**: L'interfaccia principale è stata riorganizzata per riflettere il nuovo flusso, eliminando la duplicazione del selettore e rendendo l'esperienza più fluida e logica.
-- Aggiornata la versione a 8.7.0 in tutti i file rilevanti.
-
-# Note del 08/10/2025 - v8.6.1
-- Aggiornamento della documentazione interna e preparazione per le prossime funzionalità. Allineamento dei file di versioning e log.
-
-# Note del 07/10/2025 - v8.0.0
-- **Major Version Bump**: Aggiornata la versione a 8.0.0 per riflettere la transizione a un ecosistema multi-sito unificato.
-- **Architettura Modulare**: Completata la prima fase di implementazione della nuova architettura. L'app ora gestisce i moduli `archivio.ch`, `polizze.ch` e `disdette.ch`.
-- **Branding Dinamico**: L'header e la navigazione cambiano dinamicamente logo e colori in base al modulo attivo.
-- **Routing per Dominio**: Implementata la logica per indirizzare l'utente al modulo corretto in base al dominio di accesso.
-- **Spostamento Interno**: Rimpiazzato il sistema di invio esterno con uno spostamento interno dei documenti tra `workspace` e i moduli finali.
-- **Aggiornamento Documentazione**: Aggiornati tutti i file di documentazione (README, CHANGELOG, metadata) per riflettere questa importante evoluzione.
-
-# Note del 06/10/2025 - v7.5.0
-- **Implementazione Sincronizzazione in Tempo Reale**: Eseguito un refactoring completo dell'architettura dati per renderla reattiva e sincronizzata tra i dispositivi.
-- **Da `get` a `onSnapshot`**: Sostituito il caricamento dati una tantum con listener in tempo reale (`onSnapshot`) in `services/firestoreService.ts` per tutte le collezioni principali (profilo utente, risultati, storico, chat).
-- **Context Reattivo**: Aggiornato `AuthContext.tsx` per iscriversi agli aggiornamenti del profilo utente, garantendo che il saldo ScanCoin e altri dati siano sempre sincronizzati.
-- **App Reattiva**: Modificato `App.tsx` per utilizzare i nuovi listener, assicurando che l'interfaccia utente si aggiorni istantaneamente a qualsiasi modifica proveniente dal database, sia essa locale o da un altro dispositivo.
-- **Documentazione**: Aggiornati i file `README.md`, `CHANGELOG.md` e `LandingPage.tsx` per riflettere questa nuova, importante funzionalità. L'app è ora un'esperienza cloud-native a tutti gli effetti.
-- Aggiornata la versione a 7.5.0.
-
-# Note del 05/10/2025 - v7.4.3
-- **Modello di Consenso Opt-In**: Implementato un nuovo flusso di consenso per l'analisi dei documenti da parte di Ugo, basato su un modello "opt-in" per una maggiore protezione della privacy.
-- **Nuova Impostazione**: Aggiunta l'opzione `ugoContextAwarenessEnabled` (disattivata di default) in `services/settingsService.ts`.
-- **UI di Attivazione**: Aggiunto un interruttore dedicato in `pages/ProfilePage.tsx` per permettere all'utente di attivare/disattivare la funzionalità.
-- **Logica Contestuale**: Modificata la funzione `handleSendMessage` in `App.tsx`. Se la funzione è disattivata, Ugo rileva le domande che richiedono contesto e risponde con un messaggio predefinito che invita l'utente ad attivare la funzione, includendo un'azione `[ACTION:navigate_to_profile]`.
-- **Istruzioni AI Aggiornate**: Il system prompt di Ugo è stato aggiornato per gestire correttamente entrambi gli scenari (con e senza contesto).
-- Aggiornata la documentazione e la versione a 7.4.3.
-
-# Note del 04/10/2025 - v7.4.2
-- **Correzione Bug Critico**: Risolto un problema nel flusso di consenso del chatbot in `App.tsx`. Anche dopo che l'utente dava il consenso, la variabile di stato locale non veniva aggiornata, causando la visualizzazione del messaggio di privacy ad ogni interazione. La logica è stata corretta per procedere immediatamente dopo aver ottenuto il consenso.
-- Aggiornata la documentazione e la versione a 7.4.2.
-
-# Note del 03/10/2025 - v7.4.1
-- **Correzione**: Implementata l'interfaccia utente per la sezione "Impostazioni Chatbot" in `ProfilePage.tsx`, che era stata omessa nella versione precedente. La sezione ora contiene correttamente gli interruttori per la proattività e la gamification, il pulsante per resettare la chat e la lista delle chat archiviate.
-- Aggiornata la documentazione e la versione a 7.4.1.
-
-# Note del 02/10/2025 - v7.4.0
-- Implementate le richieste per migliorare la gestione della chat.
-- **Nuovo Pulsante Impostazioni**: Aggiunta un'icona a ingranaggio nell'header della chat che porta alla pagina Profilo.
-- **Sezione Impostazioni Chatbot**: Creata una nuova sezione in `ProfilePage.tsx` per centralizzare le opzioni di Ugo:
-    - **Controllo Proattività**: Switch per abilitare/disabilitare i suggerimenti automatici.
-    - **Controllo Gamification**: Switch per abilitare/disabilitare le ricompense.
-    - **Gestione Cronologia**: Aggiunto un pulsante per cancellare la chat corrente.
-    - **Archivio Chat**: Spostata la lista delle chat archiviate in questa nuova sezione.
-- **Chiarimento Consenso**: Specificato nel changelog che il popup di consenso unico viene mostrato una sola volta anche agli utenti esistenti.
-- Aggiornata la documentazione e la versione a 7.4.0.
-
-# Note del 02/10/2025 - v7.3.0
-- **Potenziamento Visione Ugo**: Implementata una modifica fondamentale per rendere Ugo un vero assistente contestuale. Ora, prima di ogni domanda dell'utente, l'app inietta nel prompt un riepilogo di tutti i documenti presenti nell'area di lavoro.
-- **Istruzioni di Sistema Rafforzate**: Modificato il system prompt di Ugo per istruirlo esplicitamente ad usare il contesto fornito e a non rispondere mai più di non poter vedere i documenti per privacy. Rafforzata anche la regola sulla generazione del JSON per evitare il wrapping in markdown.
-- **Consenso Privacy Unico**: Sostituito il consenso "just-in-time" con un modello di consenso globale. La prima volta che Ugo deve analizzare i documenti, chiede un'autorizzazione unica che viene salvata in modo persistente.
-- Queste modifiche risolvono il problema della "cecità" di Ugo, lo rendono un assistente molto più potente e gestiscono la privacy in modo trasparente e non ripetitivo.
-- Aggiornata tutta la documentazione e la versione a 7.3.0.
-
-# Note del 01/10/2025 - v7.2.0
-- **Correzione Bug Ugo**: Risolto un problema critico per cui le azioni JSON di Ugo non venivano eseguite. La causa era il wrapping del JSON in blocchi di markdown da parte di Gemini. Aggiunta una logica di pulizia della stringa prima del parsing per risolvere il problema in modo robusto.
-- **Potenziamento Ugo - Detective**: Migliorata la capacità di ricerca di Ugo. Ora, quando gli viene chiesto di trovare dei documenti, la sua ricerca non si limita ai titoli ma si estende al contenuto, ai soggetti e ai riassunti, fornendo risultati più pertinenti.
-- **Potenziamento Ugo - Summarizer**: Introdotta una nuova potente funzionalità. Gli utenti possono selezionare più fascicoli e cliccare "Chiedi a Ugo" per avviare una conversazione contestuale. Ugo può riassumere i documenti, confrontarli o rispondere a domande specifiche su di essi.
-- **Consenso Privacy**: Per la funzione "Summarizer", è stato aggiunto un popup di consenso che informa l'utente che il contenuto dei documenti verrà inviato all'AI. Il consenso viene salvato per non essere richiesto nuovamente.
-- Aggiornata tutta la documentazione e la versione a 7.2.0.
-
-# Note del 30/09/2025 - v7.1.1
-- Implementate due funzionalità dal backlog per migliorare il flusso di lavoro.
-- **Scatto Continuo di Default**: La fotocamera ora si avvia in modalità multi-pagina, con una pausa di 2 secondi tra gli scatti automatici per facilitare il riposizionamento dei documenti.
-- **Copia Rapida UUID**: Aggiunto un pulsante "Copia ID" su ogni pagina analizzata per copiare rapidamente l'identificativo univoco del documento.
-- Aggiornata tutta la documentazione e la versione a 7.1.1.
-
-# Note del 29/09/2025 - v7.0.1
-- Implementate le misure anti-spam per il chatbot "Ugo".
-- **Filtro Contenuti**: Applicate le `safetySettings` di Gemini a tutte le conversazioni per bloccare contenuti dannosi (harassment, hate speech, etc.) a livello di API.
-- **Rate Limiting**: Introdotto un limite di frequenza lato client in `Chatbot.tsx` per prevenire l'invio di messaggi troppo ravvicinati. L'utente riceve un feedback visivo con un timer di cooldown.
-- Aggiornata tutta la documentazione e la versione a 7.0.1.
-
-# Note del 28/09/2025 - v6.44.0
-- Implementato il "Selettore Intelligente" che suggerisce proattivamente la modalità di scansione dopo il caricamento dei file.
-- Implementata la modalità di "Fallback Offline",attivabile dal profilo, che permette di continuare a lavorare senza connessione internet usando un motore locale.
-- Modificato il flusso di lavoro: i file caricati vengono messi in attesa e l'utente deve confermare l'aggiunta alla coda di elaborazione.
-- Aggiornata la base di conoscenza dell'assistente AI "Ugo" per includere le nuove funzionalità.
-- Aggiornata la documentazione e la versione a 6.44.0.
-
-# Note del 27/09/2025 - v6.43.0
-- Implementate le tre proposte discusse con l'utente.
-  1. **Nuovo Modello Documenti d'Identità**: Aggiunta la modalità "identity" in `geminiService` con uno schema specializzato, un costo dedicato (20 ScanCoin) e la logica per trasformare l'output in un formato standard. Aggiornata tutta l'UI (`ProcessingModeSelector`, `ModeInfoModal`, ecc.) per includere la nuova modalità.
-  2. **Offset Lente d'Ingrandimento**: Modificata la funzione `draw` nel componente `CropView` (`CameraView.tsx`) per renderizzare la lente d'ingrandimento in una posizione fissa (angolo in alto a sinistra), evitando che venga coperta dal dito dell'utente.
-  3. **Riprogettazione Pagina Changelog**: Modificato `ChangelogPage.tsx` per aggiungere una sezione "Roadmap Futura" statica e per parsare il file `CHANGELOG.md` in modo più intelligente, mostrando etichette colorate per tipo di modifica (`Aggiunto`, `Migliorato`, ecc.). Aggiornato il file `CHANGELOG.md` con il nuovo formato.
-- Aggiornata la documentazione e la versione a 6.43.0.
-
-# Note del 26/09/2025 - v6.42.0
-- Implementata la richiesta di rendere il tutorial sempre accessibile.
-- **Profilo Utente**: Aggiunto un pulsante "Avvia Tour Guidato" nella pagina del Profilo.
-- **Assistente Ugo**: Potenziato Ugo per riconoscere comandi come "avvia il tutorial" ed eseguire l'azione corrispondente.
-- **Refactoring**: La funzione `startTutorial` ora resetta lo stato (selezioni, gruppi espansi) per un avvio pulito.
-- Aggiornata tutta la documentazione e la versione a 6.42.0.
-
-# Note del 25/09/2025 - v6.41.0
-- Implementata la richiesta di ampliare il tutorial e potenziare il pulsante "Prova Demo".
-- **Tutorial Esteso**: Il tour guidato è stato esteso da 6 a 12 passaggi per coprire tutte le funzionalità chiave, inclusa l'interazione con i risultati, la selezione multipla e la navigazione.
-- **Tutorial Interattivo**: Il tour ora esegue azioni (es. espandere un fascicolo, selezionarne un altro) per guidare l'utente in modo più dinamico.
-- **Pulsante Demo Potenziato**: Cliccando "Prova Demo", l'app ora chiede conferma se l'area di lavoro non è vuota. Successivamente, carica i dati di esempio e chiede all'utente se vuole iniziare il tour guidato, rendendolo sempre accessibile.
-- Aggiornata tutta la documentazione e la versione a 6.41.0.
-
-# Note del 24/09/2025 - v6.40.0
-- Riprogettata completamente l'interfaccia e la logica della fotocamera per un'esperienza moderna e professionale.
-- **UI Moderna**: Riscritto `CameraView.tsx` con un layout a controlli "fluttuanti" e animazioni fluide.
-- **"Ugo Experience" Potenziata**: Introdotta la "Ugo Experience" con una maschera 3D dinamica (`DynamicMeshOverlay.tsx`) che combina i dati di OpenCV e Gemini per una guida visiva precisa e reattiva. Aggiunto `useUgoExperience.ts` per incapsulare la logica di streaming Gemini a bassa latenza.
-- **Galleria Multi-Scatto**: Aggiunta una nuova vista galleria (`GalleryView` in `CameraView.tsx`) per gestire le scansioni multiple.
-- **Ritaglio di Precisione**: Potenziato il `CropView` con una lente d'ingrandimento per un posizionamento accurato degli angoli.
-- **Modularizzazione del Codice**: La logica della fotocamera è stata scomposta in custom hook e componenti dedicati per una migliore manutenibilità.
-- Aggiornata tutta la documentazione e la versione a 6.40.0.
-
-# Note del 23/09/2025 - v6.39.0
-- Implementato il miglioramento richiesto per la selezione flessibile della modalità di scansione.
-- Rimosso il blocco (`disabled`) dal selettore di modalità in `Workspace.tsx`, consentendo all'utente di scegliere la modalità per i prossimi file da caricare anche mentre la coda di elaborazione è attiva.
-- Ogni file accodato ora conserva la modalità selezionata al momento del suo caricamento, permettendo di avere una coda di lavoro eterogenea.
-- Aggiornata tutta la documentazione e la versione a 6.39.0.
-
-# Note del 22/09/2025 - v6.38.0
-- Reimplementate le funzionalità proattive e di gamification del chatbot "Ugo".
-- **Assistenza Proattiva**: Ugo ora avvia autonomamente conversazioni se rileva documenti non sicuri o un saldo ScanCoin basso. La logica utilizza `sessionStorage` per evitare di mostrare lo stesso avviso più volte.
-- **Gamification (Sentiment)**: Ugo ora analizza il sentiment dei messaggi dell'utente. Se l'interazione è positiva dopo un certo numero di messaggi, l'utente viene premiato con 50 ScanCoin bonus. La ricompensa è limitata a una per sessione.
-- Aggiunta la funzione `analyzeSentimentForGamification` in `geminiService.ts`.
-- Aggiornata tutta la documentazione e la versione a 6.38.0.
-
-# Note del 21/09/2025 - v6.37.0
-- Reimplementato il chatbot "Ugo" dopo il suo temporaneo disabilitamento.
-- **Refactoring Architettura**: La logica della chat è stata ricostruita utilizzando l'API `ai.chats.create` di Gemini, che è ottimizzata per conversazioni multi-turno e garantisce maggiore stabilità e coerenza.
-- **Funzionalità Complete**: Tutte le funzionalità di Ugo, incluse le azioni sull'interfaccia (es. `setTheme`, `findAndMerge`) e le logiche di gamification, sono state ripristinate e testate.
-- **Correzione Bug**: Corretto un bug nella funzione `redo` (Ripristina) del custom hook `useHistoryState`, che erroneamente si comportava come `undo` (Annulla).
-- Aggiornata tutta la documentazione e la versione a 6.37.0.
-
-# Note del 20/09/2025 - v6.36.0
-- Implementato il tour guidato interattivo per i nuovi utenti.
-- Creato il nuovo componente `TutorialManager.tsx` per gestire la logica e l'UI del tour (overlay, highlight, tooltip).
-- Aggiunto lo stato e la logica di controllo del tour in `App.tsx`.
-- Il tour si avvia cliccando sul banner che appare su un'area di lavoro vuota, carica i dati demo e guida l'utente attraverso 6 passaggi chiave.
-- Aggiunti gli ID necessari ai componenti target (`Workspace`, `FileDropzone`, `ResultsDisplay`) per l'evidenziazione.
-- Aggiornata tutta la documentazione e la versione a 6.36.0.
-
-# Note del 19/09/2025 - v6.35.0
-- Sostituito il motore di scansione OpenCV con una versione più avanzata e robusta basata sul codice fornito dall'utente.
-- Il nuovo motore (`documentScannerEngine.ts`) utilizza una pipeline di elaborazione migliorata (soglia adattiva, filtri morfologici) e include la classificazione del tipo di documento in tempo reale.
-- La gestione della memoria del motore è stata resa più sicura e robusta per prevenire memory leak.
-- Aggiornata la `CameraView.tsx` per mostrare un badge con il tipo di documento rilevato.
-- Aggiornata tutta la documentazione e la versione a 6.35.0.
-
-# Note del 18/09/2025 - v6.34.0
-- Implementate due richieste di miglioramento dell'esperienza utente.
-- **Menu Circolare Potenziato**: Aggiunta la logica per un'interazione "premi e rilascia". L'azione viene eseguita al rilascio del tasto destro, offrendo un flusso rapido per utenti esperti.
-- **Selettore Tema Semplificato**: Rimosso il sottomenu dal menu contestuale globale e sostituito con tre opzioni dirette (Chiaro, Scuro, Sistema) con icone dedicate, per un cambio tema più immediato.
-- Aggiornata tutta la documentazione e la versione a 6.34.0.
-
-# Note del 17/09/2025 - v6.33.0
-- Implementate le due funzionalità di menu contestuale richieste dall'utente.
-  1. **Menu Contestuale Globale**: Attivato con il tasto destro su aree vuote, offre scorciatoie per cambio tema, navigazione e avvio scansioni.
-  2. **Menu Contestuale per Storico**: Attivato con il tasto destro su una riga dello storico, permette di trovare il fascicolo, segnalare un problema o creare una scansione simile.
-- La funzione "Trova Fascicolo" scorre fino al documento e lo evidenzia con un'animazione.
-- Aggiornata tutta la documentazione e la versione a 6.33.0.
-
-# Note del 16/09/2025 - v6.32.0
-- Implementato il nuovo **Menu Contestuale Circolare** per i fascicoli.
-- Il menu si attiva con il tasto destro e offre accesso rapido a tutte le azioni principali (seleziona, espandi, invia, scarica ZIP/PDF, dividi).
-- Creato il nuovo componente riutilizzabile `CircularContextMenu.tsx`.
-- Aggiornata tutta la documentazione e la versione a 6.32.0.
-
-# Note del 15/09/2025 - v6.31.0
-- Potenziato il chatbot "Ugo" per renderlo interattivo.
-- **Centralizzazione Stato**: Lo stato delle preferenze (tema, modalità primarie) è stato spostato in `App.tsx` per essere accessibile globalmente. `ProfilePage` è stato aggiornato per ricevere queste impostazioni come props.
-- **Nuove Azioni Chatbot**: Aggiunte le azioni `setTheme` e `setPrimaryModes` alle istruzioni di sistema di Ugo. `handleBotFunctionCall` è stato ampliato per eseguire queste azioni e inviare messaggi di conferma.
-- **Feedback Conversazionale**: Aggiunta la funzione `handleFeedbackResponse` e aggiornato `Chatbot.tsx` per permettere a Ugo di rispondere quando un utente clicca sui pulsanti di feedback.
-- Aggiornata tutta la documentazione e la versione a 6.31.0.
-
-# Note del 14/09/2025 - v6.30.0
-- Risolto il problema segnalato dall'utente "Non vedo il modo per installare la web app".
-- Il pulsante di installazione in `ProfilePage.tsx` è stato reso sempre visibile, ma viene disabilitato e mostra un testo di aiuto se la PWA non è installabile in quel momento.
-- Aggiornata la logica del chatbot in `App.tsx`: quando l'utente chiede di installare l'app ma `isInstallable` è `false`, Ugo ora risponde con un messaggio esplicativo invece di fallire l'azione.
-- Aggiornata tutta la documentazione e la versione a 6.30.0.
-
-# Note del 12/09/2025 - v6.28.0
-- Trasformata l'applicazione in una Progressive Web App (PWA) per renderla installabile e utilizzabile offline.
-- **`manifest.json`**: Creato il file manifest per definire nome, icone, colori e comportamento dell'app.
-- **`service-worker.js`**: Implementato un service worker che mette in cache le risorse principali dell'app (shell, script, stili), consentendo un avvio quasi istantaneo e il funzionamento offline.
-- **Icone**: Create icone dedicate (standard e "maskable") per una corretta visualizzazione su tutte le piattaforme.
-- **Aggiornamento HTML**: Modificato `index.html` per collegare il manifest e registrare il service worker.
-- Aggiornata tutta la documentazione e la versione a 6.28.0.
-
-# Note del 11/09/2025 - v6.27.0
-- Riprogettata la pagina dei prezzi in base al feedback dell'utente.
-- La nuova interfaccia mette in evidenza i pacchetti di ricarica singola ("pacchetti singoli") come opzione principale.
-- Gli abbonamenti sono ora presentati come un'alternativa secondaria per un valore aggiunto.
-- Aggiunta una casella di controllo "Trasformalo in abbonamento" sulle schede di ricarica per un upsell intelligente.
-- Aggiornata tutta la documentazione e la versione a 6.27.0.
-
-# Note del 10/09/2025 - v6.26.0
-- Riprogettata completamente la pagina dei prezzi per introdurre un modello di business basato su abbonamenti e un'offerta speciale "Founders Edition".
-- La nuova pagina è dinamica, con un selettore per la fatturazione mensile o annuale.
-- Questa modifica implementa il punto 1.1 della roadmap ("Introduzione Pagamenti e Piani"), spostandolo di fatto nel log di sviluppo. L'integrazione di un sistema di pagamento reale (es. Stripe) rimane come prossimo passo logico.
-- Aggiornata tutta la documentazione e la versione a 6.26.0.
-
-# Note del 09/09/2025 - v6.25.0
-- Implementate le "funzionalità nascoste" per il chatbot Ugo come richiesto.
-- **Gestione Reclami e Rimborsi**: Ugo ora rileva i reclami, fornisce un rimborso una tantum per sessione e informa che il feedback verrà utilizzato per migliorare il servizio.
-- **Invito Community**: Dopo 5 feedback costruttivi, Ugo invita l'utente a una community Telegram esclusiva.
-- **Supporto Dialetti**: Ugo ora riconosce e risponde nei dialetti svizzeri con un tono umile.
-- **Documentazione**: Creato un nuovo file `Privato/ChatbotNotes.txt` per documentare in dettaglio queste logiche per riferimenti futuri.
-- Aggiornata tutta la documentazione e la versione a 6.25.0.

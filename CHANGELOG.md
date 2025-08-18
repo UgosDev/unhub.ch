@@ -4,6 +4,29 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.5.0]
+
+### Aggiunto
+* **Archivio HD**: Introdotta una nuova funzionalità premium a pagamento in `archivio.ch` che permette agli utenti di conservare permanentemente le scansioni originali ad alta risoluzione.
+* **Banner Promozionale**: Aggiunto un banner informativo nella pagina `Archivio` per presentare la nuova opzione "Archivio HD" e i relativi piani di costo.
+
+### Modificato
+* **Termini di Servizio**: Aggiornati i termini contrattuali con una nuova sezione dedicata all'"Archivio HD", che include dettagli sui prezzi, sulla garanzia di servizio di 10 anni e sulla politica di esportazione dati in caso di chiusura del servizio.
+
+## [9.4.0]
+
+### Aggiunto
+* **Scansione da Video e Potenziamento OpenCV**: Introdotta una nuova modalità di scansione che analizza un feed video in tempo reale.
+* **Motore di Scansione Avanzato**: Implementato un nuovo e robusto `DocumentScannerEngine` basato su OpenCV.js per un rilevamento dei bordi dei documenti in tempo reale, più veloce e affidabile, sia per foto che per video.
+* **Feedback Visivo "Holographic Mesh"**: Sostituito il vecchio contorno con un `DynamicMeshOverlay` interattivo, una maschera 3D che si adatta alla prospettiva e cambia colore per guidare l'utente verso lo scatto perfetto.
+
+### Migliorato
+* **Interfaccia Fotocamera**: Riprogettata completamente la `CameraView` con un'estetica moderna, controlli ottimizzati e un'esperienza utente più fluida, eliminando la necessità di un selettore separato per la "Ugo Experience".
+* **Stabilità e Performance**: La logica della fotocamera è stata modularizzata in custom hook (`useCameraStream`, `useDeviceTilt`, `useDocumentScanner`) per una migliore manutenibilità e prestazioni.
+
+### Rimosso
+* **Selettore "Ugo Experience"**: La funzionalità di assistenza AI è ora integrata nell'esperienza di scansione di base ("Ugo Vision"), semplificando l'interfaccia.
+
 ## [9.2.0]
 
 ### Migliorato

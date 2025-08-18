@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scansioni-ch-cache-v9.2.0';
+const CACHE_NAME = 'scansioni-ch-cache-v9.5.0';
 
 const PRECACHE = [
   '/', '/index.html',

@@ -72,6 +72,8 @@ const getElementSelector = (el: HTMLElement): string => {
     return tagName;
 };
 
+const isMobileDevice = () => /Mobi/i.test(navigator.userAgent);
+
 
 // --- CONSTANTI CHATBOT ---
 const UGO_SYSTEM_INSTRUCTION_BASE = `You are "Ugo", a friendly and expert virtual assistant for the web application scansioni.ch. Your purpose is to help users understand and use the application effectively. You must always maintain a perfect command of the main Swiss languages (Italian, German, French).
@@ -496,6 +498,41 @@ export function useAppLogic() {
       }
   }, [user, isAdminAccessGranted]);
 
+  const onOpenCamera = useCallback(async () => {
+    if (isMobileDevice()) {
+        const element = document.documentElement;
+        try {
+            if (element.requestFullscreen) {
+                await element.requestFullscreen();
+            } else if ((element as any).webkitRequestFullscreen) { // Safari
+                await (element as any).webkitRequestFullscreen();
+            } else if ((element as any).msRequestFullscreen) { // IE11
+                await (element as any).msRequestFullscreen();
+            }
+        } catch (err) {
+            console.warn("La richiesta di schermo intero è fallita:", err);
+        }
+    }
+    setIsCameraOpen(true);
+  }, []);
+
+  const onCloseCamera = useCallback(async () => {
+      if (document.fullscreenElement) {
+          try {
+              if (document.exitFullscreen) {
+                  await document.exitFullscreen();
+              } else if ((document as any).webkitExitFullscreen) { // Safari
+                  await (document as any).webkitExitFullscreen();
+              } else if ((document as any).msExitFullscreen) { // IE11
+                  await (document as any).msExitFullscreen();
+              }
+          } catch (err) {
+              console.warn("L'uscita dallo schermo intero è fallita:", err);
+          }
+      }
+      setIsCameraOpen(false);
+  }, []);
+
   const onToggleExpandGroup = useCallback((groupId: string) => {
       setExpandedGroups(prev =>
           prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId]
@@ -550,7 +587,7 @@ export function useAppLogic() {
 
     const globalMenuActions = useMemo<ContextMenuAction[]>(() => [
         { label: 'Aggiungi File', icon: React.createElement(DocumentPlusIcon, { className: "w-5 h-5"}), handler: () => document.querySelector<HTMLElement>('#tutorial-file-dropzone')?.click() },
-        { label: 'Scatta Foto', icon: React.createElement(CameraIcon, { className: "w-5 h-5"}), handler: () => setIsCameraOpen(true) },
+        { label: 'Scatta Foto', icon: React.createElement(CameraIcon, { className: "w-5 h-5"}), handler: () => onOpenCamera() },
         { type: 'separator' },
         { label: 'Parla con Ugo', icon: React.createElement(ChatBubbleLeftRightIcon, { className: "w-5 h-5"}), handler: () => setIsChatOpen(true) },
         { label: 'Avvia Tour Guidato', icon: React.createElement(SparklesIcon, { className: "w-5 h-5"}), handler: handleStartTutorial },
@@ -560,7 +597,7 @@ export function useAppLogic() {
             { label: 'Profilo', handler: () => navigate('profile')},
             { label: 'Guida', handler: () => navigate('guide')},
         ] },
-    ], [setIsCameraOpen, setIsChatOpen, handleStartTutorial, navigate]);
+    ], [onOpenCamera, setIsChatOpen, handleStartTutorial, navigate]);
 
   const documentGroups = useMemo<DocumentGroup[]>(() => {
     const validResults = results.filter(r => r.analysis.categoria !== 'DuplicatoConfermato');
@@ -710,7 +747,7 @@ export function useAppLogic() {
         if (actionMatch) {
             const action = actionMatch[1];
             if (action === 'highlight_mode_selector') setHighlightedElement('mode-selector');
-            if (action === 'open_camera') setIsCameraOpen(true);
+            if (action === 'open_camera') onOpenCamera();
             if (action === 'open_email_import') setIsEmailImportOpen(true);
             if (action === 'start_demo') {
                 setResults(getDemoData());
@@ -736,7 +773,7 @@ export function useAppLogic() {
             }
             return [...prev, { role: 'model', text: cleanText, quickReplies, originalUserQuery }];
         });
-    }, [navigate, setResults, setIsCameraOpen, setIsEmailImportOpen, setIsDemoMode]);
+    }, [navigate, setResults, onOpenCamera, setIsEmailImportOpen, setIsDemoMode]);
 
 
     const processUgoMessage = useCallback((rawResponse: string, originalUserQuery: string) => {
@@ -1238,8 +1275,8 @@ export function useAppLogic() {
       } else if (imageDataUrls.length > 0) {
           setError("Errore nella conversione delle immagini catturate dalla fotocamera.");
       }
-      setIsCameraOpen(false);
-  }, [addFilesToQueue, processingMode, shouldExtractImages]);
+      onCloseCamera();
+  }, [addFilesToQueue, processingMode, shouldExtractImages, onCloseCamera]);
 
   const onDismissTutorial = useCallback(() => {
     setShowTutorialBanner(false);
@@ -1495,7 +1532,8 @@ export function useAppLogic() {
     shouldExtractImages,
     onShouldExtractImagesChange,
     onFilesSelected,
-    onOpenCamera: () => setIsCameraOpen(true),
+    onOpenCamera,
+    onCloseCamera,
     onOpenEmailImport: () => setIsEmailImportOpen(true),
     onClear: handleClear,
     onUpdateResult: handleUpdateResult,

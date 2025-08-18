@@ -1,4 +1,5 @@
 
+
 import React, { useRef, useEffect } from 'react';
 import { useAppLogic } from './hooks/useAppLogic';
 import { AppRouter } from './components/AppRouter';
@@ -157,7 +158,7 @@ export const AuthenticatedApp = () => {
             <Footer onNavigate={logic.navigate} isAuth={true} brandKey={brandKey} appLastUpdated={logic.appLastUpdated} />
 
             {/* Modals and Overlays */}
-            {logic.isCameraOpen && <CameraView onClose={() => logic.setIsCameraOpen(false)} onFinish={logic.handleCameraFinish} processingMode={logic.processingMode} />}
+            {logic.isCameraOpen && <CameraView onClose={logic.onCloseCamera} onFinish={logic.handleCameraFinish} processingMode={logic.processingMode} />}
             {logic.isEmailImportOpen && <EmailImportView onClose={() => logic.setIsEmailImportOpen(false)} onQueueFiles={(files, mode) => {
                 const tasks = files.map(file => ({
                     id: crypto.randomUUID(), file, mode, suggestedMode: null, isSuggesting: false, shouldExtractImages: logic.shouldExtractImages

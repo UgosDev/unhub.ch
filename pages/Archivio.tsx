@@ -3,7 +3,7 @@ import type { ProcessedPageResult } from '../services/geminiService';
 import { performSemanticSearch } from '../services/geminiService';
 import {
   ArchivioChLogoIcon, ArchivioChWordmarkIcon, DocumentTextIcon,
-  MagnifyingGlassIcon, Bars3Icon, XMarkIcon, FolderIcon, PlusCircleIcon
+  MagnifyingGlassIcon, Bars3Icon, XMarkIcon, FolderIcon, PlusCircleIcon, SparklesIcon
 } from '../components/icons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -24,7 +24,41 @@ interface ArchivioProps {
   onMoveDocument: (doc: ProcessedPageResult) => void;
   onDeleteDocument: (doc: ProcessedPageResult) => void;
   onUpdateDocument: (doc: ProcessedPageResult) => void;
+  onNavigate: (page: string) => void;
 }
+
+/** ---------- Banner Archivio HD ---------- */
+const HdArchiveBanner: React.FC<{ onDismiss: () => void, onNavigate: (page: string) => void }> = ({ onDismiss, onNavigate }) => (
+    <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden border border-purple-500/30">
+        <div className="absolute -top-8 -right-8 opacity-20">
+            <SparklesIcon className="w-32 h-32 text-purple-400" />
+        </div>
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-grow">
+                <h3 className="text-2xl font-bold flex items-center gap-2">
+                    <span className="px-2 py-1 bg-purple-500 rounded-md text-sm font-bold">HD</span>
+                    <span>Potenzia il tuo Archivio</span>
+                </h3>
+                <p className="mt-2 text-slate-300 max-w-2xl">Conserva per sempre una copia originale ad alta risoluzione di ogni scansione. Perfetta per stampe future e per la massima tranquillità.</p>
+                <div className="mt-3 text-sm text-slate-400">
+                    <span className="font-semibold">Opzioni:</span> 5 CHF/mese (15 GB) o 10 CHF una tantum (10 GB per sempre).
+                </div>
+            </div>
+            <div className="flex-shrink-0 flex items-center gap-3 w-full md:w-auto">
+                <button 
+                    onClick={() => onNavigate('pricing')} 
+                    className="flex-1 md:flex-none px-5 py-2.5 font-bold bg-white text-slate-900 rounded-lg hover:bg-slate-200 transition-colors"
+                >
+                    Scopri di più
+                </button>
+            </div>
+        </div>
+        <button onClick={onDismiss} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-white" aria-label="Chiudi banner">
+            <XMarkIcon className="w-5 h-5"/>
+        </button>
+    </div>
+);
+
 
 /** ---------- Pannello di anteprima ---------- */
 const DocumentPreviewPane: React.FC<{
@@ -120,6 +154,7 @@ const Archivio: React.FC<ArchivioProps> = ({
   onMoveDocument,
   onDeleteDocument,
   onUpdateDocument,
+  onNavigate,
 }) => {
   /** Stato base */
   const [view, setView] = useState<PrivacyView>('family');
@@ -132,6 +167,27 @@ const Archivio: React.FC<ArchivioProps> = ({
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  
+  const [showHdBanner, setShowHdBanner] = useState(false);
+  useEffect(() => {
+    try {
+        if (localStorage.getItem('hdArchiveBannerDismissed_v1') !== 'true') {
+            setShowHdBanner(true);
+        }
+    } catch(e) {
+        setShowHdBanner(true); // Default to show if localStorage fails
+    }
+  }, []);
+
+  const dismissHdBanner = () => {
+    setShowHdBanner(false);
+    try {
+        localStorage.setItem('hdArchiveBannerDismissed_v1', 'true');
+    } catch(e) {
+        console.warn("Could not save banner dismissal state.");
+    }
+  };
+
 
   /** Cartelle */
   const [folders, setFolders] = useState<Map<string, number>>(new Map());
@@ -549,6 +605,8 @@ const Archivio: React.FC<ArchivioProps> = ({
           <Bars3Icon className="w-6 h-6" />
         </button>
       </div>
+      
+      {showHdBanner && <HdArchiveBanner onDismiss={dismissHdBanner} onNavigate={onNavigate} />}
 
       {/* Main */}
       <div className="flex-grow flex gap-4 min-h-0">

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import { 
   XMarkIcon, CheckIcon, TrashIcon,
-  ArrowUturnLeftIcon, RectangleStackIcon, ScansioniChLevelIndicatorIcon,
+  ArrowUturnLeftIcon, ScansioniChLevelIndicatorIcon,
   BoltIcon, BoltSlashIcon, BoltAutoIcon
 } from './icons';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -205,9 +205,7 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
   const [isProcessingCapture, setIsProcessingCapture] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<{ dataUrl:string; corners:{x:number;y:number}[] }|null>(null);
-
-  const [multiShotEnabled, setMultiShotEnabled] = useState(true);
-  const [captureMode, setCaptureMode] = useState<'auto'|'manual'>('auto');
+  
   const [flashMode, setFlashMode] = useState<'auto'|'on'|'off'>('auto');
 
   const [captureProgress, setCaptureProgress] = useState(0);
@@ -216,8 +214,8 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
 
   const {
     isVideoReady, error: streamError, isTorchOn, torchSupported, applyTorchState,
-    requiresUserGesture,            // <-- nuovo
-    resumePlayback                  // <-- nuovo
+    requiresUserGesture,
+    resumePlayback
   } = useCameraStream(videoRef);
 
   const { isLevel, sensorStatus, bubblePosition } = useDeviceTilt();
@@ -229,7 +227,6 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
   const [videoDisplaySize,setVideoDisplaySize]=useState({width:0,height:0});
   const [processingSize,setProcessingSize]=useState({width:0,height:0});
 
-  // UI non bloccata da CV: inizializza solo sul video
   const isInitializing = !isVideoReady;
   const isAutoCaptureReady = isDocumentDetected && isStable;
   const prevIsAutoCaptureReady = usePrevious(isAutoCaptureReady);
@@ -255,26 +252,38 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
     sync(); const ro=new ResizeObserver(sync); ro.observe(canvas); return ()=>ro.disconnect();
   },[processingCanvasRef, videoRef]);
 
-  // rAF progress 1s
   useEffect(()=>{
     const DURATION=1000;
     const cancel=()=>{ if(rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current=null; startTsRef.current=null; setCaptureProgress(0); };
-    if(captureMode==='auto' && isAutoCaptureReady && !isProcessingCapture){
+    if(isAutoCaptureReady && !isProcessingCapture){
       const tick=(ts:number)=>{ if(startTsRef.current==null) startTsRef.current=ts;
         const p=Math.min(1,(ts-startTsRef.current)/DURATION); setCaptureProgress(p);
-        if(p>=1){ setCaptureProgress(0); startTsRef.current=null; handleCapture(); return; }
+        if(p>=1){ setCaptureProgress(0); startTsRef.current=null; handleCapture(true); return; }
         rafRef.current=requestAnimationFrame(tick);
       };
       rafRef.current=requestAnimationFrame(tick);
       return cancel;
     } else { cancel(); }
-  },[captureMode,isAutoCaptureReady,isProcessingCapture]);
+  },[isAutoCaptureReady,isProcessingCapture]);
 
   useEffect(()=>{
-    const onVis=()=>{ try{ __AC?.suspend?.(); }catch{} document.hidden? pause?.(): resume?.(); };
-    document.addEventListener('visibilitychange', onVis);
-    return ()=> document.removeEventListener('visibilitychange', onVis);
-  },[pause, resume]);
+    const video = videoRef.current;
+    if (!video) return;
+
+    const shouldBePaused = !!imageToCrop || isGalleryOpen;
+
+    if (shouldBePaused) {
+        pause?.();
+        if (!video.paused) {
+            video.pause();
+        }
+    } else {
+        resume?.();
+        if (video.paused) {
+            video.play().catch(e => console.error("Failed to resume video", e));
+        }
+    }
+  }, [imageToCrop, isGalleryOpen, pause, resume, videoRef]);
 
   useEffect(()=>{
     if(!torchSupported || flashMode!=='auto') return;
@@ -282,8 +291,8 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
     else if(typeof quality==='number' && quality>0.35) applyTorchState?.(false);
   },[quality, torchSupported, flashMode, applyTorchState]);
 
-  const handleCapture = useCallback(async ()=>{
-    if(!videoRef.current || !canvasRef.current || !detectedCorners) return;
+  const handleCapture = useCallback(async (isAuto = false)=>{
+    if(!videoRef.current || !canvasRef.current || (!detectedCorners && isAuto)) return;
     setIsProcessingCapture(true); playShutter();
 
     const video=videoRef.current, canvas=canvasRef.current;
@@ -298,13 +307,14 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
     const procH=processingCanvasRef.current?.height || video.videoHeight;
     const sx=video.videoWidth/procW, sy=video.videoHeight/procH;
 
-    const absCorners=orderTLTRBRBL(detectedCorners.map(p=>({x:p.x*sx, y:p.y*sy})));
+    const absCorners= detectedCorners ? orderTLTRBRBL(detectedCorners.map(p=>({x:p.x*sx, y:p.y*sy}))) : [
+        {x: 0, y: 0}, {x: video.videoWidth, y: 0}, {x: video.videoWidth, y: video.videoHeight}, {x: 0, y: video.videoHeight}
+    ];
     setImageToCrop({ dataUrl:imageDataUrl, corners: absCorners });
 
     triggerCooldown?.();
-    if(!multiShotEnabled){ onFinish([imageDataUrl]); }
     window.setTimeout(()=> setIsProcessingCapture(false), 600);
-  },[detectedCorners, multiShotEnabled, onFinish, triggerCooldown]);
+  },[detectedCorners, triggerCooldown]);
 
   const userFeedback = useMemo(()=>{
     if(isAutoCaptureReady) return 'Stai fermo...';
@@ -312,28 +322,8 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
     return feedback || 'Cerca un documento...';
   },[isDocumentDetected,isAutoCaptureReady,feedback]);
 
-  /* ==== Modali ==== */
-  if (isGalleryOpen){ pause?.(); return (
-    <GalleryView
-      images={capturedImages}
-      onClose={()=>{ setIsGalleryOpen(false); resume?.(); }}
-      onFinish={()=> onFinish(capturedImages)}
-      onDelete={(i)=> setCapturedImages(prev=> prev.filter((_,idx)=> idx!==i))}
-    />
-  );}
-
-  if (imageToCrop){ pause?.(); return (
-    <CropView
-      imageDataUrl={imageToCrop.dataUrl}
-      initialCorners={imageToCrop.corners}
-      onConfirm={(warped)=>{ setCapturedImages(p=>[...p,warped]); setImageToCrop(null); resume?.(); if(!multiShotEnabled) onFinish([warped]); }}
-      onCancel={()=>{ setImageToCrop(null); resume?.(); }}
-    />
-  );}
-
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col text-white select-none">
-      {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
         <div className="flex items-center gap-3">
           <ScansioniChLevelIndicatorIcon 
@@ -361,19 +351,11 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
         </div>
       </header>
 
-      {/* Viewport */}
       <main ref={viewportRef} className="relative flex-grow flex items-center justify-center overflow-hidden">
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-          style={{ transform:'scale(1.02)' }}
-        />
+        <video ref={videoRef} playsInline muted className="w-full h-full object-cover" style={{ transform:'scale(1.02)' }} />
         <canvas ref={processingCanvasRef} className="hidden"/>
         <canvas ref={canvasRef} className="hidden"/>
 
-        {/* Badge CV in caricamento (non blocca la preview) */}
         {!isCvReady && isVideoReady && (
           <div className="absolute top-4 right-4 px-3 py-1 text-xs bg-black/60 text-white rounded">
             Carico modulo CV…
@@ -389,7 +371,6 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
           />
         )}
 
-        {/* Overlay “tap to start” per autoplay bloccato */}
         {requiresUserGesture && (
           <button
             onClick={resumePlayback}
@@ -404,29 +385,21 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 z-20 p-6 flex items-end justify-between bg-gradient-to-t from-black/60 to-transparent">
-        <div className="w-24 flex flex-col items-center gap-2">
-          <button onClick={()=> setMultiShotEnabled(!multiShotEnabled)} className="p-3 bg-black/40 rounded-full backdrop-blur-sm">
-            {multiShotEnabled ? <RectangleStackIcon className="w-6 h-6"/> : <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">1</div>}
-          </button>
-          <span className="text-xs font-semibold">{multiShotEnabled ? 'Multi-pagina' : 'Pagina singola'}</span>
-        </div>
+      <footer className="absolute bottom-0 left-0 right-0 z-20 p-6 flex items-center justify-between">
+        <button onClick={()=> capturedImages.length>0? onFinish(capturedImages) : null} disabled={capturedImages.length===0} className="w-24 flex flex-col items-center gap-2 disabled:opacity-50 font-bold text-purple-400">
+            {capturedImages.length > 0 ? "Fine" : ""}
+        </button>
 
         <div className="flex flex-col items-center gap-2">
-          {captureMode==='auto' && captureProgress>0 && <CircularProgressIndicator progress={captureProgress} />}
+          {captureProgress>0 && <CircularProgressIndicator progress={captureProgress} />}
           <button
-            onClick={handleCapture}
-            disabled={isProcessingCapture || (captureMode==='auto' && !isAutoCaptureReady)}
+            onClick={() => handleCapture(false)}
+            disabled={isProcessingCapture}
             className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 ring-4 ring-black/30 disabled:opacity-50 ${isAutoCaptureReady ? 'bg-green-500':'bg-white'}`}
             aria-label="Scatta foto"
           >
             <div className={`w-[68px] h-[68px] rounded-full border-4 ${isAutoCaptureReady ? 'border-green-800/50':'border-black'}`}/>
           </button>
-          <div className="flex items-center gap-3 bg-black/40 p-1 rounded-full backdrop-blur-sm">
-            <button onClick={()=>setCaptureMode('manual')} className={`px-4 py-1.5 text-xs font-bold rounded-full ${captureMode==='manual'?'bg-white text-black':'text-white'}`}>Manuale</button>
-            <button onClick={()=>setCaptureMode('auto')} className={`px-4 py-1.5 text-xs font-bold rounded-full ${captureMode==='auto'?'bg-white text-black':'text-white'}`}>Auto</button>
-          </div>
         </div>
 
         <button onClick={()=> capturedImages.length>0? setIsGalleryOpen(true):null} disabled={capturedImages.length===0} className="w-24 flex flex-col items-center gap-2 disabled:opacity-50">
@@ -440,9 +413,26 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
               </span>
             )}
           </div>
-          <span className="text-xs font-semibold">Galleria</span>
         </button>
       </footer>
+
+      {isGalleryOpen && (
+        <GalleryView
+          images={capturedImages}
+          onClose={() => setIsGalleryOpen(false)}
+          onFinish={() => onFinish(capturedImages)}
+          onDelete={(i) => setCapturedImages(prev => prev.filter((_, idx) => idx !== i))}
+        />
+      )}
+      
+      {imageToCrop && (
+        <CropView
+          imageDataUrl={imageToCrop.dataUrl}
+          initialCorners={imageToCrop.corners}
+          onConfirm={(warped) => { setCapturedImages(p => [...p, warped]); setImageToCrop(null); }}
+          onCancel={() => { setImageToCrop(null); }}
+        />
+      )}
 
       {(isInitializing || streamError) && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30">
@@ -473,7 +463,6 @@ const CircularProgressIndicator: React.FC<{ progress:number }> = ({ progress }) 
         <circle className="text-black/30" strokeWidth="8" stroke="currentColor" fill="transparent" r={radius} cx="60" cy="60"/>
         <circle className="text-green-400 transition-all duration-100" strokeWidth="8" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" stroke="currentColor" fill="transparent" r={radius} cx="60" cy="60"/>
       </svg>
-      <div className="relative px-4 py-2 bg-black/60 rounded-full font-bold text-white text-sm border border-white/30 backdrop-blur-sm">Stai fermo...</div>
     </div>
   );
 };
