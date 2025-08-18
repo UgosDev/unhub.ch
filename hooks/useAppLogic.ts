@@ -615,6 +615,8 @@ export function useAppLogic() {
             isSafe,
             pageCount: pages.length,
             tags: Array.from(allTags).sort(),
+            groupingReason: `Raggruppato per ${groupingKey.startsWith('file-') ? 'corrispondenza file' : 'contenuto simile'}`,
+            confidence: 'high' as const,
         };
     }).sort((a, b) => a.title.localeCompare(b.title));
   }, [results]);
@@ -1326,8 +1328,17 @@ export function useAppLogic() {
     setIsChatOpen(true);
     handleSendMessage(query);
   }, [handleSendMessage]);
-  const handleTutorialStepChange = useCallback(() => {}, []);
   
+  const handleTutorialStepChange = useCallback((stepIndex: number) => {
+    if (stepIndex >= 0 && stepIndex < activeTutorialSteps.length) {
+        const step = activeTutorialSteps[stepIndex];
+        if (step.preAction) {
+            step.preAction();
+        }
+        setCurrentTutorialStep(stepIndex);
+    }
+  }, [activeTutorialSteps]);
+
   const onPendingTaskChange = useCallback((id: string, updates: Partial<Omit<PendingFileTask, 'id' | 'file'>>) => {
       setPendingFileTasks(prevTasks => prevTasks.map(task => 
           task.id === id ? { ...task, ...updates } : task
@@ -1504,6 +1515,7 @@ export function useAppLogic() {
     onRetryGrouping: handleRetryGrouping,
     onUndo: undo,
     onRedo: redo,
+    canRedo,
     elapsedTime,
     totalScans: results.length,
     costInCoins: results.reduce((acc, r) => acc + (r.costInCoins || 0), 0),

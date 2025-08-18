@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import Tesseract from 'tesseract.js';
 import * as db from './db'; // Import per la ricerca vettoriale
@@ -95,6 +96,8 @@ export interface DocumentGroup {
     isSafe: boolean;
     pageCount: number;
     tags: string[];
+    groupingReason: string; // NUOVO: Per spiegare perché i documenti sono insieme
+    confidence: 'high' | 'medium' | 'low'; // NUOVO: Livello di confidenza del raggruppamento
 }
 
 export interface ProcessingTask {
@@ -375,11 +378,16 @@ const responseSchema = {
         destinatarioIndirizzo: { type: Type.STRING, description: "Opzionale. L'indirizzo postale completo del destinatario principale. Se l'indirizzo non è esplicito o appartiene all'utente, lascia questo campo vuoto." },
         qualitaScansione: { type: Type.STRING, description: "Valuta la qualità dell'immagine. 'Parziale' se il documento è visibilmente tagliato.", enum: ["Ottima", "Buona", "Sufficiente", "Bassa", "Parziale"] },
         lingua: { type: Type.STRING, description: "La lingua del documento (es. 'Italiano')." },
+        // --- CAMPI POTENZIATI PER IL RAGGRUPPAMENTO ---
+        titoloFascicolo: { type: Type.STRING, description: "Un titolo descrittivo per l'intero fascicolo (non solo questa pagina). Es: 'Fattura KPT Q3 2024'." },
+        normalizedEntityName: { type: Type.STRING, description: "CRUCIALE: Il nome del soggetto principale, normalizzato in CamelCase senza spazi o parole generiche (es. 'KPT', 'Sunrise', 'AziendaElettricaSA')." },
+        stableDocumentId: { type: Type.STRING, description: "CRUCIALE: L'identificativo più STABILE e UNIVOCO del documento (es. N. di Polizza, N. di Fattura, N. Cliente). Se assente, lascia VUOTO." },
+        pageIndicator: { type: Type.STRING, description: "Se vedi un numero di pagina esplicito (es. 'pag. 2/5', '2 di 5'), estrailo qui. Altrimenti usa 'N/A'." },
+        // --- VECCHI CAMPI MANTENUTI PER COMPATIBILITÀ (MA MENO IMPORTANTI) ---
         documentoCompleto: { type: Type.BOOLEAN, description: "È true se questa pagina è un documento completo, false se è parte di un documento più grande." },
-        numeroPaginaStimato: { type: Type.STRING, description: "Se vedi un numero di pagina (es. 'pag. 2/3'), estrailo qui. Altrimenti usa 'N/A'." },
-        titoloFascicolo: { type: Type.STRING, description: "Il titolo dell'intero fascicolo (non solo di questa pagina). DEVE essere il più descrittivo possibile. Es: 'KPT Condizioni Generali 2019'." },
-        groupingSubjectNormalized: { type: Type.STRING, description: "CRUCIALE: Estrai il soggetto principale e normalizzalo in CamelCase senza spazi, rimuovendo parole generiche. Esempi: 'LiechtensteinLife', 'KPT'." },
-        groupingIdentifier: { type: Type.STRING, description: "CRUCIALE: Estrai l'identificativo più stabile (numero polizza, ID contratto). Se assente, usa l'ANNO (YYYY) del documento. Esempio: '987-ABC' o '2024'." },
+        numeroPaginaStimato: { type: Type.STRING, description: "Legacy. Usa 'pageIndicator' per dati precisi. Altrimenti 'N/A'." },
+        groupingSubjectNormalized: { type: Type.STRING, description: "Legacy. Usa 'normalizedEntityName'." },
+        groupingIdentifier: { type: Type.STRING, description: "Legacy. Usa 'stableDocumentId'." },
         tags: {
             type: Type.ARRAY,
             description: "Una lista di 3-5 tag pertinenti e concisi per questo documento (es. 'Fattura', 'Digitale', 'Consulenza').",
@@ -449,7 +457,7 @@ const responseSchema = {
             required: ["isSafe", "threatType", "explanation"]
         }
     },
-    required: ["categoria", "dataDocumento", "soggetto", "riassunto", "qualitaScansione", "lingua", "documentoCompleto", "titoloFascicolo", "groupingSubjectNormalized", "groupingIdentifier", "datiEstratti", "documentCorners", "securityCheck"]
+    required: ["categoria", "dataDocumento", "soggetto", "riassunto", "qualitaScansione", "lingua", "documentoCompleto", "titoloFascicolo", "normalizedEntityName", "stableDocumentId", "pageIndicator", "datiEstratti", "documentCorners", "securityCheck"]
 };
 
 // --- FUNZIONI API GEMINI ESPORTATE ---
@@ -459,7 +467,7 @@ export const processPage = async (base64Data: string, mimeType: string, mode: Pr
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [
-            { text: "Analizza questo documento." },
+            { text: "Analizza questo documento seguendo lo schema. Presta la massima attenzione ai campi 'normalizedEntityName', 'stableDocumentId' e 'pageIndicator' per il raggruppamento." },
             { inlineData: { mimeType, data: base64Data } }
         ],
         config: {
@@ -570,8 +578,9 @@ export const processPageOffline = async (imageDataUrl: string): Promise<Partial<
                 lingua: "Italiano",
                 documentoCompleto: true,
                 titoloFascicolo: "Documento Offline",
-                groupingSubjectNormalized: "OfflineDoc",
-                groupingIdentifier: `offline-${Date.now()}`,
+                normalizedEntityName: "OfflineDoc",
+                stableDocumentId: `offline-${Date.now()}`,
+                pageIndicator: "1/1",
                 datiEstratti: [{ chiave: "Testo Rilevato (OCR)", valore: text.substring(0, 500) }],
                 documentCorners: [],
             },

@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import { useAppLogic } from './hooks/useAppLogic';
 import { AppRouter } from './components/AppRouter';
@@ -218,7 +219,7 @@ export const AuthenticatedApp = () => {
                         const group = logic.documentGroups.find(g => g.id === logic.circularMenu.groupId);
                         if (group) logic.handleDownloadGroupPdf(group);
                     }}
-                    onUngroup={() => logic.circularMenu.groupId && logic.handleUngroup(logic.circularMenu.groupId)}
+                    onUngroup={() => logic.circularMenu.groupId && logic.onUngroup(logic.circularMenu.groupId)}
                     actionsConfig={logic.appSettings.circularMenuActions}
                 />
             )}
