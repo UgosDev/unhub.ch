@@ -35,6 +35,28 @@ function UnauthenticatedApp({ brandKey }: { brandKey: BrandKey }) {
     const [currentNewsletter, setCurrentNewsletter] = useState<number | null>(null);
     const { user } = useAuth(); // Needed to pass isAuth to footer
 
+    // Stato per gestire l'accesso alla waitlist bypassato
+    const [waitlistAccess, setWaitlistAccess] = useState<Record<BrandKey, boolean>>(() => {
+        const access: Record<string, boolean> = {};
+        ['archivio', 'polizze', 'disdette'].forEach(brand => {
+            try {
+                access[brand] = sessionStorage.getItem(`waitlist_access_${brand}`) === 'true';
+            } catch (e) {
+                access[brand] = false; // Fallback in caso di errori con sessionStorage
+            }
+        });
+        return access as Record<BrandKey, boolean>;
+    });
+
+    const grantWaitlistAccess = (brandToGrant: BrandKey) => {
+        try {
+            sessionStorage.setItem(`waitlist_access_${brandToGrant}`, 'true');
+        } catch (e) {
+            console.warn('sessionStorage not available');
+        }
+        setWaitlistAccess(prev => ({ ...prev, [brandToGrant]: true }));
+    };
+
     const handleNavigate = (targetPage: string) => {
         setCurrentNewsletter(null); // Reset newsletter view on any navigation
         if (targetPage.startsWith('newsletter/')) {
@@ -53,8 +75,8 @@ function UnauthenticatedApp({ brandKey }: { brandKey: BrandKey }) {
     // Show waitlist for specific brands. The parent `App` component ensures this is only
     // rendered for unauthenticated users, so we only need to check the brand.
     const isWaitlistBrand = ['archivio', 'polizze', 'disdette'].includes(brandKey);
-    if (isWaitlistBrand) {
-         return <WaitlistPage onAccessGranted={() => { /* This might need a state lift in a real scenario */ }} brandKey={brandKey} onNavigate={handleNavigate} />;
+    if (isWaitlistBrand && !waitlistAccess[brandKey]) {
+         return <WaitlistPage onAccessGranted={() => grantWaitlistAccess(brandKey)} brandKey={brandKey} onNavigate={handleNavigate} />;
     }
 
     if (page === 'newsletter') {
