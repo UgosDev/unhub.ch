@@ -45,6 +45,15 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
 
+# Note del 16/10/2025 - v9.6.0
+- **Implementazione Funzionalità Archivio HD (Core)**: Implementata la logica completa per la funzionalità premium "Archivio HD".
+- **Modello Dati**: Aggiornati i dati utente (`Subscription`) per tracciare lo spazio di archiviazione HD usato e totale.
+- **Logica di Archiviazione**: Modificato il flusso di archiviazione per calcolare la dimensione dei file originali, controllare lo spazio disponibile e aggiornare l'utilizzo. In caso di spazio insufficiente, l'utente può scegliere di archiviare senza la copia HD.
+- **Dashboard**: Aggiunto un nuovo "serbatoio" (StorageCard) nella Dashboard per monitorare in tempo reale l'utilizzo dello spazio di archiviazione HD, con un avviso quando si raggiunge l'80% della capacità.
+- **Pagina Prezzi**: Aggiornata la pagina dei prezzi con le nuove offerte dedicate all'Archivio HD.
+- **UI Archivio**: I documenti in archivio ora mostrano un badge "HD" se la copia originale è salvata. È stato aggiunto un pulsante per scaricare la versione ad alta risoluzione.
+- **Documentazione e Versioning**: Aggiornati tutti i file rilevanti (`README.md`, `CHANGELOG.md`, `metadata.json`) alla versione 9.6.0.
+
 # Note del 15/10/2025 - v9.5.0
 - **Implementazione Funzionalità Archivio HD**: Introdotta una nuova opzione di monetizzazione come richiesto.
 - **Logica di Archiviazione**: Verificato che il flusso di elaborazione attuale in `useAppLogic.ts` salva correttamente sia l'immagine originale (`originalImageDataUrl`) sia quella elaborata (`processedImageDataUrl`), ponendo le basi tecniche per il servizio.

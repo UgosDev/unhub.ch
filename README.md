@@ -1,6 +1,6 @@
 # scansioni.ch
 
-**Versione: 9.5.0**
+**Versione: 9.6.0**
 
 Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata su un'architettura "human-in-the-loop" e un'economia interna basata su "ScanCoin".
 
@@ -24,7 +24,7 @@ Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata 
 
 ### Analisi AI & Gestione Documentale
 - **Estrazione Dati Intelligente**: Utilizza **Google Gemini** per classificare il documento, estrarre dati chiave e generare riassunti.
-- **Archivio HD**: Opzione a pagamento per conservare le scansioni originali in alta risoluzione, con garanzie a lungo termine.
+- **Archivio HD**: Opzione a pagamento per conservare le scansioni originali in alta risoluzione, con piani flessibili e un contatore di spazio dedicato nella dashboard.
 - **Raggruppamento Deterministico e Manuale**: Le pagine vengono raggruppate in modo affidabile, con strumenti manuali per unire, dividere o correggere i fascicoli.
 - **Assistente AI "Ugo"**: Un chatbot basato su Gemini che offre assistenza proattiva, esegue azioni e risponde a domande sui documenti.
 - **Importazione Multi-sorgente**: Aggiungi documenti tramite drag-and-drop, email, Google Drive o fotocamera.

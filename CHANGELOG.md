@@ -4,6 +4,18 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.6.0]
+
+### Aggiunto
+* **Funzionalità Archivio HD (Core)**: Implementata la logica completa per la funzionalità premium "Archivio HD", che permette di salvare le scansioni originali ad alta risoluzione.
+* **Contatore Spazio Dashboard**: Aggiunto un nuovo "serbatoio" visivo nella Dashboard per monitorare lo spazio di archiviazione HD, con un avviso all'80% della capacità.
+* **Logica di Archiviazione Intelligente**: Il sistema ora controlla lo spazio HD disponibile prima dell'archiviazione e chiede conferma all'utente in caso di spazio insufficiente.
+* **Badge e Download HD**: I documenti in archivio mostrano un badge "HD" se la copia originale è salvata, con un'opzione per scaricarla.
+
+### Modificato
+* **Pagina Prezzi**: Aggiornata la pagina dei prezzi per includere le nuove offerte dedicate all'Archivio HD (abbonamento e pacchetto "per sempre").
+* **Modello Dati Utente**: Estesa la struttura dati dell'utente per includere e tracciare l'utilizzo dello spazio di archiviazione HD.
+
 ## [9.5.0]
 
 ### Aggiunto
