@@ -1,5 +1,9 @@
 
 
+
+
+
+
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import Tesseract from 'tesseract.js';
 import * as db from './db'; // Import per la ricerca vettoriale
@@ -81,11 +85,17 @@ export interface ProcessedPageResult {
     isPrivate?: boolean;
     ownerUid?: string;
     ownerName?: string;
+    // --- CAMPI PER COLLABORAZIONE ---
+    uploaderUid?: string;
+    uploaderName?: string;
+    sharedWith?: string[]; // Array di UID di broker con cui è condiviso
+    // ---
     embedding?: number[];
     folderPath?: string;
     fascicolo?: string | null;
     deletedAt?: string | null;
     status?: 'Bozza' | 'Inviata' | 'Confermata';
+    memo?: string;
 }
 
 export interface DocumentGroup {
@@ -134,6 +144,19 @@ export interface UsageHistoryEntry {
     scansByMode: { [key in ProcessingMode]: number };
     costInCoins: number;
     costInCHF: number;
+}
+
+export type NoteType = 'personal' | 'family' | 'consultant';
+
+export interface Note {
+  id: string;
+  type: NoteType;
+  title: string;
+  content: string;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+  authorUid?: string;
+  authorName?: string;
 }
 
 

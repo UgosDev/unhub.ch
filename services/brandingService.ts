@@ -4,13 +4,19 @@ import {
     ArchivioChLogoIcon, ArchivioChWordmarkIcon,
     PolizzeChLogoIcon, PolizzeChWordmarkIcon,
     DisdetteChLogoIcon, DisdetteChWordmarkIcon,
-    SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, CoinIcon, MagnifyingGlassIcon, UsersIcon
+    SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, CoinIcon, MagnifyingGlassIcon, UsersIcon, DocumentTextIcon
 } from '../components/icons';
 
 const scansioniFeatures = [
     { icon: React.createElement(SparklesIcon, { className: "w-8 h-8"}), title: "Analisi AI Avanzata", description: "Estrai dati, classifica documenti e ottieni riassunti in pochi secondi con Google Gemini." },
     { icon: React.createElement(CameraIcon, { className: "w-8 h-8"}), title: "Scansione Professionale", description: "Usa la fotocamera con guida all'allineamento per scatti perfetti. L'AI ritaglia e raddrizza per te." },
     { icon: React.createElement(ShieldCheckIcon, { className: "w-8 h-8" }), title: "Privacy e Sicurezza AI", description: "Utilizziamo l'IA di Google Gemini con la garanzia che i tuoi dati non vengano usati per addestrare modelli. Sicurezza a livello enterprise per la tua tranquillità." }
+];
+
+const notesFeatures = [
+    { icon: React.createElement(DocumentTextIcon, { className: "w-8 h-8"}), title: "Note Contestuali", description: "Crea note personali, familiari o per consulenti e collegale direttamente ai tuoi documenti." },
+    { icon: React.createElement(DocumentDuplicateIcon, { className: "w-8 h-8"}), title: "Menzioni @Documento", description: "Tagga facilmente i documenti nelle tue note digitando '@' per un accesso rapido e contestuale." },
+    { icon: React.createElement(UsersIcon, { className: "w-8 h-8"}), title: "Condivisione Semplice", description: "Le note familiari sono automaticamente condivise con il tuo nucleo, facilitando la collaborazione." }
 ];
 
 export const brandAssets = {
@@ -58,6 +64,14 @@ export const brandAssets = {
             { icon: React.createElement(ChatBubbleLeftRightIcon, { className: "w-8 h-8"}), title: "Promemoria Scadenze", description: "Non perdere mai più una scadenza. Ti avvisiamo noi quando è il momento di agire." }
         ],
     },
+    notes: {
+        Logo: ScansioniChLogoIcon, // Using main brand logo
+        Wordmark: ScansioniChWordmarkIcon, // Using main brand wordmark
+        colorClass: 'purple' as const,
+        heroTitle: React.createElement(React.Fragment, null, "Collega i puntini. ", React.createElement("br", null), React.createElement("span", { className: "text-purple-600 dark:text-purple-400" }, "Crea note intelligenti.")),
+        heroSubtitle: 'Arricchisci i tuoi documenti con note personali, familiari o per consulenti. Tagga i file con @ per creare un hub di conoscenza connesso.',
+        features: notesFeatures,
+    },
     default: {
         Logo: ScansioniChLogoIcon,
         Wordmark: ScansioniChWordmarkIcon,
@@ -76,7 +90,7 @@ export const getBrandKey = (): BrandKey => {
         // 1. Priorità massima al parametro URL per il testing
         const urlParams = new URLSearchParams(window.location.search);
         const brandParam = urlParams.get('brand');
-        if (brandParam && ['scan', 'archivio', 'polizze', 'disdette'].includes(brandParam)) {
+        if (brandParam && ['scan', 'archivio', 'polizze', 'disdette', 'notes'].includes(brandParam)) {
             // Rimuove il parametro per non interferire con la navigazione successiva
             window.history.replaceState({}, document.title, window.location.pathname);
             return brandParam as BrandKey;
@@ -90,7 +104,7 @@ export const getBrandKey = (): BrandKey => {
         if (hostname.includes('scansioni.ch')) return 'scan';
 
         // 3. Fallback per ambiente di sviluppo: rotazione automatica
-        const brandsInCycle: BrandKey[] = ['archivio', 'polizze', 'disdette', 'scan'];
+        const brandsInCycle: BrandKey[] = ['archivio', 'polizze', 'disdette', 'scan', 'notes'];
         const sessionKey = 'dev-brand-cycle-index';
         
         let currentIndex = parseInt(sessionStorage.getItem(sessionKey) || '0', 10);

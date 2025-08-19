@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -21,17 +20,24 @@ import { usePWA } from '../contexts/PWAContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings, generateEmbedding } from '../services/geminiService';
-import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, QueuedFile, ScanHistoryEntry, ProcessingMode } from '../services/geminiService';
+import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, QueuedFile, ScanHistoryEntry, ProcessingMode, Note } from '../services/geminiService';
 import { useHistoryState } from './useHistoryState';
 import { useInactivityTimer } from '../components/useInactivityTimer';
 import type { PendingFileTask } from '../App';
 import type { ChatMessage } from '../components/Chatbot';
 import type { TutorialStep } from '../components/TutorialManager';
 import type { AccessLogEntry } from '../services/db';
-import type { ContextMenuAction } from '../components/ListContextMenu';
+import { useLongPress, type ContextMenuAction } from '../components/ListContextMenu';
 import {
-    ChatBubbleLeftRightIcon, CameraIcon, DocumentPlusIcon, SparklesIcon,
-    Squares2X2Icon, DocumentTextIcon, DocumentDuplicateIcon, CoinIcon
+    ChatBubbleLeftRightIcon, CoinIcon, SparklesIcon,
+    DocumentPlusIcon,
+    CameraIcon,
+    Squares2X2Icon,
+    DocumentTextIcon,
+    DocumentDuplicateIcon,
+    MoonIcon,
+    SunIcon,
+    UsersIcon
 } from '../components/icons';
 import { newsletterContent } from '../pages/newsletter/content';
 
@@ -359,6 +365,8 @@ export function useAppLogic() {
   const [polizzeDocs, setPolizzeDocs] = useState<ProcessedPageResult[]>([]);
   const [disdetteDocs, setDisdetteDocs] = useState<ProcessedPageResult[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
+  const [allNotes, setAllNotes] = useState<Note[]>([]);
+  const [documentToHighlight, setDocumentToHighlight] = useState<string | null>(null);
   const [allUserFeedback, setAllUserFeedback] = useState<firestoreService.UserFeedback[]>([]);
   const [allUsersData, setAllUsersData] = useState<User[] | null>(null);
 
@@ -370,6 +378,7 @@ export function useAppLogic() {
   const archivedLoaded = useRef(false);
   const polizzeLoaded = useRef(false); // NUOVO
   const disdetteLoaded = useRef(false); // NUOVO
+  const notesLoaded = useRef(false);
   const accessLogsLoaded = useRef(false);
   const feedbackLoaded = useRef(false);
 
@@ -463,7 +472,7 @@ export function useAppLogic() {
   const [confirmationModal, setConfirmationModal] = useState<{
     isOpen: boolean;
     title: string;
-    message: string;
+    message: React.ReactNode;
     onConfirm: () => void;
     onCancel: () => void;
     confirmText?: string;
@@ -471,10 +480,21 @@ export function useAppLogic() {
     confirmButtonClass?: string;
     icon?: React.ReactNode;
   } | null>(null);
+  
+  // --- STATO PER NOTE ---
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [isNoteEditing, setIsNoteEditing] = useState(false);
+
 
   const prevAppSettings = usePrevious(appSettings);
 
   // --------------------------------------------------------------------------------
+// MEMOIZED DATA
+// --------------------------------------------------------------------------------
+
+const allDocuments = useMemo(() => [...results, ...archivedDocs, ...polizzeDocs, ...disdetteDocs], [results, archivedDocs, polizzeDocs, disdetteDocs]);
+
+// --------------------------------------------------------------------------------
   // HANDLERS (moved out from return statement)
   // --------------------------------------------------------------------------------
 
@@ -585,20 +605,6 @@ export function useAppLogic() {
       }
   }, [appSettings, user, updateUser, setTheme]);
 
-    const globalMenuActions = useMemo<ContextMenuAction[]>(() => [
-        { label: 'Aggiungi File', icon: React.createElement(DocumentPlusIcon, { className: "w-5 h-5"}), handler: () => document.querySelector<HTMLElement>('#tutorial-file-dropzone')?.click() },
-        { label: 'Scatta Foto', icon: React.createElement(CameraIcon, { className: "w-5 h-5"}), handler: () => onOpenCamera() },
-        { type: 'separator' },
-        { label: 'Parla con Ugo', icon: React.createElement(ChatBubbleLeftRightIcon, { className: "w-5 h-5"}), handler: () => setIsChatOpen(true) },
-        { label: 'Avvia Tour Guidato', icon: React.createElement(SparklesIcon, { className: "w-5 h-5"}), handler: handleStartTutorial },
-        { type: 'separator' },
-        { label: 'Naviga a...', icon: React.createElement(Squares2X2Icon, { className: "w-5 h-5"}), submenu: [
-            { label: 'Dashboard', handler: () => navigate('dashboard')},
-            { label: 'Profilo', handler: () => navigate('profile')},
-            { label: 'Guida', handler: () => navigate('guide')},
-        ] },
-    ], [onOpenCamera, setIsChatOpen, handleStartTutorial, navigate]);
-
   const documentGroups = useMemo<DocumentGroup[]>(() => {
     const validResults = results.filter(r => r.analysis.categoria !== 'DuplicatoConfermato');
     if (validResults.length === 0) {
@@ -658,6 +664,60 @@ export function useAppLogic() {
     }).sort((a, b) => a.title.localeCompare(b.title));
   }, [results]);
 
+    const handleContextMenu = useCallback((e: React.MouseEvent | PointerEvent) => {
+        const targetElement = e.target as HTMLElement;
+        const groupElement = targetElement.closest('[data-context-menu-group-id]');
+        const targetGroupId = groupElement?.getAttribute('data-context-menu-group-id');
+        const historyElement = targetElement.closest('[data-history-uuid]');
+        const targetHistoryUuid = historyElement?.getAttribute('data-history-uuid');
+
+        if (targetGroupId) {
+            e.preventDefault();
+            setCircularMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, groupId: targetGroupId });
+        } else if (targetHistoryUuid) {
+            e.preventDefault();
+            const targetScan = scanHistory.find(s => s.uuid === targetHistoryUuid);
+            if (targetScan) {
+                setHistoryMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, targetScan });
+            }
+        } else {
+            const isInteractive = targetElement.closest('button, a, input, select, textarea, [role="button"], [role="link"]');
+            if (!isInteractive) {
+                e.preventDefault();
+                setGlobalMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY } });
+            }
+        }
+    }, [scanHistory]);
+
+    const longPress = useLongPress((e) => {
+        handleContextMenu(e);
+    }, { delay: 450 });
+    
+    const globalMenuActions = useMemo<ContextMenuAction[]>(() => [
+        { label: 'Aggiungi File', icon: React.createElement(DocumentPlusIcon, { className: "w-5 h-5"}), handler: () => document.querySelector<HTMLElement>('input[type="file"]')?.click() },
+        { label: 'Scatta Foto', icon: React.createElement(CameraIcon, { className: "w-5 h-5"}), handler: () => onOpenCamera() },
+        { type: 'separator' },
+        { label: 'Parla con Ugo', icon: React.createElement(ChatBubbleLeftRightIcon, { className: "w-5 h-5"}), handler: () => setIsChatOpen(true) },
+        { label: 'Avvia Tour Guidato', icon: React.createElement(SparklesIcon, { className: "w-5 h-5"}), handler: handleStartTutorial },
+        { type: 'separator' },
+        { label: 'Naviga a...', icon: React.createElement(Squares2X2Icon, { className: "w-5 h-5"}), submenu: [
+            { label: 'Dashboard', handler: () => navigate('dashboard')},
+            { label: 'Profilo', handler: () => navigate('profile')},
+            { label: 'Guida', handler: () => navigate('guide')},
+        ] },
+        { type: 'separator' },
+        {
+            label: 'Cambia Tema',
+            icon: React.createElement(theme === 'dark' ? MoonIcon : SunIcon, { className: "w-5 h-5"}),
+            submenu: [
+                { label: 'Chiaro', handler: () => handleUpdateSettings({ theme: 'light' }) },
+                { label: 'Scuro', handler: () => handleUpdateSettings({ theme: 'dark' }) },
+                { label: 'Sistema', handler: () => handleUpdateSettings({ theme: 'system' }) },
+            ]
+        }
+    ], [onOpenCamera, setIsChatOpen, handleStartTutorial, navigate, theme, handleUpdateSettings]);
+
+
     const historyMenuActions = useMemo<ContextMenuAction[]>(() => {
         if (!historyMenu.targetScan) return [];
         return [
@@ -677,7 +737,7 @@ export function useAppLogic() {
                 if (historyMenu.targetScan?.uuid) navigator.clipboard.writeText(historyMenu.targetScan.uuid);
             }},
         ]
-    }, [historyMenu.targetScan, documentGroups, expandedGroups, navigate, onToggleExpandGroup, setScrollToGroupId]);
+    }, [historyMenu.targetScan, documentGroups, expandedGroups, navigate, onToggleExpandGroup]);
 
     const handleUngroup = useCallback((groupId: string) => {
         setResults(prevResults => {
@@ -992,6 +1052,7 @@ export function useAppLogic() {
             archivio: 'archivio',
             polizze: 'polizze',
             disdette: 'disdette',
+            notes: 'notes',
             default: 'scan'
         };
         setCurrentPage(pageMap[brandKey] || 'scan');
@@ -1017,9 +1078,10 @@ export function useAppLogic() {
         disdetteLoaded.current = false;
         accessLogsLoaded.current = false;
         feedbackLoaded.current = false;
+        notesLoaded.current = false;
 
         const checkAllLoaded = () => {
-            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && polizzeLoaded.current && disdetteLoaded.current && accessLogsLoaded.current && feedbackLoaded.current) {
+            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && polizzeLoaded.current && disdetteLoaded.current && accessLogsLoaded.current && feedbackLoaded.current && notesLoaded.current) {
                 setIsInitialLoading(false);
             }
         };
@@ -1122,6 +1184,16 @@ export function useAppLogic() {
                 checkAllLoaded();
             }
         });
+      
+      const unsubNotes = db.onNotesUpdate(snapshot => {
+          if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
+          const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Note);
+          setAllNotes(data);
+          if (!notesLoaded.current) {
+              notesLoaded.current = true;
+              checkAllLoaded();
+          }
+      });
 
 
         return () => {
@@ -1134,6 +1206,7 @@ export function useAppLogic() {
             unsubArchivio();
             unsubPolizze();
             unsubDisdette();
+          unsubNotes();
         };
     }, [user, triggerSyncIndicator, setResults, chatHistory.length]);
     
@@ -1282,11 +1355,103 @@ export function useAppLogic() {
     setShowTutorialBanner(false);
     localStorage.setItem('tutorialSeen', 'true');
   }, []);
+
+  const handleJoinFamily = useCallback((familyIdToJoin: string) => {
+    if (!user) return;
+    if (familyIdToJoin.trim() === user.familyId) {
+        console.log("Already part of this family.");
+        return;
+    }
+
+    setConfirmationModal({
+        isOpen: true,
+        title: "Unisciti alla Famiglia",
+        message: "Sei sicuro di voler unirti a questa famiglia? Potrai vedere i loro documenti condivisi e loro vedranno i tuoi.",
+        confirmText: "Unisciti",
+        cancelText: "Annulla",
+        icon: React.createElement(UsersIcon, { className: "h-6 w-6 text-purple-600 dark:text-purple-400" }),
+        onConfirm: () => {
+            updateUser(prev => prev ? ({ ...prev, familyId: familyIdToJoin.trim() }) : null);
+            setConfirmationModal(null);
+        },
+        onCancel: () => setConfirmationModal(null)
+    });
+  }, [user, updateUser]);
     
+  const handleAddNote = useCallback(async (note: Omit<Note, 'id'>) => {
+      if (!user) return;
+      setError(null); // Clear previous errors
+      try {
+          // Immediately set the UI state to edit mode after getting the new ID.
+          // The Firestore listener will add the new note to the `allNotes` list,
+          // and the UI will then find it and render the editor for it.
+          const newNoteId = await db.addNote(note);
+          setActiveNoteId(newNoteId);
+          setIsNoteEditing(true);
+      } catch (error) {
+          console.error("Failed to add note:", error);
+          setError("Impossibile salvare la nota. Riprova più tardi.");
+      }
+  }, [user]);
+
+  const handleUpdateNote = useCallback(async (note: Note) => {
+      if (!user) return;
+      try {
+          await db.updateNote(note);
+          // The local state will be updated by the Firestore listener,
+          // so we just need to exit editing mode.
+          setIsNoteEditing(false);
+      } catch (error) {
+          console.error("Failed to update note:", error);
+          setError("Impossibile aggiornare la nota.");
+      }
+  }, [user]);
+
+  const handleDeleteNote = useCallback(async (note: Note) => {
+      if (!user) return;
+      setConfirmationModal({
+        isOpen: true,
+        title: "Conferma Eliminazione",
+        message: `Sei sicuro di voler eliminare la nota "${note.title}"? Questa azione è irreversibile.`,
+        confirmText: "Elimina",
+        cancelText: "Annulla",
+        confirmButtonClass: 'bg-red-600 hover:bg-red-700',
+        onConfirm: async () => {
+          try {
+              await db.deleteNote(note.id);
+              // State will update via listener.
+              if (activeNoteId === note.id) {
+                  setActiveNoteId(null);
+                  setIsNoteEditing(false);
+              }
+          } catch (error) {
+              console.error("Failed to delete note:", error);
+              setError("Impossibile eliminare la nota.");
+          }
+          setConfirmationModal(null);
+        },
+        onCancel: () => setConfirmationModal(null),
+      });
+  }, [user, activeNoteId]);
+
+
+  const onDocumentTagClick = useCallback((uuid: string) => {
+      setDocumentToHighlight(uuid);
+      navigate('archivio');
+  }, [navigate]);
+
   const handleClear = useCallback(() => { resetHistory([]); }, [resetHistory]);
-  const handleUpdateResult = useCallback((updatedResult: ProcessedPageResult) => {
+  
+  const handleUpdateResult = useCallback(async (updatedResult: ProcessedPageResult) => {
     setResults(prev => prev.map(r => r.uuid === updatedResult.uuid ? updatedResult : r));
+    try {
+        await db.addOrUpdateWorkspaceDoc(updatedResult);
+    } catch (error) {
+        console.error("Failed to update document in Firestore:", error);
+        setError("Salvataggio delle modifiche fallito. Riprova.");
+    }
   }, [setResults]);
+
   const handleUpdateGroupTags = useCallback(() => {}, []);
   const handleSelectGroup = useCallback((groupId: string) => {
     setSelectedGroupIds(prev =>
@@ -1319,7 +1484,7 @@ export function useAppLogic() {
           console.error(`Error moving document to ${targetApp}:`, error);
           setError(`Impossibile spostare il documento in ${targetApp}.`);
       }
-  }, [user, setResults, setError]);
+  }, [user, setResults]);
 
   const handleCreateDisdetta = useCallback(async (data: DisdettaData) => {
       if (!user) return;
@@ -1492,6 +1657,22 @@ export function useAppLogic() {
         sourceFileId: qf.sourceFileId,
     })), [processingQueue]);
 
+  const handleOpenCollaborationModal = useCallback((module: 'polizze' | 'archivio' | 'disdette', docs: ProcessedPageResult[]) => {
+    const docCount = docs.length;
+    const moduleName = module.charAt(0).toUpperCase() + module.slice(1);
+    
+    setConfirmationModal({
+      isOpen: true,
+      title: `Condividi Documenti con Consulente`,
+      message: `Stai per avviare la condivisione di ${docCount} documenti dal modulo ${moduleName}. Questa funzione è in fase di sviluppo.`,
+      confirmText: "Ho capito",
+      onConfirm: () => setConfirmationModal(null),
+      onCancel: () => setConfirmationModal(null),
+      cancelText: '', // Hide cancel button
+      icon: React.createElement(UsersIcon, { className: "h-6 w-6 text-cyan-600 dark:text-cyan-400" }),
+    });
+  }, []);
+
   return {
     user, logout, updateUser, reauthenticate, isInstallable, isInstalled, triggerInstall, theme, setTheme,
     currentPage, setCurrentPage, currentNewsletter, setCurrentNewsletter,
@@ -1523,13 +1704,13 @@ export function useAppLogic() {
     handleReauthSubmit, handleCloseWelcomeModal, handleMoveArchivedDocument,
     handleAcceptCookies, handleCameraFinish, onDismissTutorial,
     globalMenuActions, historyMenuActions,
+    handleContextMenu, longPress,
     documentGroups,
     processingQueue: processingTasksForView,
     currentTaskProgress,
     processingMode,
     isProcessing,
     onProcessingModeChange,
-    shouldExtractImages,
     onShouldExtractImagesChange,
     onFilesSelected,
     onOpenCamera,
@@ -1583,6 +1764,21 @@ export function useAppLogic() {
     handleFeedbackResponse,
     handleArchiveChat,
     showCookieBanner,
+    allNotes,
+    allDocuments,
+    handleAddNote,
+    handleUpdateNote,
+    handleDeleteNote,
+    onDocumentTagClick,
+    documentToHighlight,
+    setDocumentToHighlight,
+    activeNoteId,
+    setActiveNoteId,
+    isNoteEditing,
+    setIsNoteEditing,
+    handleJoinFamily,
+    shouldExtractImages,
+    handleOpenCollaborationModal
   };
 }
 

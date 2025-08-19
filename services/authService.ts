@@ -30,6 +30,20 @@ export interface User {
     twoFactorRecoveryCodes?: string[];
     familyId?: string;
     settings?: Partial<AppSettings>;
+    // --- NUOVI CAMPI PER COLLABORAZIONE ---
+    role?: 'client' | 'broker';
+    reputationScore?: number; // solo per broker
+    collaborations?: { 
+        brokerUid: string; 
+        brokerEmail: string; 
+        status: 'active' | 'pending' 
+    }[]; // solo per client
+    clients?: { 
+        clientUid: string; 
+        clientName: string; 
+        clientEmail: string; 
+        status: 'active' 
+    }[]; // solo per broker
 }
 
 type FirebaseUser = firebase.User;
@@ -63,7 +77,7 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             await firestoreService.createUserProfile(firebaseUser.uid, name, email, defaultSubscription);
             appData = { 
                 name, 
-                email, 
+                email,
                 address: '',
                 addressConfirmed: false,
                 householdMembers: [],
@@ -75,6 +89,8 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
                 twoFactorRecoveryCodes: [],
                 familyId: firebaseUser.uid,
                 settings: defaultSettings,
+                role: 'client',
+                collaborations: [],
             };
         }
 
@@ -95,8 +111,12 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             is2faEnabled: appData.is2faEnabled,
             twoFactorSecret: appData.twoFactorSecret,
             twoFactorRecoveryCodes: appData.twoFactorRecoveryCodes,
-            familyId: appData.familyId,
+            familyId: appData.familyId || firebaseUser.uid, // Fallback for older users
             settings: mergedSettings,
+            role: appData.role || 'client',
+            collaborations: appData.collaborations || [],
+            clients: appData.clients || [],
+            reputationScore: appData.reputationScore,
         };
     } catch (error) {
         console.warn("Failed to get or create user profile from Firestore (likely offline). Returning a temporary user object to maintain session.", error);
@@ -125,6 +145,8 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             twoFactorRecoveryCodes: [],
             familyId: firebaseUser.uid,
             settings: defaultSettings,
+            role: 'client',
+            collaborations: [],
         };
     }
 };

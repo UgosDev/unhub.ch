@@ -160,7 +160,7 @@ export async function generateGroupPdf(group: DocumentGroup, appVersion: string)
         }
     }
     
-    const pdfFileName = (group.title.replace(/[^a-z0-9\s-]/gi, '_').replace(/\s+/g, '_').trim() || `fascicolo_${group.id}`);
+    const pdfFileName = (group.title.replace(/[^a-z0-9\s-\\/]/gi, '_').replace(/\s+/g, '_').trim() || `fascicolo_${group.id}`);
     doc.save(`${pdfFileName}.pdf`);
 }
 
@@ -245,7 +245,7 @@ export const generateLegalPdf = (title: string, contentElement: HTMLElement, app
                 const pageText = `Pagina ${i} di ${pageCount} | ${title} - scansioni.ch v${appVersion}`;
                 doc.text(pageText, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 20, { align: 'center' });
             }
-            const fileName = `${title.replace(/[\s\/]/g, '_')}_scansioni-ch.pdf`;
+            const fileName = `${title.replace(/[\s\\/]/g, '_')}_scansioni-ch.pdf`;
             doc.save(fileName);
         },
         margin: [40, 40, 40, 40],

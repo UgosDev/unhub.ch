@@ -25,6 +25,8 @@ interface ArchivioProps {
   onDeleteDocument: (doc: ProcessedPageResult) => void;
   onUpdateDocument: (doc: ProcessedPageResult) => void;
   onNavigate: (page: string) => void;
+  documentToHighlight?: string | null;
+  onHighlightComplete: () => void;
 }
 
 /** ---------- Banner Archivio HD ---------- */
@@ -155,6 +157,8 @@ const Archivio: React.FC<ArchivioProps> = ({
   onDeleteDocument,
   onUpdateDocument,
   onNavigate,
+  documentToHighlight,
+  onHighlightComplete,
 }) => {
   /** Stato base */
   const [view, setView] = useState<PrivacyView>('family');
@@ -211,6 +215,23 @@ const Archivio: React.FC<ArchivioProps> = ({
   const [draggedItemIds, setDraggedItemIds] = useState<Set<string>>(new Set());
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const dragGhostRef = useRef<HTMLDivElement>(null);
+  const docRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+      if (documentToHighlight && docRefs.current[documentToHighlight]) {
+        const el = docRefs.current[documentToHighlight];
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('highlight-section-animation');
+            setTimeout(() => {
+                el.classList.remove('highlight-section-animation');
+                onHighlightComplete();
+            }, 2500);
+        } else {
+            onHighlightComplete();
+        }
+      }
+  }, [documentToHighlight, onHighlightComplete]);
 
 
   /** Doc per vista corrente */
@@ -757,6 +778,7 @@ const Archivio: React.FC<ArchivioProps> = ({
                     return (
                       <div
                         key={doc.uuid}
+                        ref={el => { docRefs.current[doc.uuid] = el; }}
                         className={`w-full p-3 rounded-lg border transition-all duration-150 flex items-start gap-3 ${
                           selected
                             ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700'

@@ -1,17 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import type { ProcessedPageResult } from '../services/geminiService';
-import { PolizzeChLogoIcon, PolizzeChWordmarkIcon, DocumentTextIcon, MagnifyingGlassIcon, ChevronDownIcon } from '../components/icons';
+import { PolizzeChLogoIcon, PolizzeChWordmarkIcon, DocumentTextIcon, MagnifyingGlassIcon, PersonAddIcon } from '../components/icons';
 import PolizzaCard from './PolizzaCard';
 
 interface PolizzeProps {
     polizzeDocs: ProcessedPageResult[];
     onUpdateDocument: (doc: ProcessedPageResult) => void;
     onDeleteDocument: (doc: ProcessedPageResult) => void;
+    onOpenCollaborationModal: (module: 'polizze', docs: ProcessedPageResult[]) => void;
 }
 
 type SortBy = 'scadenza' | 'premio' | 'nome';
 
-const Polizze: React.FC<PolizzeProps> = ({ polizzeDocs, onUpdateDocument, onDeleteDocument }) => {
+const Polizze: React.FC<PolizzeProps> = ({ polizzeDocs, onUpdateDocument, onDeleteDocument, onOpenCollaborationModal }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState<SortBy>('scadenza');
 
@@ -68,6 +69,14 @@ const Polizze: React.FC<PolizzeProps> = ({ polizzeDocs, onUpdateDocument, onDele
                         <p className="text-slate-500 dark:text-slate-400">Tutte le tue polizze, a portata di mano.</p>
                     </div>
                 </div>
+                 <button 
+                    onClick={() => onOpenCollaborationModal('polizze', polizzeDocs)} 
+                    className="flex items-center gap-2 px-4 py-2 font-bold bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors shadow-md"
+                    disabled={polizzeDocs.length === 0}
+                >
+                    <PersonAddIcon className="w-5 h-5"/>
+                    <span>Condividi con Consulente</span>
+                </button>
             </div>
 
             {/* Toolbar */}

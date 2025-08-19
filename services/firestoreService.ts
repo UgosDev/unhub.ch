@@ -1,5 +1,5 @@
 import { db, firebase } from './firebase';
-import type { ProcessedPageResult, ScanHistoryEntry } from './geminiService';
+import type { ProcessedPageResult, ScanHistoryEntry, Note } from './geminiService';
 import type { ChatMessage } from '../components/Chatbot';
 import type { User, Subscription } from './authService';
 import { defaultSettings } from './settingsService';
@@ -111,6 +111,8 @@ export const createUserProfile = async (userId: string, name: string, email: str
         twoFactorRecoveryCodes: [],
         familyId: userId,
         settings: defaultSettings,
+        role: 'client',
+        collaborations: [],
     });
 
     // 2. Add initial credit to history
@@ -162,7 +164,7 @@ const deleteCollection = async (userId: string, collectionName: string) => {
 export const deleteAllUserData = async (userId: string): Promise<void> => {
     const collections = [
         'workspace', 'archivio', 'polizze', 'disdette', 
-        'scanHistory', 'chat', 'archivedChats', 'stats', 'accessLogs'
+        'scanHistory', 'chat', 'archivedChats', 'stats', 'accessLogs', 'notes'
     ];
     
     // Delete all subcollections
@@ -271,7 +273,7 @@ export const getAllWorkspaceDocs = async (userId: string): Promise<ProcessedPage
 export const addOrUpdateWorkspaceDoc = async (userId: string, result: ProcessedPageResult): Promise<void> => {
     const cleanResult = JSON.parse(JSON.stringify(result)); // Remove undefined
     const resultDocRef = db.collection(`users/${userId}/workspace`).doc(result.uuid);
-    await resultDocRef.set(cleanResult);
+    await resultDocRef.set(cleanResult, { merge: true });
 };
 
 export const deleteWorkspaceDoc = async (userId: string, resultUuid: string): Promise<void> => {
@@ -591,4 +593,99 @@ export const batchAddWorkspaceAndHistory = async (userId: string, results: Proce
     });
 
     await batch.commit();
+};
+
+export const processScanTransaction = async (userId: string, familyId: string, cost: number, workspaceDocs: ProcessedPageResult[], historyEntries: Omit<ScanHistoryEntry, 'id'>[]): Promise<void> => {
+    const familyHeadRef = db.collection('users').doc(familyId);
+    const userWorkspaceRef = db.collection(`users/${userId}/workspace`);
+    const userHistoryRef = db.collection(`users/${userId}/scanHistory`);
+
+    await db.runTransaction(async (transaction) => {
+        const familyHeadDoc = await transaction.get(familyHeadRef);
+        if (!familyHeadDoc.exists) {
+            throw new Error("Account del capo famiglia non trovato.");
+        }
+        const familyData = familyHeadDoc.data() as User;
+        
+        const currentBalance = familyData.subscription.scanCoinBalance;
+        if (currentBalance < cost) {
+            throw new Error("Credito ScanCoin insufficiente nel pool familiare.");
+        }
+        const newBalance = currentBalance - cost;
+
+        // 1. Update family head's balance
+        transaction.update(familyHeadRef, { 'subscription.scanCoinBalance': newBalance });
+
+        // 2. Add new documents to the current user's workspace
+        workspaceDocs.forEach(doc => {
+            const docRef = userWorkspaceRef.doc(doc.uuid);
+            transaction.set(docRef, JSON.parse(JSON.stringify(doc)));
+        });
+
+        // 3. Add history entries to the current user's history
+        historyEntries.forEach(entry => {
+            const historyRef = userHistoryRef.doc();
+            transaction.set(historyRef, entry);
+        });
+    });
+};
+
+
+// --- Notes ---
+export const onNotesUpdate = (userId: string, callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => {
+    const notesCollection = db.collection(`users/${userId}/notes`).orderBy("updatedAt", "desc");
+    return notesCollection.onSnapshot(
+        (snapshot) => callback(snapshot),
+        (error) => console.error("Error listening to notes:", error)
+    );
+};
+
+export const addNote = async (userId: string, note: Omit<Note, 'id'>): Promise<string> => {
+    const notesCollection = db.collection(`users/${userId}/notes`);
+    const docRef = await notesCollection.add(note);
+    return docRef.id;
+};
+
+export const updateNote = async (userId: string, note: Note): Promise<void> => {
+    const { id, ...noteData } = note;
+    if (!id) throw new Error("Note ID is required for update.");
+    const noteDocRef = db.collection(`users/${userId}/notes`).doc(id);
+    await noteDocRef.set(noteData, { merge: true });
+};
+
+export const deleteNote = async (userId: string, noteId: string): Promise<void> => {
+    const noteDocRef = db.collection(`users/${userId}/notes`).doc(noteId);
+    await noteDocRef.delete();
+};
+
+// --- NUOVE FUNZIONI PER COLLABORAZIONE (STUB) ---
+
+export const findUserByEmail = async (email: string): Promise<(User & { uid: string }) | null> => {
+    console.log(`[STUB] Cercando utente con email: ${email}`);
+    // In produzione, questo richiederebbe una Cloud Function o regole di sicurezza specifiche
+    // che permettano una query limitata. Per ora, simuliamo una ricerca che non trova nessuno
+    // per evitare di dover implementare la logica completa ora.
+    // const usersRef = db.collection('users');
+    // const snapshot = await usersRef.where('email', '==', email).limit(1).get();
+    // if (snapshot.empty) return null;
+    // return { uid: snapshot.docs[0].id, ...snapshot.docs[0].data() } as User & { uid: string };
+    return null; 
+};
+
+export const addCollaboration = async (client: User, broker: User & { uid: string }, selectedDocIds: string[], targetModule: 'polizze' | 'archivio') => {
+    console.log(`[STUB] Aggiungendo collaborazione tra ${client.email} e ${broker.email}`);
+    console.log(`[STUB] Documenti da condividere in ${targetModule}:`, selectedDocIds);
+    // Logica di batch write per aggiornare i profili e i documenti...
+    // E.g., db.batch()...commit();
+};
+
+export const removeCollaboration = async (clientUid: string, brokerUid: string) => {
+    console.log(`[STUB] Rimuovendo collaborazione tra client ${clientUid} e broker ${brokerUid}`);
+    // Logica di transazione per rimuovere dai profili e dai documenti...
+};
+
+export const reportBroker = async (clientUid: string, brokerUid: string, reason: string) => {
+    console.log(`[STUB] Segnalando broker ${brokerUid} da parte di ${clientUid} per il motivo: "${reason}"`);
+    // const reportsRef = db.collection('brokerReports');
+    // await reportsRef.add({ reporterUid: clientUid, reportedUid: brokerUid, reason, timestamp: ... });
 };

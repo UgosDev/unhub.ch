@@ -13,6 +13,7 @@ import Archivio from '../pages/Archivio';
 import Polizze from '../pages/Polizze';
 import Disdette from '../pages/Disdette';
 import AdminDashboard from '../pages/AdminDashboard';
+import NotesPage from '../pages/NotesPage'; // NUOVO
 import NewsletterIndexPage from '../pages/newsletter/NewsletterIndexPage';
 import { newsletterContent } from '../pages/newsletter/content';
 import { getBrandKey, type BrandKey } from '../services/brandingService';
@@ -53,7 +54,22 @@ export const AppRouter: React.FC<AppLogic> = (props) => {
         resetChat,
         scrollToSection,
         setScrollToSection,
-        accessLogs
+        accessLogs,
+        // NUOVE PROPS PER LE NOTE
+        allNotes,
+        allDocuments,
+        handleAddNote,
+        handleUpdateNote,
+        handleDeleteNote,
+        onDocumentTagClick,
+        documentToHighlight,
+        setDocumentToHighlight,
+        activeNoteId,
+        setActiveNoteId,
+        isNoteEditing,
+        setIsNoteEditing,
+        error,
+        handleOpenCollaborationModal
     } = props;
 
     const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan';
@@ -73,12 +89,15 @@ export const AppRouter: React.FC<AppLogic> = (props) => {
                         onDeleteDocument={handleDeleteArchivedDocument}
                         onUpdateDocument={handleUpdateArchivedDocument}
                         onNavigate={navigate}
+                        documentToHighlight={documentToHighlight}
+                        onHighlightComplete={() => setDocumentToHighlight(null)}
                     />;
         case 'polizze':
             return <Polizze 
                         polizzeDocs={polizzeDocs}
                         onUpdateDocument={handleUpdatePolizzaDocument}
                         onDeleteDocument={handleDeletePolizzaDocument}
+                        onOpenCollaborationModal={handleOpenCollaborationModal}
                     />;
         case 'disdette':
             return <Disdette
@@ -95,6 +114,21 @@ export const AppRouter: React.FC<AppLogic> = (props) => {
                         }}
                         initialData={initialDisdettaData}
                     />;
+        case 'notes': // NUOVA ROTTA
+            return <NotesPage
+                        user={user!}
+                        notes={allNotes}
+                        documents={allDocuments}
+                        onAddNote={handleAddNote}
+                        onUpdateNote={handleUpdateNote}
+                        onDeleteNote={handleDeleteNote}
+                        onDocumentTagClick={onDocumentTagClick}
+                        activeNoteId={activeNoteId}
+                        setActiveNoteId={setActiveNoteId}
+                        isEditing={isNoteEditing}
+                        setIsEditing={setIsNoteEditing}
+                        error={error}
+                   />;
         case 'dashboard':
             return <Dashboard user={user!} onNavigate={navigate} history={scanHistory} isLoadingHistory={isLoadingHistory} />;
         case 'guide':

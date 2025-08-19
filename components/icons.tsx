@@ -216,6 +216,7 @@ export const EnvelopeIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<Ic
 export const EyeIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>visibility</IconWrapper>);
 export const FastForwardIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>fast_forward</IconWrapper>);
 export const FileIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>insert_drive_file</IconWrapper>);
+export const FlagIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>flag</IconWrapper>);
 export const FolderIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>folder</IconWrapper>);
 export const FolderPlusIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>create_new_folder</IconWrapper>);
 export const HandThumbDownIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>thumb_down</IconWrapper>);
@@ -230,6 +231,7 @@ export const MoonIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWr
 export const PaperAirplaneIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>send</IconWrapper>);
 export const PauseIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>pause</IconWrapper>);
 export const PencilIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>edit</IconWrapper>);
+export const PersonAddIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>person_add</IconWrapper>);
 export const PlayIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>play_arrow</IconWrapper>);
 export const PlusCircleIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>add_circle</IconWrapper>);
 export const QuestionMarkCircleIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>help</IconWrapper>);

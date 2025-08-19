@@ -1,5 +1,5 @@
 import { auth, firebase } from './firebase';
-import type { ScanHistoryEntry, ProcessedPageResult, QueuedFile } from './geminiService';
+import type { ScanHistoryEntry, ProcessedPageResult, QueuedFile, Note } from './geminiService';
 import type { ChatMessage } from '../components/Chatbot';
 import * as firestoreService from './firestoreService';
 import type { User } from './authService';
@@ -107,6 +107,7 @@ export const onScanHistoryUpdate = (callback: (snapshot: firebase.firestore.Quer
 export const onChatHistoryUpdate = (callback: (snapshot: firebase.firestore.DocumentSnapshot) => void): (() => void) => firestoreService.onChatHistoryUpdate(getUserId(), callback);
 export const onArchivedChatsUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onArchivedChatsUpdate(getUserId(), callback);
 export const onAccessLogsUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onAccessLogsUpdate(getUserId(), callback);
+export const onNotesUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onNotesUpdate(getUserId(), callback);
 
 
 // --- WRITERS / DELETERS ---
@@ -131,6 +132,9 @@ export const deleteArchivedChat = (id: string): Promise<void> => firestoreServic
 export const getStat = (statName: string): Promise<any> => firestoreService.getStat(getUserId(), statName);
 export const setStat = (statName: string, value: any): Promise<void> => firestoreService.setStat(getUserId(), statName, value);
 export const addAccessLogEntry = (entryData: Omit<firestoreService.AccessLogEntry, 'id' | 'timestamp'>): Promise<void> => firestoreService.addAccessLogEntry(getUserId(), entryData);
+export const addNote = (note: Omit<Note, 'id'>): Promise<string> => firestoreService.addNote(getUserId(), note);
+export const updateNote = (note: Note): Promise<void> => firestoreService.updateNote(getUserId(), note);
+export const deleteNote = (noteId: string): Promise<void> => firestoreService.deleteNote(getUserId(), noteId);
 
 // --- VECTOR SEARCH & EMBEDDINGS ---
 export const saveArchivioEmbedding = (docUuid: string, embedding: number[]): Promise<void> => firestoreService.saveArchivioEmbedding(getUserId(), docUuid, embedding);

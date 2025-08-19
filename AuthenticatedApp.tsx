@@ -1,5 +1,3 @@
-
-
 import React, { useRef, useEffect } from 'react';
 import { useAppLogic } from './hooks/useAppLogic';
 import { AppRouter } from './components/AppRouter';
@@ -110,7 +108,24 @@ const ConfirmationModal: React.FC<{
 
 export const AuthenticatedApp = () => {
     const logic = useAppLogic();
-    const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(logic.currentPage) ? logic.currentPage as any : 'scan';
+    const brandKey = ['scan', 'archivio', 'polizze', 'disdette', 'notes'].includes(logic.currentPage) ? logic.currentPage as any : 'scan';
+
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const familyIdToJoin = urlParams.get('joinFamily');
+
+        if (familyIdToJoin && logic.user && logic.user.familyId !== familyIdToJoin) {
+            logic.handleJoinFamily(familyIdToJoin);
+            // Clean the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [logic.user, logic.handleJoinFamily]);
+    
+    // **BUG FIX**: The `...logic.longPress.bind` object from `useLongPress` includes an `onContextMenu` handler
+    // that calls `e.preventDefault()`. When spread onto the <main> element, it overwrites the main
+    // `onContextMenu={logic.handleContextMenu}` prop, preventing our custom context menu from ever opening on right-click.
+    // The fix is to separate the pointer event handlers from the conflicting `onContextMenu` handler.
+    const { onContextMenu, ...pointerHandlers } = logic.longPress.bind;
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
@@ -151,7 +166,7 @@ export const AuthenticatedApp = () => {
             <Header currentPage={logic.currentPage} onNavigate={logic.navigate} onLogout={logic.logout} isSyncing={logic.isSyncing} />
             <PrototypeBanner onAskUgo={() => logic.setIsChatOpen(true)} />
             
-            <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+            <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow" onContextMenu={logic.handleContextMenu} {...pointerHandlers}>
                 <AppRouter {...logic} />
             </main>
             
@@ -222,6 +237,8 @@ export const AuthenticatedApp = () => {
                     }}
                     onUngroup={() => logic.circularMenu.groupId && logic.onUngroup(logic.circularMenu.groupId)}
                     actionsConfig={logic.appSettings.circularMenuActions}
+                    layout="auto"
+                    showCenterLabel={true}
                 />
             )}
             

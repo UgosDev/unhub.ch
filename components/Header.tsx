@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    UserCircleIcon, CoinIcon, Bars3Icon, XMarkIcon, ArrowPathIcon 
+    UserCircleIcon, CoinIcon, Bars3Icon, XMarkIcon, ArrowPathIcon, DocumentTextIcon
 } from './icons';
 import { useAuth } from '../contexts/AuthContext';
 import { brandAssets, type BrandKey } from '../services/brandingService';
@@ -107,6 +107,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
             <NavLink page="archivio" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Archivio</NavLink>
             <NavLink page="polizze" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Polizze</NavLink>
             <NavLink page="disdette" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Disdette</NavLink>
+            <NavLink page="notes" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Note</NavLink>
             <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
              {isSyncing && (
                 <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 font-semibold transition-opacity duration-300">
@@ -173,6 +174,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
                 <NavLink page="archivio" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Archivio</NavLink>
                 <NavLink page="polizze" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Polizze</NavLink>
                 <NavLink page="disdette" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Disdette</NavLink>
+                <NavLink page="notes" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Note</NavLink>
                 <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
                 <NavLink page="dashboard" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Dashboard</NavLink>
                 <NavLink page="guide" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Guida</NavLink>
