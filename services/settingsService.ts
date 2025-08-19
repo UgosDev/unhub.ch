@@ -17,6 +17,7 @@ export interface AppSettings {
     ugoArchivioEnabled: boolean;
     ugoDisdetteEnabled: boolean;
     ugoImplicitFeedbackEnabled: boolean;
+    ugoCanReadNotes: boolean; // NUOVO
 }
 
 const SETTINGS_KEY = 'scansioni.ch.settings';
@@ -36,6 +37,7 @@ export const defaultSettings: AppSettings = {
     ugoArchivioEnabled: false,
     ugoDisdetteEnabled: true,
     ugoImplicitFeedbackEnabled: false,
+    ugoCanReadNotes: false, // NUOVO
 };
 
 export function getSettings(): AppSettings {

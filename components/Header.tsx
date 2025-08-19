@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { user } = useAuth();
     
-    const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'default';
+    const brandKey = ['scan', 'archivio', 'polizze', 'disdette', 'notes'].includes(currentPage) ? currentPage as BrandKey : 'default';
     const { Logo, Wordmark, colorClass } = brandAssets[brandKey];
     
     useEffect(() => {
@@ -79,6 +79,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
           --color-red-100: #fee2e2; --color-red-700: #b91c1c; --color-red-500-20: rgba(239, 68, 68, 0.2); --color-red-300: #fca5a5;
           --color-cyan-100: #cffafe; --color-cyan-700: #0e7490; --color-cyan-500-20: rgba(6, 182, 212, 0.2); --color-cyan-300: #67e8f9;
           --color-green-100: #dcfce7; --color-green-700: #15803d; --color-green-500-20: rgba(34, 197, 94, 0.2); --color-green-300: #86efac;
+          --color-yellow-100: #fef9c3; --color-yellow-700: #ca8a04; --color-yellow-500-20: rgba(234, 179, 8, 0.2); --color-yellow-300: #fde047;
         }
       `}</style>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -107,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
             <NavLink page="archivio" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Archivio</NavLink>
             <NavLink page="polizze" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Polizze</NavLink>
             <NavLink page="disdette" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Disdette</NavLink>
-            <NavLink page="notes" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Note</NavLink>
+            <NavLink page="notes" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Appunti</NavLink>
             <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
              {isSyncing && (
                 <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 font-semibold transition-opacity duration-300">
@@ -174,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
                 <NavLink page="archivio" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Archivio</NavLink>
                 <NavLink page="polizze" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Polizze</NavLink>
                 <NavLink page="disdette" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Disdette</NavLink>
-                <NavLink page="notes" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Note</NavLink>
+                <NavLink page="notes" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Appunti</NavLink>
                 <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
                 <NavLink page="dashboard" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Dashboard</NavLink>
                 <NavLink page="guide" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Guida</NavLink>

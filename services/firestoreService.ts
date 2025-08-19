@@ -118,7 +118,7 @@ export const createUserProfile = async (userId: string, name: string, email: str
     // 2. Add initial credit to history
     const historyCollectionRef = userDocRef.collection('scanHistory');
     const initialCreditEntry: Omit<ScanHistoryEntry, 'id'> = {
-        timestamp: new Date().toISOString(),
+        timestamp: firebase.firestore.FieldValue.serverTimestamp() as any,
         description: 'Credito iniziale di benvenuto',
         amountInCoins: 1000,
         status: 'Credited',
@@ -197,6 +197,10 @@ export const createCoinTransferRecord = async (userId: string, balance: number, 
 };
 
 export const redeemCoinTransferCode = async (currentUserId: string, code: string, secretWord: string): Promise<number> => {
+    const user = db.collection('users').doc(currentUserId);
+    if (!user) {
+        throw new Error("Devi essere loggato per riscattare un codice.");
+    }
     const transferCollectionRef = db.collection('coinTransfers');
     const query = transferCollectionRef.where('code', '==', code).where('claimed', '==', false).limit(1);
 
@@ -241,7 +245,7 @@ export const redeemCoinTransferCode = async (currentUserId: string, code: string
 
         // 3. Add a history entry for the credit
         const historyEntry: Omit<ScanHistoryEntry, 'id'> = {
-            timestamp: new Date().toISOString(),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp() as any,
             description: `Crediti recuperati da account precedente (ID: ...${transferDoc.id.slice(-6)})`,
             amountInCoins: transferredAmount,
             status: 'Credited',
@@ -581,8 +585,9 @@ export const batchAddWorkspaceAndHistory = async (userId: string, results: Proce
     const workspaceCollectionRef = db.collection(`users/${userId}/workspace`);
     results.forEach(result => {
         const docRef = workspaceCollectionRef.doc(result.uuid);
-        // Remove undefined values before sending to Firestore
-        batch.set(docRef, JSON.parse(JSON.stringify(result)));
+        // Pass object directly to Firestore; it handles undefined fields.
+        // This preserves FieldValue objects like serverTimestamp().
+        batch.set(docRef, result);
     });
 
     const historyCollectionRef = db.collection(`users/${userId}/scanHistory`);

@@ -88,6 +88,7 @@ const ResultItem: React.FC<{
     
     const showRetry = item.analysis.categoria === 'ERRORE' || ['Bassa', 'Parziale'].includes(item.analysis.qualitaScansione);
     const isSafe = item.securityCheck?.isSafe ?? true;
+    const date = item.timestamp?.toDate ? item.timestamp.toDate() : new Date(item.timestamp);
 
     if (item.isPotentialDuplicateOf) {
         return (
@@ -187,7 +188,7 @@ const ResultItem: React.FC<{
                                 ></span>
                                 <span className="truncate" title={item.sourceFileName}>{item.sourceFileName}</span>
                                 <span className="flex-shrink-0 font-mono">
-                                    {new Date(item.timestamp).toLocaleTimeString('it-CH', { hour: '2-digit', minute: '2-digit' })}
+                                    {date.toLocaleTimeString('it-CH', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
 

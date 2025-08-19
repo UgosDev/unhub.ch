@@ -37,8 +37,9 @@ export function generateHistoryPdf(historyEntries: ScanHistoryEntry[]): void {
   historyEntries.forEach(entry => {
     const isCredit = entry.amountInCoins > 0;
     const amountText = `${isCredit ? '+' : ''}${entry.amountInCoins}`;
+    const date = entry.timestamp?.toDate ? entry.timestamp.toDate() : new Date(entry.timestamp);
     const entryData = [
-      new Date(entry.timestamp).toLocaleString('it-CH'),
+      date.toLocaleString('it-CH'),
       entry.description,
       entry.processingMode ? (modeNames[entry.processingMode] || entry.processingMode) : 'N/A',
       amountText,

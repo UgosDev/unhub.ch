@@ -199,10 +199,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, history, isLoad
                                     const isCredit = entry.amountInCoins > 0;
                                     const amountText = `${isCredit ? '+' : ''}${entry.amountInCoins.toLocaleString('it-CH')}`;
                                     const amountColor = isCredit ? 'text-green-600 dark:text-green-400' : 'text-slate-800 dark:text-slate-200';
-                                    
+                                    const date = entry.timestamp?.toDate ? entry.timestamp.toDate() : new Date(entry.timestamp);
+
                                     return (
                                         <tr key={entry.id} data-history-uuid={entry.uuid} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-context-menu">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{new Date(entry.timestamp).toLocaleString('it-CH')}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{date.toLocaleString('it-CH')}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-800 dark:text-slate-200 max-w-xs truncate" title={entry.description}>
                                                  <div className="flex items-center gap-2">
                                                     <TypeIcon type={entry.type} />

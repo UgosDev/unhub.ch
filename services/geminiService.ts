@@ -74,7 +74,7 @@ export interface ProcessedPageResult {
     };
     costInCoins?: number;
     processingMode: ProcessingMode;
-    timestamp: string;
+    timestamp: any;
     mimeType: string;
     extractedImages?: { description: string, imageDataUrl: string }[];
     retryCount?: number;
@@ -127,7 +127,7 @@ export interface QueuedFile {
 
 export interface ScanHistoryEntry {
     id?: string;
-    timestamp: string;
+    timestamp: any;
     description: string;
     amountInCoins: number; // Positivo per accrediti, negativo per addebiti
     status: 'Success' | 'Error' | 'Credited';

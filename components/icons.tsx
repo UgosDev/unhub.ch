@@ -140,6 +140,37 @@ export const DisdetteChWordmarkIcon: FC<ScansioniChWordmarkIconProps> = ({ light
   </svg>
 );
 
+export const AppuntiChLogoIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <defs>
+      <linearGradient id="note-fold" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#fde047" /> 
+        <stop offset="100%" stopColor="#fef08a" /> 
+      </linearGradient>
+    </defs>
+    <path d="M10 10 H 90 V 90 H 10 Z" fill="#fef08a" />
+    <path d="M70 10 L 90 30 V 10 H 70 Z" fill="url(#note-fold)" opacity="0.7" />
+    <path d="M70 10 H 90 L 70 30 V 10 Z" fill="#facc15" opacity="0.3" />
+  </svg>
+);
+
+export const AppuntiChWordmarkIcon: FC<ScansioniChWordmarkIconProps> = ({ lightFill, darkFill, ...props }) => (
+  <svg
+    id="Livello_5_Wordmark_Appunti"
+    data-name="Livello 5"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 480 70"
+    {...props}
+  >
+    <g fill={darkFill || "#facc15"}> 
+        <text x="0" y="55" fontFamily="'Plus Jakarta Sans', sans-serif" fontSize="55" fontWeight="bold">Appunti</text>
+    </g>
+    <g fill={lightFill || "#fef9c3"}> 
+        <text x="275" y="55" fontFamily="'Plus Jakarta Sans', sans-serif" fontSize="55" fontWeight="bold">.ch</text>
+    </g>
+  </svg>
+);
+
 
 export const UssoIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -251,3 +282,10 @@ export const UsersIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconW
 export const ViewfinderCircleIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>center_focus_strong</IconWrapper>);
 export const XCircleIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>cancel</IconWrapper>);
 export const XMarkIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>close</IconWrapper>);
+
+// Rich Text Editor Icons
+export const FormatBoldIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>format_bold</IconWrapper>);
+export const FormatItalicIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>format_italic</IconWrapper>);
+export const FormatUnderlinedIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>format_underlined</IconWrapper>);
+export const FormatListBulletedIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>format_list_bulleted</IconWrapper>);
+export const FormatListNumberedIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>format_list_numbered</IconWrapper>);

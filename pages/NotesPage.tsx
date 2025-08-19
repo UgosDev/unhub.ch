@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Note, NoteType, ProcessedPageResult } from '../services/geminiService';
 import type { User } from '../services/authService';
-import { PlusCircleIcon, DocumentTextIcon, UsersIcon, UserCircleIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon } from '../components/icons';
+import { PlusCircleIcon, DocumentTextIcon, UsersIcon, UserCircleIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, AppuntiChLogoIcon, AppuntiChWordmarkIcon } from '../components/icons';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 
 interface NotesPageProps {
@@ -229,60 +229,74 @@ const NotesPage: React.FC<NotesPageProps> = (props) => {
     ];
 
     return (
-        <div className="flex h-[calc(100vh-10rem)] bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-            {/* Sidebar */}
-            <aside className="w-1/3 max-w-sm flex-shrink-0 border-r border-slate-200 dark:border-slate-700 flex flex-col">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                    <h1 className="text-xl font-bold">Le tue Note</h1>
-                    <button onClick={handleNewNote} className="p-2 text-purple-600 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><PlusCircleIcon className="w-6 h-6"/></button>
+        <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full" style={{height: 'calc(100vh - 8rem - 4rem)'}}>
+             <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg">
+                        <AppuntiChLogoIcon className="w-8 h-8" />
+                    </div>
+                    <div>
+                        <AppuntiChWordmarkIcon className="h-7 text-slate-800 dark:text-slate-200" />
+                        <p className="text-slate-500 dark:text-slate-400">Il tuo blocco note intelligente e connesso.</p>
+                    </div>
                 </div>
-                <div className="p-2 border-b border-slate-200 dark:border-slate-700 flex items-center gap-1">
-                     {filterOptions.map(({ id, label, Icon }) => (
-                         <button key={id} onClick={() => setFilter(id)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md ${filter === id ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                            <Icon className="w-4 h-4" />
-                            <span>{label}</span>
-                        </button>
-                     ))}
-                </div>
-                <div className="flex-grow overflow-y-auto">
-                    {filteredNotes.map(note => (
-                        <button key={note.id} onClick={() => handleSelectNote(note.id)} className={`w-full text-left p-4 border-b border-slate-100 dark:border-slate-700/50 ${props.activeNoteId === note.id ? 'bg-purple-50 dark:bg-purple-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'}`}>
-                            <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate">{note.title}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{note.content || 'Nessun contenuto'}</p>
-                            <p className="text-xs text-slate-400 mt-1">{note.type === 'family' ? `Famiglia · ${note.authorName}` : 'Personale'}</p>
-                        </button>
-                    ))}
-                </div>
-            </aside>
+            </div>
 
-            {/* Main View */}
-            <main className="flex-1 flex flex-col">
-                {props.error && <div className="p-4 flex-shrink-0 border-b border-slate-200 dark:border-slate-700"><ErrorDisplay error={props.error} /></div>}
-                <div className="flex-grow min-h-0">
-                    {activeNote && props.isEditing ? (
-                        <NoteEditor 
-                            activeNote={activeNote}
-                            documents={props.documents}
-                            onSave={props.onUpdateNote}
-                            onCancel={() => props.setIsEditing(false)}
-                            onDocumentTagClick={props.onDocumentTagClick}
-                        />
-                    ) : activeNote ? (
-                        <NoteViewer 
-                            note={activeNote}
-                            onEdit={() => props.setIsEditing(true)}
-                            onDelete={() => props.onDeleteNote(activeNote)}
-                            onDocumentTagClick={props.onDocumentTagClick}
-                        />
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500">
-                            <DocumentTextIcon className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-4"/>
-                            <h2 className="text-xl font-semibold">Seleziona o crea una nota</h2>
-                            <p>Le tue note appariranno qui.</p>
-                        </div>
-                    )}
-                </div>
-            </main>
+            <div className="flex-grow flex bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden min-h-0">
+                {/* Sidebar */}
+                <aside className="w-1/3 max-w-sm flex-shrink-0 border-r border-slate-200 dark:border-slate-700 flex flex-col">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <h1 className="text-xl font-bold">Le tue Note</h1>
+                        <button onClick={handleNewNote} className="p-2 text-purple-600 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><PlusCircleIcon className="w-6 h-6"/></button>
+                    </div>
+                    <div className="p-2 border-b border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                        {filterOptions.map(({ id, label, Icon }) => (
+                            <button key={id} onClick={() => setFilter(id)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md ${filter === id ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                                <Icon className="w-4 h-4" />
+                                <span>{label}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex-grow overflow-y-auto">
+                        {filteredNotes.map(note => (
+                            <button key={note.id} onClick={() => handleSelectNote(note.id)} className={`w-full text-left p-4 border-b border-slate-100 dark:border-slate-700/50 ${props.activeNoteId === note.id ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'}`}>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate">{note.title}</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{note.content || 'Nessun contenuto'}</p>
+                                <p className="text-xs text-slate-400 mt-1">{note.type === 'family' ? `Famiglia · ${note.authorName}` : 'Personale'}</p>
+                            </button>
+                        ))}
+                    </div>
+                </aside>
+
+                {/* Main View */}
+                <main className="flex-1 flex flex-col min-w-0">
+                    {props.error && <div className="p-4 flex-shrink-0 border-b border-slate-200 dark:border-slate-700"><ErrorDisplay error={props.error} /></div>}
+                    <div className="flex-grow min-h-0">
+                        {activeNote && props.isEditing ? (
+                            <NoteEditor 
+                                activeNote={activeNote}
+                                documents={props.documents}
+                                onSave={props.onUpdateNote}
+                                onCancel={() => props.setIsEditing(false)}
+                                onDocumentTagClick={props.onDocumentTagClick}
+                            />
+                        ) : activeNote ? (
+                            <NoteViewer 
+                                note={activeNote}
+                                onEdit={() => props.setIsEditing(true)}
+                                onDelete={() => props.onDeleteNote(activeNote)}
+                                onDocumentTagClick={props.onDocumentTagClick}
+                            />
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500">
+                                <DocumentTextIcon className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-4"/>
+                                <h2 className="text-xl font-semibold">Seleziona o crea una nota</h2>
+                                <p>Le tue note appariranno qui.</p>
+                            </div>
+                        )}
+                    </div>
+                </main>
+            </div>
         </div>
     );
 };

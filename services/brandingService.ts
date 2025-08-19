@@ -4,6 +4,7 @@ import {
     ArchivioChLogoIcon, ArchivioChWordmarkIcon,
     PolizzeChLogoIcon, PolizzeChWordmarkIcon,
     DisdetteChLogoIcon, DisdetteChWordmarkIcon,
+    AppuntiChLogoIcon, AppuntiChWordmarkIcon,
     SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, CoinIcon, MagnifyingGlassIcon, UsersIcon, DocumentTextIcon
 } from '../components/icons';
 
@@ -65,10 +66,10 @@ export const brandAssets = {
         ],
     },
     notes: {
-        Logo: ScansioniChLogoIcon, // Using main brand logo
-        Wordmark: ScansioniChWordmarkIcon, // Using main brand wordmark
-        colorClass: 'purple' as const,
-        heroTitle: React.createElement(React.Fragment, null, "Collega i puntini. ", React.createElement("br", null), React.createElement("span", { className: "text-purple-600 dark:text-purple-400" }, "Crea note intelligenti.")),
+        Logo: AppuntiChLogoIcon,
+        Wordmark: AppuntiChWordmarkIcon,
+        colorClass: 'yellow' as const,
+        heroTitle: React.createElement(React.Fragment, null, "Collega i puntini. ", React.createElement("br", null), React.createElement("span", { className: "text-yellow-500 dark:text-yellow-400" }, "Crea note intelligenti.")),
         heroSubtitle: 'Arricchisci i tuoi documenti con note personali, familiari o per consulenti. Tagga i file con @ per creare un hub di conoscenza connesso.',
         features: notesFeatures,
     },
@@ -101,6 +102,7 @@ export const getBrandKey = (): BrandKey => {
         if (hostname.includes('archivio.ch')) return 'archivio';
         if (hostname.includes('polizze.ch')) return 'polizze';
         if (hostname.includes('disdette.ch')) return 'disdette';
+        if (hostname.includes('appunti.ch')) return 'notes';
         if (hostname.includes('scansioni.ch')) return 'scan';
 
         // 3. Fallback per ambiente di sviluppo: rotazione automatica
@@ -129,5 +131,6 @@ export const colorStyles: Record<BrandColor, Record<string, string>> = {
     purple: { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-600', hoverBg: 'hover:bg-purple-700', shadow: 'hover:shadow-purple-500/30', ring: 'focus:ring-purple-500', border: 'focus:border-purple-500', darkText: 'dark:text-purple-400', hoverText: 'hover:text-purple-600 dark:hover:text-purple-400' },
     red: { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-600', hoverBg: 'hover:bg-red-700', shadow: 'hover:shadow-red-500/30', ring: 'focus:ring-red-500', border: 'focus:border-red-500', darkText: 'dark:text-red-400', hoverText: 'hover:text-red-600 dark:hover:text-red-400' },
     cyan: { text: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-600', hoverBg: 'hover:bg-cyan-700', shadow: 'hover:shadow-cyan-500/30', ring: 'focus:ring-cyan-500', border: 'focus:border-cyan-500', darkText: 'dark:text-cyan-400', hoverText: 'hover:text-cyan-600 dark:hover:text-cyan-400' },
-    green: { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-600', hoverBg: 'hover:bg-green-700', shadow: 'hover:shadow-green-500/30', ring: 'focus:ring-green-500', border: 'focus:border-green-500', darkText: 'dark:text-green-400', hoverText: 'hover:text-green-600 dark:hover:text-green-400' }
+    green: { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-600', hoverBg: 'hover:bg-green-700', shadow: 'hover:shadow-green-500/30', ring: 'focus:ring-green-500', border: 'focus:border-green-500', darkText: 'dark:text-green-400', hoverText: 'hover:text-green-600 dark:hover:text-green-400' },
+    yellow: { text: 'text-yellow-500 dark:text-yellow-400', bg: 'bg-yellow-400', hoverBg: 'hover:bg-yellow-500', shadow: 'hover:shadow-yellow-500/30', ring: 'focus:ring-yellow-500', border: 'focus:border-yellow-500', darkText: 'dark:text-yellow-400', hoverText: 'hover:text-yellow-500 dark:hover:text-yellow-400' }
 };

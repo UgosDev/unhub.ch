@@ -72,6 +72,7 @@ const DocumentPreviewPane: React.FC<{
   onRestore: (id: string) => void;
   onUpdate: (doc: ProcessedPageResult) => void;
 }> = ({ doc, isTrashed, meta, onClose, onMoveToTrash, onRestore, onUpdate }) => {
+  const date = doc.timestamp?.toDate ? doc.timestamp.toDate() : new Date(doc.timestamp);
   return (
     <div className="bg-white dark:bg-slate-800 h-full flex flex-col rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       <header className="p-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
@@ -84,7 +85,7 @@ const DocumentPreviewPane: React.FC<{
             <XMarkIcon className="w-5 h-5" />
           </button>
           <div className="text-xs text-slate-500">
-            {new Date(doc.timestamp).toLocaleDateString('it-CH')}
+            {date.toLocaleDateString('it-CH')}
             {meta?.fascicolo ? ` • Fascicolo: ${meta.fascicolo}` : ''}
             {doc.isPrivate ? ' • Privato 🔒' : ' • Famiglia'}
           </div>
@@ -311,8 +312,7 @@ const Archivio: React.FC<ArchivioProps> = ({
         String(a.analysis?.soggetto ?? '').localeCompare(String(b.analysis?.soggetto ?? ''))
       );
     } else {
-      const getDate = (d: ProcessedPageResult) =>
-        new Date(d.timestamp || Date.now()).getTime();
+      const getDate = (d: ProcessedPageResult) => (d.timestamp?.toDate ? d.timestamp.toDate() : new Date(d.timestamp || Date.now())).getTime();
       arr.sort((a, b) => getDate(b) - getDate(a));
       if (sort === 'date_asc') arr.reverse();
     }
@@ -774,6 +774,7 @@ const Archivio: React.FC<ArchivioProps> = ({
                     const meta = metaById.get(doc.uuid);
                     const inTrash = trashedIds.has(doc.uuid);
                     const isBeingDragged = draggedItemIds.has(doc.uuid);
+                    const date = doc.timestamp?.toDate ? doc.timestamp.toDate() : new Date(doc.timestamp);
 
                     return (
                       <div
@@ -818,7 +819,7 @@ const Archivio: React.FC<ArchivioProps> = ({
                                 : String((doc as any).folderPath).split('/').pop()}
                             </span>
                             <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">
-                              {new Date(doc.timestamp).toLocaleDateString('it-CH')}
+                              {date.toLocaleDateString('it-CH')}
                             </span>
                             <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">
                               {doc.isPrivate ? 'Privato 🔒' : 'Famiglia 👥'}

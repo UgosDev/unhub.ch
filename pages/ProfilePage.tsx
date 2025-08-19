@@ -1181,6 +1181,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                         </label>
                         <label className="flex items-start p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 cursor-pointer">
                             <div className="flex-grow">
+                                <span className="font-semibold text-slate-800 dark:text-slate-100">Accesso alle Note</span>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                    Consenti a Ugo di leggere e modificare il contenuto delle tue note per rispondere a domande o effettuare modifiche su tua richiesta. Quando disattivato, Ugo potrà solo creare nuove note.
+                                </p>
+                            </div>
+                            <input
+                                type="checkbox"
+                                checked={settings.ugoCanReadNotes}
+                                onChange={(e) => onUpdateSettings({ ugoCanReadNotes: e.target.checked })}
+                                className="flex-shrink-0 mt-1 ml-4 h-6 w-6 rounded text-purple-600 focus:ring-purple-500 border-slate-300"
+                            />
+                        </label>
+                        <label className="flex items-start p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 cursor-pointer">
+                            <div className="flex-grow">
                                 <span className="font-semibold text-slate-800 dark:text-slate-100">Archiviazione via Chat</span>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                                     Consenti a Ugo di archiviare i documenti per te. Puoi dire "archivia la fattura E-Corp".
