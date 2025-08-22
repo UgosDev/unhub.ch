@@ -63,7 +63,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, isAuth, brandKey, ap
                 <h3 className="font-semibold text-slate-800 dark:text-slate-200">Azienda</h3>
                  <ul className="mt-4 space-y-3 text-sm">
                    <FooterLink page="changelog" onNavigate={onNavigate} brandColorClass={brandColors.hoverText}>Changelog</FooterLink>
-                   <FooterLink page="newsletter" onNavigate={onNavigate} brandColorClass={brandColors.hoverText}>Newsletter</FooterLink>
                 </ul>
             </div>
             

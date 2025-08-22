@@ -17,7 +17,6 @@ export interface AppSettings {
     ugoArchivioEnabled: boolean;
     ugoDisdetteEnabled: boolean;
     ugoImplicitFeedbackEnabled: boolean;
-    ugoCanReadNotes: boolean; // NUOVO
 }
 
 const SETTINGS_KEY = 'scansioni.ch.settings';
@@ -35,9 +34,8 @@ export const defaultSettings: AppSettings = {
     circularMenuActions: ['select', 'expand', 'send', 'downloadZip', 'downloadPdf', 'ungroup'],
     autoArchiveDocuments: false,
     ugoArchivioEnabled: false,
-    ugoDisdetteEnabled: true,
+    ugoDisdetteEnabled: false,
     ugoImplicitFeedbackEnabled: false,
-    ugoCanReadNotes: false, // NUOVO
 };
 
 export function getSettings(): AppSettings {

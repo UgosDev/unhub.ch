@@ -183,6 +183,64 @@ export class DocumentScannerEngine {
     }
   }
 
+    private findBestQuadFromLines(linesMat: any, width: number, height: number): Point[] | null {
+        if (linesMat.rows === 0) return null;
+    
+        const getLineIntersection = (l1, l2) => {
+            const [x1, y1, x2, y2] = l1;
+            const [x3, y3, x4, y4] = l2;
+            const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+            if (den === 0) return null;
+            const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+            const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+            return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
+        };
+    
+        const horizontals = [];
+        const verticals = [];
+        const minLength = Math.min(width, height) * 0.2; // Aumentata la soglia di lunghezza minima
+    
+        for (let i = 0; i < linesMat.rows; i++) {
+            const [x1, y1, x2, y2] = linesMat.data32S.slice(i * 4, i * 4 + 4);
+            const length = Math.hypot(x2 - x1, y2 - y1);
+            if (length < minLength) continue;
+            
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            const absAngle = Math.abs(angle);
+    
+            // Tolleranza più ampia per gli angoli
+            if (absAngle < 45 || absAngle > 135) {
+                horizontals.push([x1, y1, x2, y2]);
+            } else {
+                verticals.push([x1, y1, x2, y2]);
+            }
+        }
+    
+        if (horizontals.length < 2 || verticals.length < 2) return null;
+    
+        let top = horizontals.reduce((a, b) => (a[1] + a[3] < b[1] + b[3] ? a : b));
+        let bottom = horizontals.reduce((a, b) => (a[1] + a[3] > b[1] + b[3] ? a : b));
+        let left = verticals.reduce((a, b) => (a[0] + a[2] < b[0] + b[2] ? a : b));
+        let right = verticals.reduce((a, b) => (a[0] + a[2] > b[0] + b[2] ? a : b));
+    
+        const tl = getLineIntersection(top, left);
+        const tr = getLineIntersection(top, right);
+        const bl = getLineIntersection(bottom, left);
+        const br = getLineIntersection(bottom, right);
+        
+        if (!tl || !tr || !bl || !br) return null;
+    
+        const corners = [{x: tl.x, y: tl.y}, {x: tr.x, y: tr.y}, {x: br.x, y: br.y}, {x: bl.x, y: bl.y}];
+        
+        for (const corner of corners) {
+            if (corner.x < -width * 0.2 || corner.x > width * 1.2 || corner.y < -height * 0.2 || corner.y > height * 1.2) {
+                return null;
+            }
+        }
+    
+        return orderTLTRBRBL(corners);
+    }
+
   /** Un frame di elaborazione */
   private async processFrame() {
     const cv = window.cv;
@@ -196,6 +254,7 @@ export class DocumentScannerEngine {
     const cw = Math.max(2, Math.round(vw * scale));
     const ch = Math.max(2, Math.round(vh * scale));
 
+    // Disegna su canvas
     const ctx =
       (this.canvas as any).getContext?.('2d', { willReadFrequently: true }) ||
       (this.canvas as HTMLCanvasElement).getContext('2d');
@@ -204,49 +263,34 @@ export class DocumentScannerEngine {
     (this.canvas as any).height = ch;
     ctx.drawImage(this.video, 0, 0, cw, ch);
 
+    // Prepara Mat riutilizzabili
     this.ensureMats(cv, cw, ch);
-    const { src, gray, blur, canny, dilated, hier } = this.mats;
+    const { src, gray, blur, canny, dilated } = this.mats;
     
     let bestPts: Point[] | null = null;
-    let maxArea = 0;
 
     try {
+      // RGBA -> GRAY
       const imgData = ctx.getImageData(0, 0, cw, ch);
       src.data.set(imgData.data);
       cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
       const meanB = cv.mean(gray)[0] | 0;
 
-      // === ROBUST CONTOUR-FINDING PIPELINE ===
+      // === NUOVA PIPELINE CANNY/HOUGH ===
       cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+      cv.adaptiveThreshold(blur, dilated, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 8);
+      cv.Canny(dilated, canny, 100, 200, 3);
+      cv.dilate(canny, canny, this.kernel, new cv.Point(-1,-1), 1);
       
-      const { low, high } = cannyThresholds(meanB);
-      cv.Canny(blur, canny, low, high, 3);
+      const lines = new cv.Mat();
+      cv.HoughLinesP(canny, lines, 1, Math.PI / 180, 50, cw * 0.2, 15);
       
-      cv.dilate(canny, dilated, this.kernel, new cv.Point(-1, -1), 1);
+      bestPts = this.findBestQuadFromLines(lines, cw, ch);
+      lines.delete();
+      // === FINE NUOVA PIPELINE ===
 
-      const contours = new cv.MatVector();
-      cv.findContours(dilated, contours, hier, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+      const maxArea = bestPts ? polyArea(bestPts) : 0;
 
-      for (let i = 0; i < contours.size(); ++i) {
-          const cnt = contours.get(i);
-          const area = cv.contourArea(cnt, false);
-          
-          if (area > maxArea) {
-              const peri = cv.arcLength(cnt, true);
-              const approx = new cv.Mat();
-              cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
-              
-              if (approx.rows === 4 && cv.isContourConvex(approx)) {
-                  maxArea = area;
-                  bestPts = this.matToPts(approx);
-              }
-              approx.delete();
-          }
-          cnt.delete();
-      }
-      contours.delete();
-      // === END PIPELINE ===
-      
       // Valutazione risultato
       const ts = performance.now();
       const frameArea = cw * ch;
@@ -254,47 +298,90 @@ export class DocumentScannerEngine {
       const procTimeMs = ts - t0;
 
       if (bestPts && areaRatio >= MIN_DOC_AREA_ENTER) {
+        // reset fallback state
         this.firstFailTs = null;
-        const orderedPts = orderTLTRBRBL(bestPts);
-        this.history.push(orderedPts);
+        this.history.push(bestPts);
 
-        const type = classifyByAspect(orderedPts);
-        const confidence = Math.max(0, Math.min(1, (areaRatio - MIN_DOC_AREA_ENTER) / (0.6 - MIN_DOC_AREA_ENTER)));
+        const type = classifyByAspect(bestPts);
+        const confidence = Math.max(0, Math.min(1, (areaRatio - MIN_DOC_AREA_ENTER) / (0.6 - MIN_DOC_AREA_ENTER))); // grezzo
 
         this.onResult({
-          corners: orderedPts,
+          corners: bestPts,
           brightness: meanB,
           type,
           feedback: 'Mantieni la posizione',
-          procTimeMs, ts, areaRatio, confidence,
+          procTimeMs,
+          ts,
+          areaRatio,
+          confidence,
         });
       } else {
+        // fallimento: gestisci history e (eventualmente) fallback
         if (!this.firstFailTs) this.firstFailTs = performance.now();
+
         const latest = this.history.latest();
-        
-        if (latest && areaRatio > MIN_DOC_AREA_EXIT) {
-           this.onResult({
+        const elapsedFail = performance.now() - (this.firstFailTs || 0);
+        const sinceLastFallback = performance.now() - this.lastFallbackTs;
+
+        // feedback di prossimità (documento troppo piccolo)
+        if (latest && areaRatio > 0) {
+          const fb = areaRatio < MIN_DOC_AREA_ENTER ? 'Avvicina il telefono' : 'Mantieni la posizione';
+          this.onResult({
             corners: latest,
             brightness: meanB,
             type: 'unknown',
-            feedback: 'Avvicina il telefono',
-            procTimeMs, ts, areaRatio: polyArea(latest) / frameArea,
+            feedback: fb,
+            procTimeMs,
+            ts,
+            areaRatio,
             confidence: Math.max(0, Math.min(1, areaRatio / 0.5)),
           });
         } else {
-            if (latest) this.history.clear(); // Pulisce se il documento è perso/troppo piccolo
+          this.onResult({
+            corners: null,
+            brightness: meanB,
+            type: 'unknown',
+            feedback: 'Cerca un documento...',
+            procTimeMs,
+            ts,
+            areaRatio,
+            confidence: 0,
+          });
+        }
+
+        // Condizioni per AI fallback (non aggressivo)
+        const shouldFallback =
+          elapsedFail >= FALLBACK_FAIL_MS &&
+          meanB < LOW_LIGHT_THRESH &&
+          sinceLastFallback >= FALLBACK_COOLDOWN_MS;
+
+        if (shouldFallback) {
+          this.lastFallbackTs = performance.now();
+          const aiRes = await this.invokeAIFallback(ctx);
+          if (aiRes.corners && aiRes.corners.length === 4) {
+            const ordered = orderTLTRBRBL(aiRes.corners);
+            this.history.push(ordered);
             this.onResult({
-                corners: null,
-                brightness: meanB,
-                type: 'unknown',
-                feedback: 'Cerca un documento...',
-                procTimeMs, ts, areaRatio, confidence: 0,
+              corners: ordered,
+              brightness: meanB,
+              type: 'unknown',
+              feedback: aiRes.feedback ?? 'Rilevato (AI)',
+              procTimeMs,
+              ts: performance.now(),
+              areaRatio: polyArea(ordered) / frameArea,
+              confidence: 0.6,
             });
+            this.firstFailTs = null; // reset
+          } else {
+            // AI non utile: mantieni flusso normale
+          }
         }
       }
     } catch (e) {
       console.error('[Scanner] processFrame error', e);
       this.onResult({ corners: null, brightness: 128, type: 'unknown', feedback: 'Errore di elaborazione' });
+    } finally {
+        // Nessun cleanup specifico per MatVector, gestito da JS GC
     }
   }
 
@@ -342,6 +429,7 @@ export class DocumentScannerEngine {
           resolved = true;
           clearTimeout(to);
           if (finalJson && finalJson.documentCorners?.length === 4) {
+            // ci aspettiamo corner normalizzati [0..1]
             const w = (ctx.canvas as any).width;
             const h = (ctx.canvas as any).height;
             const corners = finalJson.documentCorners.map((p: any) => ({

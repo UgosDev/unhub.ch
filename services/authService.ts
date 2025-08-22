@@ -30,20 +30,6 @@ export interface User {
     twoFactorRecoveryCodes?: string[];
     familyId?: string;
     settings?: Partial<AppSettings>;
-    // --- NUOVI CAMPI PER COLLABORAZIONE ---
-    role?: 'client' | 'broker';
-    reputationScore?: number; // solo per broker
-    collaborations?: { 
-        brokerUid: string; 
-        brokerEmail: string; 
-        status: 'active' | 'pending' 
-    }[]; // solo per client
-    clients?: { 
-        clientUid: string; 
-        clientName: string; 
-        clientEmail: string; 
-        status: 'active' 
-    }[]; // solo per broker
 }
 
 type FirebaseUser = firebase.User;
@@ -77,7 +63,7 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             await firestoreService.createUserProfile(firebaseUser.uid, name, email, defaultSubscription);
             appData = { 
                 name, 
-                email,
+                email, 
                 address: '',
                 addressConfirmed: false,
                 householdMembers: [],
@@ -89,8 +75,6 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
                 twoFactorRecoveryCodes: [],
                 familyId: firebaseUser.uid,
                 settings: defaultSettings,
-                role: 'client',
-                collaborations: [],
             };
         }
 
@@ -111,12 +95,8 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             is2faEnabled: appData.is2faEnabled,
             twoFactorSecret: appData.twoFactorSecret,
             twoFactorRecoveryCodes: appData.twoFactorRecoveryCodes,
-            familyId: appData.familyId || firebaseUser.uid, // Fallback for older users
+            familyId: appData.familyId,
             settings: mergedSettings,
-            role: appData.role || 'client',
-            collaborations: appData.collaborations || [],
-            clients: appData.clients || [],
-            reputationScore: appData.reputationScore,
         };
     } catch (error) {
         console.warn("Failed to get or create user profile from Firestore (likely offline). Returning a temporary user object to maintain session.", error);
@@ -145,16 +125,13 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             twoFactorRecoveryCodes: [],
             familyId: firebaseUser.uid,
             settings: defaultSettings,
-            role: 'client',
-            collaborations: [],
         };
     }
 };
 
 
 /**
- * Registra un nuovo utente con email e password in Firebase.
- * Il profilo utente verrà creato dal listener onAuthStateChanged tramite getAppUser.
+ * Registra un nuovo utente con email e password in Firebase e crea immediatamente il profilo in Firestore.
  * @param name Il nome visualizzato dell'utente.
  * @param email L'email dell'utente.
  * @param password La password dell'utente.
@@ -166,10 +143,17 @@ export async function register(name: string, email: string, password: string): P
 
     await firebaseUser.updateProfile({ displayName: name });
     
-    // NOTA: La creazione del profilo Firestore è ora gestita esclusivamente
-    // dalla funzione getAppUser, che viene attivata dal listener onAuthStateChanged.
-    // Questo centralizza la logica e previene la creazione di profili duplicati
-    // e il doppio accredito di coin di benvenuto.
+    // Create Firestore profile immediately to prevent race conditions
+    const defaultSubscription: Subscription = {
+        plan: 'Personale',
+        scansUsed: 0,
+        scansTotal: 100,
+        totalCostEver: 0,
+        scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0 },
+        scanCoinBalance: 1000,
+        addressMismatchCount: 0,
+    };
+    await firestoreService.createUserProfile(firebaseUser.uid, name, email, defaultSubscription);
 }
 
 /**
@@ -299,57 +283,4 @@ export async function reauthenticate(password: string): Promise<void> {
     }
     const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
     await user.reauthenticateWithCredential(credential);
-}
-
-/**
- * Creates a record to allow transferring coin balance after account deletion.
- * @param balance The current coin balance.
- * @param secretWord The user-provided word to secure the transfer.
- * @returns The generated 6-letter transfer code.
- */
-export async function createCoinTransferRecord(balance: number, secretWord: string): Promise<string> {
-    const user = auth.currentUser;
-    if (!user) {
-        throw new Error("Utente non loggato.");
-    }
-
-    // Generate 6-letter uppercase code
-    const code = Array(6).fill(0).map(() => String.fromCharCode(Math.floor(Math.random() * 26) + 65)).join('');
-
-    await firestoreService.createCoinTransferRecord(user.uid, balance, code, secretWord);
-    return code;
-}
-
-/**
- * Redeems a coin transfer code, adding the balance to the current user's account.
- * @param code The 6-letter transfer code.
- * @param secretWord The secret word created during account deletion.
- * @returns The amount of coins transferred.
- */
-export async function redeemCoinTransferCode(code: string, secretWord: string): Promise<number> {
-    const user = auth.currentUser;
-    if (!user) {
-        throw new Error("Devi essere loggato per riscattare un codice.");
-    }
-    return await firestoreService.redeemCoinTransferCode(user.uid, code, secretWord);
-}
-
-
-/**
- * Deletes the current user's account and all associated data.
- * Requires recent authentication.
- */
-export async function deleteCurrentUserAccount(): Promise<void> {
-    const user = auth.currentUser;
-    if (!user) {
-        throw new Error("Nessun utente loggato. Impossibile eliminare l'account.");
-    }
-
-    const userId = user.uid;
-
-    // First, delete all Firestore data for the user.
-    await firestoreService.deleteAllUserData(userId);
-
-    // Then, delete the user from Firebase Authentication.
-    await user.delete();
 }

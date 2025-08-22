@@ -1,5 +1,5 @@
 import { db, firebase } from './firebase';
-import type { ProcessedPageResult, ScanHistoryEntry, Note } from './geminiService';
+import type { ProcessedPageResult, ScanHistoryEntry } from './geminiService';
 import type { ChatMessage } from '../components/Chatbot';
 import type { User, Subscription } from './authService';
 import { defaultSettings } from './settingsService';
@@ -32,14 +32,6 @@ export interface AccessLogEntry {
     userAgent: string;
     ipAddress: string;
     location: string;
-}
-
-// Helper for hashing
-async function sha256(message: string): Promise<string> {
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 
@@ -94,10 +86,7 @@ export const onUserProfileUpdate = (userId: string, callback: (user: Omit<User, 
 
 export const createUserProfile = async (userId: string, name: string, email: string, defaultSubscription: Subscription): Promise<void> => {
     const userDocRef = db.collection("users").doc(userId);
-    const batch = db.batch();
-
-    // 1. Set user profile
-    batch.set(userDocRef, { 
+    await userDocRef.set({ 
         name, 
         email,
         address: '',
@@ -111,30 +100,12 @@ export const createUserProfile = async (userId: string, name: string, email: str
         twoFactorRecoveryCodes: [],
         familyId: userId,
         settings: defaultSettings,
-        role: 'client',
-        collaborations: [],
     });
-
-    // 2. Add initial credit to history
-    const historyCollectionRef = userDocRef.collection('scanHistory');
-    const initialCreditEntry: Omit<ScanHistoryEntry, 'id'> = {
-        timestamp: firebase.firestore.FieldValue.serverTimestamp() as any,
-        description: 'Credito iniziale di benvenuto',
-        amountInCoins: 1000,
-        status: 'Credited',
-        type: 'promo'
-    };
-    batch.set(historyCollectionRef.doc(), initialCreditEntry);
-
-    // Commit both operations
-    await batch.commit();
 };
-
 
 export const updateUserProfile = async (userId: string, updates: Partial<Omit<User, 'uid'>>): Promise<void> => {
     const userDocRef = db.collection("users").doc(userId);
-    // Using set with merge is more robust for updating complex objects and handling field deletions.
-    await userDocRef.set(updates, { merge: true });
+    await userDocRef.update(updates);
 };
 
 export const updateUserProcessingStatus = async (userId: string, isProcessing: boolean, heartbeat: string | null): Promise<void> => {
@@ -161,103 +132,6 @@ const deleteCollection = async (userId: string, collectionName: string) => {
     }
 };
 
-export const deleteAllUserData = async (userId: string): Promise<void> => {
-    const collections = [
-        'workspace', 'archivio', 'polizze', 'disdette', 
-        'scanHistory', 'chat', 'archivedChats', 'stats', 'accessLogs', 'notes'
-    ];
-    
-    // Delete all subcollections
-    const deletionPromises = collections.map(name => deleteCollection(userId, name));
-    await Promise.all(deletionPromises);
-    
-    // Delete the main user document
-    const userDocRef = db.collection("users").doc(userId);
-    await userDocRef.delete();
-};
-
-
-// --- Coin Transfer on Deletion ---
-export const createCoinTransferRecord = async (userId: string, balance: number, code: string, secretWord: string): Promise<void> => {
-    if (balance <= 0) {
-        // Don't create a record if there's nothing to transfer
-        return;
-    }
-    const transferDocRef = db.collection("coinTransfers").doc(userId);
-    const secretWordHash = await sha256(secretWord);
-
-    await transferDocRef.set({
-        balance,
-        code,
-        secretWordHash,
-        claimed: false,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        originalEmail: firebase.auth().currentUser?.email // for reference/support
-    });
-};
-
-export const redeemCoinTransferCode = async (currentUserId: string, code: string, secretWord: string): Promise<number> => {
-    const user = db.collection('users').doc(currentUserId);
-    if (!user) {
-        throw new Error("Devi essere loggato per riscattare un codice.");
-    }
-    const transferCollectionRef = db.collection('coinTransfers');
-    const query = transferCollectionRef.where('code', '==', code).where('claimed', '==', false).limit(1);
-
-    const snapshot = await query.get();
-
-    if (snapshot.empty) {
-        throw new Error("Codice di trasferimento non valido o già utilizzato.");
-    }
-
-    const transferDoc = snapshot.docs[0];
-    const transferData = transferDoc.data();
-    const secretWordHash = await sha256(secretWord);
-
-    if (transferData.secretWordHash !== secretWordHash) {
-        throw new Error("Parola segreta non corretta.");
-    }
-    
-    const currentUserRef = db.collection('users').doc(currentUserId);
-    const historyCollectionRef = db.collection(`users/${currentUserId}/scanHistory`);
-
-    let transferredAmount = 0;
-
-    await db.runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(currentUserRef);
-        if (!userDoc.exists) {
-            throw new Error("Utente corrente non trovato.");
-        }
-        
-        const userData = userDoc.data() as User;
-        transferredAmount = transferData.balance;
-        const newBalance = (userData.subscription.scanCoinBalance || 0) + transferredAmount;
-
-        // 1. Update user's balance
-        transaction.update(currentUserRef, { 'subscription.scanCoinBalance': newBalance });
-        
-        // 2. Mark transfer as claimed
-        transaction.update(transferDoc.ref, { 
-            claimed: true,
-            claimedByUid: currentUserId,
-            claimedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        // 3. Add a history entry for the credit
-        const historyEntry: Omit<ScanHistoryEntry, 'id'> = {
-            timestamp: firebase.firestore.FieldValue.serverTimestamp() as any,
-            description: `Crediti recuperati da account precedente (ID: ...${transferDoc.id.slice(-6)})`,
-            amountInCoins: transferredAmount,
-            status: 'Credited',
-            type: 'promo', // Or a new 'transfer' type
-        };
-        transaction.set(historyCollectionRef.doc(), historyEntry);
-    });
-    
-    return transferredAmount;
-};
-
-
 // --- Workspace (ex-Results) ---
 export const onWorkspaceUpdate = (userId: string, callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => {
     const workspaceCollection = db.collection(`users/${userId}/workspace`).orderBy("timestamp");
@@ -277,7 +151,7 @@ export const getAllWorkspaceDocs = async (userId: string): Promise<ProcessedPage
 export const addOrUpdateWorkspaceDoc = async (userId: string, result: ProcessedPageResult): Promise<void> => {
     const cleanResult = JSON.parse(JSON.stringify(result)); // Remove undefined
     const resultDocRef = db.collection(`users/${userId}/workspace`).doc(result.uuid);
-    await resultDocRef.set(cleanResult, { merge: true });
+    await resultDocRef.set(cleanResult);
 };
 
 export const deleteWorkspaceDoc = async (userId: string, resultUuid: string): Promise<void> => {
@@ -297,7 +171,7 @@ export const onModuleUpdate = (userId: string, module: 'archivio' | 'polizze' | 
 };
 
 // --- Document Movement ---
-export const moveDocsBetweenCollections = async (userId: string, docUuids: string[], fromCollection: string, toCollection: string, options?: { isPrivate?: boolean, embeddings?: Record<string, number[]> }): Promise<void> => {
+export const moveDocsBetweenCollections = async (userId: string, docUuids: string[], fromCollection: string, toCollection: string, options?: { isPrivate?: boolean }): Promise<void> => {
     if (docUuids.length === 0) return;
     
     const batch = db.batch();
@@ -312,10 +186,6 @@ export const moveDocsBetweenCollections = async (userId: string, docUuids: strin
             
             if (toCollection === 'archivio') {
                 data.isPrivate = options?.isPrivate ?? false;
-                if (options?.embeddings && options.embeddings[docSnap.id]) {
-                    data.embedding = options.embeddings[docSnap.id];
-                }
-                data.folderPath = '/'; // Initialize at root
             }
             
             const toDocRef = toCollectionRef.doc(docSnap.id);
@@ -329,7 +199,7 @@ export const moveDocsBetweenCollections = async (userId: string, docUuids: strin
     await batch.commit();
 };
 
-export const moveDocsToModule = async (userId: string, docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean, embeddings?: Record<string, number[]> }): Promise<void> => {
+export const moveDocsToModule = async (userId: string, docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean }): Promise<void> => {
     await moveDocsBetweenCollections(userId, docUuids, 'workspace', toModule, options);
 };
 
@@ -344,31 +214,11 @@ export const deleteArchivedDoc = async (userId: string, uuid: string): Promise<v
     await docRef.delete();
 };
 
-// --- Polizze Specific Actions ---
-export const updatePolizzaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {
-    const docRef = db.collection(`users/${userId}/polizze`).doc(doc.uuid);
-    await docRef.set(doc, { merge: true });
-};
-
-export const deletePolizzaDoc = async (userId: string, uuid: string): Promise<void> => {
-    const docRef = db.collection(`users/${userId}/polizze`).doc(uuid);
-    await docRef.delete();
-};
 
 // --- Disdette ---
 export const addDisdettaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {
     const docRef = db.collection(`users/${userId}/disdette`).doc(doc.uuid);
     await docRef.set(doc);
-};
-
-export const updateDisdettaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {
-    const docRef = db.collection(`users/${userId}/disdette`).doc(doc.uuid);
-    await docRef.set(doc, { merge: true });
-};
-
-export const deleteDisdettaDoc = async (userId: string, uuid: string): Promise<void> => {
-    const docRef = db.collection(`users/${userId}/disdette`).doc(uuid);
-    await docRef.delete();
 };
 
 
@@ -522,58 +372,6 @@ export const getAllUserProfilesForAdmin = async (): Promise<User[]> => {
 };
 
 
-// --- VECTOR SEARCH & EMBEDDINGS ---
-export const saveArchivioEmbedding = async (userId: string, docUuid: string, embedding: number[]): Promise<void> => {
-    const docRef = db.collection(`users/${userId}/archivio`).doc(docUuid);
-    // Use set with merge to create/update the embedding field
-    await docRef.set({ embedding }, { merge: true });
-};
-
-export const findNearestArchivedDocs = async (userId: string, queryVector: number[], limit: number): Promise<{uuid: string; distance: number}[]> => {
-    const archivioCollectionRef = db.collection(`users/${userId}/archivio`);
-    
-    // The findNearest method may not be in the default compat types, so we cast to any.
-    const query = (archivioCollectionRef as any).findNearest(
-        'embedding', 
-        firebase.firestore.Vector.fromArray(queryVector), 
-        {
-            limit: limit,
-            distanceMeasure: 'EUCLIDEAN'
-        }
-    );
-
-    const snapshot = await query.get();
-
-    return snapshot.docs.map((doc: any) => ({
-        uuid: doc.id,
-        distance: doc.distance, // Distance is returned on the document in the snapshot
-    }));
-};
-
-export const getArchivedDocsByUuids = async (userId: string, uuids: string[]): Promise<ProcessedPageResult[]> => {
-    if (uuids.length === 0) {
-        return [];
-    }
-    // Firestore 'in' query supports up to 30 elements in the array.
-    if (uuids.length > 30) {
-        console.warn("getArchivedDocsByUuids was called with more than 30 UUIDs. This is not supported by Firestore 'in' queries. The list will be truncated.");
-        uuids = uuids.slice(0, 30);
-    }
-    
-    const archivioCollectionRef = db.collection(`users/${userId}/archivio`);
-    const query = archivioCollectionRef.where(firebase.firestore.FieldPath.documentId(), 'in', uuids);
-    const snapshot = await query.get();
-    
-    // The order is not guaranteed by 'in' query, so we re-order based on the input uuids array.
-    const docsMap = new Map<string, ProcessedPageResult>();
-    snapshot.docs.forEach(doc => {
-        docsMap.set(doc.id, doc.data() as ProcessedPageResult);
-    });
-
-    return uuids.map(uuid => docsMap.get(uuid)).filter((doc): doc is ProcessedPageResult => !!doc);
-};
-
-
 // --- BATCH WRITES ---
 export const batchAddWorkspaceAndHistory = async (userId: string, results: ProcessedPageResult[], historyEntries: ScanHistoryEntry[]): Promise<void> => {
     if (results.length === 0 && historyEntries.length === 0) {
@@ -585,9 +383,8 @@ export const batchAddWorkspaceAndHistory = async (userId: string, results: Proce
     const workspaceCollectionRef = db.collection(`users/${userId}/workspace`);
     results.forEach(result => {
         const docRef = workspaceCollectionRef.doc(result.uuid);
-        // Pass object directly to Firestore; it handles undefined fields.
-        // This preserves FieldValue objects like serverTimestamp().
-        batch.set(docRef, result);
+        // Remove undefined values before sending to Firestore
+        batch.set(docRef, JSON.parse(JSON.stringify(result)));
     });
 
     const historyCollectionRef = db.collection(`users/${userId}/scanHistory`);
@@ -598,99 +395,4 @@ export const batchAddWorkspaceAndHistory = async (userId: string, results: Proce
     });
 
     await batch.commit();
-};
-
-export const processScanTransaction = async (userId: string, familyId: string, cost: number, workspaceDocs: ProcessedPageResult[], historyEntries: Omit<ScanHistoryEntry, 'id'>[]): Promise<void> => {
-    const familyHeadRef = db.collection('users').doc(familyId);
-    const userWorkspaceRef = db.collection(`users/${userId}/workspace`);
-    const userHistoryRef = db.collection(`users/${userId}/scanHistory`);
-
-    await db.runTransaction(async (transaction) => {
-        const familyHeadDoc = await transaction.get(familyHeadRef);
-        if (!familyHeadDoc.exists) {
-            throw new Error("Account del capo famiglia non trovato.");
-        }
-        const familyData = familyHeadDoc.data() as User;
-        
-        const currentBalance = familyData.subscription.scanCoinBalance;
-        if (currentBalance < cost) {
-            throw new Error("Credito ScanCoin insufficiente nel pool familiare.");
-        }
-        const newBalance = currentBalance - cost;
-
-        // 1. Update family head's balance
-        transaction.update(familyHeadRef, { 'subscription.scanCoinBalance': newBalance });
-
-        // 2. Add new documents to the current user's workspace
-        workspaceDocs.forEach(doc => {
-            const docRef = userWorkspaceRef.doc(doc.uuid);
-            transaction.set(docRef, JSON.parse(JSON.stringify(doc)));
-        });
-
-        // 3. Add history entries to the current user's history
-        historyEntries.forEach(entry => {
-            const historyRef = userHistoryRef.doc();
-            transaction.set(historyRef, entry);
-        });
-    });
-};
-
-
-// --- Notes ---
-export const onNotesUpdate = (userId: string, callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => {
-    const notesCollection = db.collection(`users/${userId}/notes`).orderBy("updatedAt", "desc");
-    return notesCollection.onSnapshot(
-        (snapshot) => callback(snapshot),
-        (error) => console.error("Error listening to notes:", error)
-    );
-};
-
-export const addNote = async (userId: string, note: Omit<Note, 'id'>): Promise<string> => {
-    const notesCollection = db.collection(`users/${userId}/notes`);
-    const docRef = await notesCollection.add(note);
-    return docRef.id;
-};
-
-export const updateNote = async (userId: string, note: Note): Promise<void> => {
-    const { id, ...noteData } = note;
-    if (!id) throw new Error("Note ID is required for update.");
-    const noteDocRef = db.collection(`users/${userId}/notes`).doc(id);
-    await noteDocRef.set(noteData, { merge: true });
-};
-
-export const deleteNote = async (userId: string, noteId: string): Promise<void> => {
-    const noteDocRef = db.collection(`users/${userId}/notes`).doc(noteId);
-    await noteDocRef.delete();
-};
-
-// --- NUOVE FUNZIONI PER COLLABORAZIONE (STUB) ---
-
-export const findUserByEmail = async (email: string): Promise<(User & { uid: string }) | null> => {
-    console.log(`[STUB] Cercando utente con email: ${email}`);
-    // In produzione, questo richiederebbe una Cloud Function o regole di sicurezza specifiche
-    // che permettano una query limitata. Per ora, simuliamo una ricerca che non trova nessuno
-    // per evitare di dover implementare la logica completa ora.
-    // const usersRef = db.collection('users');
-    // const snapshot = await usersRef.where('email', '==', email).limit(1).get();
-    // if (snapshot.empty) return null;
-    // return { uid: snapshot.docs[0].id, ...snapshot.docs[0].data() } as User & { uid: string };
-    return null; 
-};
-
-export const addCollaboration = async (client: User, broker: User & { uid: string }, selectedDocIds: string[], targetModule: 'polizze' | 'archivio') => {
-    console.log(`[STUB] Aggiungendo collaborazione tra ${client.email} e ${broker.email}`);
-    console.log(`[STUB] Documenti da condividere in ${targetModule}:`, selectedDocIds);
-    // Logica di batch write per aggiornare i profili e i documenti...
-    // E.g., db.batch()...commit();
-};
-
-export const removeCollaboration = async (clientUid: string, brokerUid: string) => {
-    console.log(`[STUB] Rimuovendo collaborazione tra client ${clientUid} e broker ${brokerUid}`);
-    // Logica di transazione per rimuovere dai profili e dai documenti...
-};
-
-export const reportBroker = async (clientUid: string, brokerUid: string, reason: string) => {
-    console.log(`[STUB] Segnalando broker ${brokerUid} da parte di ${clientUid} per il motivo: "${reason}"`);
-    // const reportsRef = db.collection('brokerReports');
-    // await reportsRef.add({ reporterUid: clientUid, reportedUid: brokerUid, reason, timestamp: ... });
 };

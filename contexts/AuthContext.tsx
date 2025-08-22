@@ -28,9 +28,6 @@ interface AuthContextType {
     verifyRecoveryCode: (code: string) => Promise<void>;
     cancel2fa: () => Promise<void>;
     reauthenticate: (password: string) => Promise<void>;
-    deleteCurrentUserAccount: () => Promise<void>;
-    setupCoinTransfer: (secretWord: string) => Promise<string>;
-    redeemCoinTransferCode: (code: string, secretWord: string) => Promise<number>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,30 +67,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, []);
 
-    const attachProfileListener = useCallback((uid: string) => {
-        if (profileListenerUnsubscribeRef.current) {
-            profileListenerUnsubscribeRef.current();
-        }
-    
-        let isInitialSnapshot = true;
-        profileListenerUnsubscribeRef.current = firestoreService.onUserProfileUpdate(uid, (liveProfileData) => {
-            if (liveProfileData) {
-                setUser({ uid, ...liveProfileData });
-            } else {
-                if (isInitialSnapshot) {
-                    // This is the first snapshot after login, and it's null.
-                    // This is likely the race condition for a new user. We ignore it and wait for the next update.
-                    console.warn(`Firestore listener reported non-existent profile for user ${uid} on initial snapshot. This is likely a race condition and is being ignored.`);
-                } else {
-                    // This is a subsequent snapshot that is null, which means a real deletion happened.
-                    console.error(`User ${uid} profile was deleted from Firestore. Logging out.`);
-                    authService.logout();
-                }
-            }
-            isInitialSnapshot = false; // Subsequent runs are not initial
-        });
-    }, []);
-
     useEffect(() => {
         let authUnsubscribe: (() => void) | undefined;
         const initialize = async () => {
@@ -123,20 +96,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             // The very first sign-in for a new user is logged here
                             const isFirstSignIn = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
                             if (isFirstSignIn) {
-                                try {
-                                    sessionStorage.setItem('isNewUserSession_v1', 'true');
-                                } catch (e) { console.warn('sessionStorage not available'); }
                                 const method = firebaseUser.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Password';
                                 await logSuccessfulLogin(method, firebaseUser);
                             }
 
-                            // Set user state immediately with the data we just fetched/created.
-                            setUser(appUser);
-                            setIsAuthenticating(false);
-                            setIsLoading(false);
-
-                            // Now, attach the listener for subsequent updates.
-                            attachProfileListener(firebaseUser.uid);
+                            // For non-2FA users, we attach a live listener to their profile
+                            profileListenerUnsubscribeRef.current = firestoreService.onUserProfileUpdate(firebaseUser.uid, (liveProfileData) => {
+                                if (liveProfileData) {
+                                    setUser({ uid: firebaseUser.uid, ...liveProfileData });
+                                } else {
+                                    // Profile doesn't exist in Firestore, this is an error state for a logged-in user.
+                                    console.error(`User ${firebaseUser.uid} authenticated but has no Firestore profile. Logging out.`);
+                                    authService.logout(); // This will trigger onAuthStateChanged again with firebaseUser=null
+                                }
+                                setIsAuthenticating(false);
+                                setIsLoading(false);
+                            });
                         }
                     } catch (error) {
                         console.error("Error setting up user session:", error);
@@ -164,7 +139,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 profileListenerUnsubscribeRef.current();
             }
         };
-    }, [logSuccessfulLogin, attachProfileListener]);
+    }, [logSuccessfulLogin]);
 
     const login = async (email: string, password: string) => {
         setIsAuthenticating(true);
@@ -200,15 +175,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const finalizeLogin = async (firebaseUser: firebase.User) => {
-        // First, get the confirmed profile to avoid race conditions with the listener
-        const appUser = await authService.getAppUser(firebaseUser);
-        setUser(appUser);
-        setPending2faUser(null);
-        setIsAuthenticating(false);
-
-        // Then, listen for subsequent changes
-        attachProfileListener(firebaseUser.uid);
+    const finalizeLogin = (firebaseUser: firebase.User) => {
+        profileListenerUnsubscribeRef.current = firestoreService.onUserProfileUpdate(firebaseUser.uid, (liveProfileData) => {
+            if (liveProfileData) {
+                setUser({ uid: firebaseUser!.uid, ...liveProfileData });
+            } else {
+                setUser(null);
+            }
+            setPending2faUser(null);
+            setIsAuthenticating(false);
+        });
     };
 
     const verify2fa = async (code: string) => {
@@ -237,7 +213,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
     
             await logSuccessfulLogin('2FA', pending2faUser);
-            await finalizeLogin(pending2faUser);
+            finalizeLogin(pending2faUser);
     
         } catch (error) {
             setIsAuthenticating(false);
@@ -269,7 +245,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             
             await logSuccessfulLogin('Recovery Code', pending2faUser);
-            await finalizeLogin(pending2faUser);
+            finalizeLogin(pending2faUser);
     
         } catch (error) {
             setIsAuthenticating(false);
@@ -332,22 +308,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await authService.reauthenticate(password);
     };
 
-    const setupCoinTransfer = async (secretWord: string): Promise<string> => {
-        if (!user) throw new Error("Utente non loggato.");
-        const code = await authService.createCoinTransferRecord(user.subscription.scanCoinBalance, secretWord);
-        return code;
-    };
-
-    const deleteCurrentUserAccount = async () => {
-        await authService.deleteCurrentUserAccount();
-        // onAuthStateChanged will handle the rest by setting user to null.
-    };
-
-    const redeemCoinTransferCode = async (code: string, secretWord: string): Promise<number> => {
-        return await authService.redeemCoinTransferCode(code, secretWord);
-    };
-
-
     const value = { 
         user, 
         isLoading, 
@@ -362,10 +322,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         verify2fa,
         verifyRecoveryCode,
         cancel2fa,
-        reauthenticate,
-        deleteCurrentUserAccount,
-        setupCoinTransfer,
-        redeemCoinTransferCode
+        reauthenticate
     };
 
     return (

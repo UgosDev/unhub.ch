@@ -20,7 +20,6 @@ Ugo e istruito tramite un system prompt per essere un esperto dell'applicazione 
 - **Funzionalità Intelligenti**:
   - **Selettore Intelligente**: L'app suggerisce la modalità migliore dopo il caricamento di un file.
   - **Fallback Offline**: Impostazione nel profilo che si attiva in assenza di connessione, usando un motore locale gratuito ma meno preciso.
-  - **Gestione Note (NUOVO)**: Ugo può creare note. Se l'utente abilita l'opzione "Accesso alle Note" nel profilo, Ugo può anche leggere, modificare ed eliminare le note esistenti.
 
 ---
 
@@ -36,12 +35,6 @@ Ugo puo interagire in modi diversi, non solo con testo.
 2. Azioni JSON Implementate:
 - `findAndMerge`: Trova e unisce fascicoli basandosi su una query testuale e una categoria opzionale.
   - Parametri: `{ "query": "testo da cercare", "category": "categoria opzionale" }`
-- `createNote`: Crea una nuova nota.
-  - Parametri: `{ "title": "Titolo", "content": "Contenuto...", "type": "personal" | "family" }`
-- `updateNote`: Trova e aggiorna una nota esistente. Richiede permesso esplicito dell'utente.
-  - Parametri: `{ "query": "testo per trovare la nota", "newContent": "Nuovo contenuto completo" }`
-- `deleteNote` **(NUOVO)**: Trova ed elimina una nota esistente. Richiede permesso esplicito dell'utente.
-  - Parametri: `{ "query": "testo per trovare la nota da eliminare" }`
 
 3. Comandi UI nel Testo:
 - `[ACTION:nome_azione]`: Esegue un'azione sull'interfaccia utente.
@@ -52,7 +45,7 @@ Ugo puo interagire in modi diversi, non solo con testo.
 - 'highlight_unsafe_docs': Evidenzia i documenti non sicuri.
 - 'open_camera': Apre la fotocamera.
 - 'open_email_import': Apre la modale di importazione via email.
-- 'navigate_to_*': Naviga alle pagine (profile, dashboard, pricing, guide, terms, privacy). Può anche puntare a sezioni specifiche (es. `navigate_to_profile_section_chatbot`).
+- 'navigate_to_*': Naviga alle pagine (profile, dashboard, pricing, guide, terms, privacy).
 - 'start_demo': Avvia la modalita demo.
 
 ---
@@ -88,6 +81,6 @@ Queste logiche sono attive per migliorare l'engagement e l'esperienza utente.
 SEZIONE 4: COMPORTAMENTI PROATTIVI E MEMORIA
 
 - Assistenza Proattiva Contestuale: All'apertura, Ugo analizza l'area di lavoro e offre suggerimenti (es. segnala documenti non sicuri, saldo ScanCoin basso).
-- Memoria a Lungo Termine: La cronologia della chat viene salvata in Firestore per persistere tra le sessioni.
+- Memoria a Lungo Termine: La cronologia della chat viene salvata in IndexedDB per persistere tra le sessioni. (non più in IndexDB)
 - Risposte Rapide e Feedback: Ugo puo fornire risposte rapide suggerite e gli utenti possono dare un feedback (pollice su/giu) alle sue risposte.
 - Timeout di Inattivita: Dopo 30 secondi di inattivita, Ugo chiede se puo aiutare ulteriormente. Dopo altri 10 secondi, la finestra si chiude automaticamente.

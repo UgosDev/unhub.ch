@@ -52,7 +52,7 @@ const TermsOfServicePage: React.FC<TermsOfServicePageProps> = ({ onNavigateBack,
                 </div>
             </div>
             <article ref={contentRef} className="prose prose-slate dark:prose-invert max-w-none">
-                <p>Ultimo aggiornamento: 15 Ottobre 2025</p>
+                <p>Ultimo aggiornamento: 19 Settembre 2025</p>
                 <p>Benvenuto in scansioni.ch. Leggi attentamente questi Termini di Servizio ("Termini") prima di utilizzare il nostro servizio.</p>
 
                 <h2>1. Accettazione dei Termini</h2>
@@ -84,16 +84,6 @@ const TermsOfServicePage: React.FC<TermsOfServicePageProps> = ({ onNavigateBack,
 
                 <h2>10. Legge Applicabile e Foro Competente</h2>
                 <p>Questi Termini saranno regolati e interpretati in conformità con il diritto materiale svizzero, ad esclusione delle norme sul conflitto di leggi. Qualsiasi controversia derivante da o in relazione a questi Termini sarà soggetta alla giurisdizione esclusiva dei tribunali competenti del Canton Ticino, Svizzera.</p>
-                
-                <h2>11. Servizio Archivio HD e Conservazione dei Dati</h2>
-                <p>Offriamo un servizio opzionale a pagamento denominato "Archivio HD", che permette la conservazione della scansione originale ad alta risoluzione in aggiunta alla versione ottimizzata. Le condizioni di questo servizio sono le seguenti:</p>
-                <ul>
-                    <li><strong>Piani Disponibili:</strong> L'utente può scegliere tra (a) un piano in abbonamento da 5 CHF al mese per 15 GB di spazio di archiviazione, o (b) un pacchetto una tantum da 10 CHF per 10 GB di spazio di archiviazione "per sempre".</li>
-                    <li><strong>Definizione di "Per Sempre":</strong> Il termine "per sempre" si riferisce alla durata di vita del servizio scansioni.ch.</li>
-                    <li><strong>Garanzia di Servizio:</strong> Garantiamo la continuità del servizio per un periodo minimo di dieci (10) anni dalla data di acquisto di un pacchetto "per sempre".</li>
-                    <li><strong>Politica di Chiusura del Servizio:</strong> Qualora il servizio dovesse cessare le operazioni, ci impegniamo a notificare tutti gli utenti con un preavviso di almeno un (1) anno solare. Durante questo periodo, forniremo a tutti gli utenti dell'Archivio HD una copia digitale completa e gratuita di tutti i loro dati (sia originali che ottimizzati) tramite un link per il download inviato all'indirizzo email associato all'account.</li>
-                </ul>
-
             </article>
         </div>
     );

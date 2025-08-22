@@ -4,71 +4,10 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [9.6.0]
-
-### Aggiunto
-* **Funzionalità Archivio HD (Core)**: Implementata la logica completa per la funzionalità premium "Archivio HD", che permette di salvare le scansioni originali ad alta risoluzione.
-* **Contatore Spazio Dashboard**: Aggiunto un nuovo "serbatoio" visivo nella Dashboard per monitorare lo spazio di archiviazione HD, con un avviso all'80% della capacità.
-* **Logica di Archiviazione Intelligente**: Il sistema ora controlla lo spazio HD disponibile prima dell'archiviazione e chiede conferma all'utente in caso di spazio insufficiente.
-* **Badge e Download HD**: I documenti in archivio mostrano un badge "HD" se la copia originale è salvata, con un'opzione per scaricarla.
+## [8.6.1]
 
 ### Modificato
-* **Pagina Prezzi**: Aggiornata la pagina dei prezzi per includere le nuove offerte dedicate all'Archivio HD (abbonamento e pacchetto "per sempre").
-* **Modello Dati Utente**: Estesa la struttura dati dell'utente per includere e tracciare l'utilizzo dello spazio di archiviazione HD.
-
-## [9.5.0]
-
-### Aggiunto
-* **Archivio HD**: Introdotta una nuova funzionalità premium a pagamento in `archivio.ch` che permette agli utenti di conservare permanentemente le scansioni originali ad alta risoluzione.
-* **Banner Promozionale**: Aggiunto un banner informativo nella pagina `Archivio` per presentare la nuova opzione "Archivio HD" e i relativi piani di costo.
-
-### Modificato
-* **Termini di Servizio**: Aggiornati i termini contrattuali con una nuova sezione dedicata all'"Archivio HD", che include dettagli sui prezzi, sulla garanzia di servizio di 10 anni e sulla politica di esportazione dati in caso di chiusura del servizio.
-
-## [9.4.0]
-
-### Aggiunto
-* **Scansione da Video e Potenziamento OpenCV**: Introdotta una nuova modalità di scansione che analizza un feed video in tempo reale.
-* **Motore di Scansione Avanzato**: Implementato un nuovo e robusto `DocumentScannerEngine` basato su OpenCV.js per un rilevamento dei bordi dei documenti in tempo reale, più veloce e affidabile, sia per foto che per video.
-* **Feedback Visivo "Holographic Mesh"**: Sostituito il vecchio contorno con un `DynamicMeshOverlay` interattivo, una maschera 3D che si adatta alla prospettiva e cambia colore per guidare l'utente verso lo scatto perfetto.
-
-### Migliorato
-* **Interfaccia Fotocamera**: Riprogettata completamente la `CameraView` con un'estetica moderna, controlli ottimizzati e un'esperienza utente più fluida, eliminando la necessità di un selettore separato per la "Ugo Experience".
-* **Stabilità e Performance**: La logica della fotocamera è stata modularizzata in custom hook (`useCameraStream`, `useDeviceTilt`, `useDocumentScanner`) per una migliore manutenibilità e prestazioni.
-
-### Rimosso
-* **Selettore "Ugo Experience"**: La funzionalità di assistenza AI è ora integrata nell'esperienza di scansione di base ("Ugo Vision"), semplificando l'interfaccia.
-
-## [9.2.0]
-
-### Migliorato
-* **Manutenzione e Stabilità**: Questo aggiornamento si concentra sul miglioramento della stabilità generale dell'applicazione e sull'aggiornamento delle dipendenze interne per garantire performance ottimali e sicurezza.
-
-## [9.1.0]
-
-### Migliorato
-* Rilascio di manutenzione per aggiornare le dipendenze interne e migliorare le performance generali dell'infrastruttura.
-
-## [9.0.0]
-
-### Aggiunto
-* **Architettura di Ricerca Vettoriale**: Implementato un nuovo motore di ricerca semantica basato su "embeddings" e un database vettoriale. Questa modifica architetturale rende la ricerca in `archivio.ch` **istantanea** e **quasi gratuita**, indipendentemente dalla dimensione dell'archivio dell'utente.
-* **Indicizzazione Automatica**: I documenti vengono ora indicizzati semanticamente in modo automatico e una tantum al momento dell'archiviazione.
-
-### Modificato
-* **Major Release 9.0.0**: Questa versione segna un importante traguardo nella maturità e scalabilità della piattaforma, introducendo un'architettura di ricerca di livello enterprise.
-
-## [8.7.1]
-
-### Migliorato
-* Rilascio di manutenzione e aggiornamento delle dipendenze interne.
-
-## [8.7.0]
-
-### Migliorato
-* **Flusso di Lavoro Semplificato**: Rimosso il selettore di modalità iniziale (passo 1). Ora si caricano prima i documenti e poi si sceglie la modalità di elaborazione per ciascun file individualmente.
-* **Selezione Modalità per File**: Ogni file nella vista di conferma ha un proprio selettore di modalità, permettendo di processare un batch di documenti con impostazioni diverse (es. una fattura in 'Chroma Scan' e uno scontrino in 'Modalità Scontrino' contemporaneamente).
-* **Interfaccia Pulita**: L'area di lavoro è stata riorganizzata per riflettere il nuovo flusso "prima i file, poi le modalità", risultando più intuitiva.
+* Aggiornamento della documentazione e allineamento dei file di versioning.
 
 ## [8.6.0]
 

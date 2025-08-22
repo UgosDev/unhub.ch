@@ -22,13 +22,15 @@ Elenco delle prossime funzionalità su cui concentrarsi.
 Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 ### Funzionalità Principali
-- **Modalità Batch Asincrona**: Possibilità di inviare scansioni a un orario prestabiliti (es. notte) a un costo ridotto. Richiede infrastruttura backend.
+- **Modalità Batch Asincrona**: Possibilità di inviare scansioni a un orario prestabilito (es. notte) a un costo ridotto. Richiede infrastruttura backend.
 - **Potenziamento Esportazione PDF**: Aggiungere opzioni avanzate come la selezione della qualità, l'inclusione dei dati estratti e la protezione con password personalizzata per i PDF.
 - **Metadati Avanzati**: Espandere i metadati per includere dati EXIF/XMP completi nelle immagini, offrendo una tracciabilità di livello professionale.
 - **Integrazione Import da App di Messaggistica**: Aggiungere la possibilità di caricare documenti da scansionare direttamente da Telegram o WhatsApp. La prima fase si concentrerà solo sull'importazione (input), con la gestione delle risposte (invio file modificati) da implementare in un secondo momento.
 
 ### UI/UX & Fotocamera
 - **"Solidificazione" UI**: Revisione generale dell'interfaccia per migliorare la coerenza, gli spazi e l'impatto visivo.
+- **Scansione Doppia Pagina (Modalità Libro)**: La fotocamera dovrebbe mostrare una guida per inquadrare due pagine di un libro contemporaneamente e dividerle automaticamente.
+- **Pre-elaborazione Immagini**: Introdurre passaggi client-side (bianco e nero, contrasto, ottimizzazione peso) per migliorare la qualità dell'immagine inviata all'AI e ridurre i tempi di caricamento.
 
 ### Sicurezza, Monetizzazione e Infrastruttura
 - **Blocco Geografico e Rilevamento VPN**: Implementare un sistema backend per limitare l'accesso al servizio solo agli utenti in Svizzera e per bloccare l'uso di VPN/proxy per aggirare le restrizioni. Richiede integrazione con servizi di IP Intelligence.
@@ -44,41 +46,3 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 ## 3. LOG DI SVILUPPO (NOTE STORICHE)
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
-
-# Note del 16/10/2025 - v9.6.0
-- **Implementazione Funzionalità Archivio HD (Core)**: Implementata la logica completa per la funzionalità premium "Archivio HD".
-- **Modello Dati**: Aggiornati i dati utente (`Subscription`) per tracciare lo spazio di archiviazione HD usato e totale.
-- **Logica di Archiviazione**: Modificato il flusso di archiviazione per calcolare la dimensione dei file originali, controllare lo spazio disponibile e aggiornare l'utilizzo. In caso di spazio insufficiente, l'utente può scegliere di archiviare senza la copia HD.
-- **Dashboard**: Aggiunto un nuovo "serbatoio" (StorageCard) nella Dashboard per monitorare in tempo reale l'utilizzo dello spazio di archiviazione HD, con un avviso quando si raggiunge l'80% della capacità.
-- **Pagina Prezzi**: Aggiornata la pagina dei prezzi con le nuove offerte dedicate all'Archivio HD.
-- **UI Archivio**: I documenti in archivio ora mostrano un badge "HD" se la copia originale è salvata. È stato aggiunto un pulsante per scaricare la versione ad alta risoluzione.
-- **Documentazione e Versioning**: Aggiornati tutti i file rilevanti (`README.md`, `CHANGELOG.md`, `metadata.json`) alla versione 9.6.0.
-
-# Note del 15/10/2025 - v9.5.0
-- **Implementazione Funzionalità Archivio HD**: Introdotta una nuova opzione di monetizzazione come richiesto.
-- **Logica di Archiviazione**: Verificato che il flusso di elaborazione attuale in `useAppLogic.ts` salva correttamente sia l'immagine originale (`originalImageDataUrl`) sia quella elaborata (`processedImageDataUrl`), ponendo le basi tecniche per il servizio.
-- **UI in Archivio.tsx**: Aggiunto un banner promozionale in `Archivio.tsx` per informare gli utenti della nuova opzione "Archivio HD", con dettagli sui costi e un link alla pagina dei prezzi.
-- **Aggiornamento Termini di Servizio**: Modificato `TermsOfServicePage.tsx` per includere una nuova sezione che formalizza l'offerta, definendo le condizioni di prezzo, la garanzia di servizio di 10 anni e la politica di esportazione dati in caso di chiusura.
-- **Documentazione e Versioning**: Aggiornati tutti i file rilevanti (`README.md`, `CHANGELOG.md`, `metadata.json`, `service-worker.js`) alla versione 9.5.0 per riflettere le nuove aggiunte.
-
-# Note del 14/10/2025 - v9.4.0
-- **Implementazione Scansione Video e Potenziamento OpenCV**: Introdotta una nuova modalità di scansione che analizza un feed video in tempo reale, concettualmente realizzando la richiesta di "spezzettare un video frame by frame".
-- **Nuovo Motore "Ugo Vision"**: Creato un `DocumentScannerEngine` basato su OpenCV.js, che esegue un rilevamento dei bordi dei documenti in tempo reale, più veloce e affidabile.
-- **Feedback Visivo "Holographic Mesh"**: Sostituito il vecchio contorno con un `DynamicMeshOverlay` interattivo, una maschera 3D che si adatta alla prospettiva e guida l'utente verso lo scatto perfetto.
-- **Riprogettazione `CameraView`**: La vista della fotocamera è stata completamente riscritta con un'estetica moderna, controlli ottimizzati e un'esperienza utente più fluida, integrando la nuova logica come esperienza standard e rimuovendo il selettore "Ugo Experience".
-- **Modularizzazione del Codice**: La logica della fotocamera è stata scomposta in custom hook (`useCameraStream`, `useDeviceTilt`, `useDocumentScanner`) per una migliore manutenibilità.
-- **Funzionalità Parzialmente Implementate**: Le idee "Scansione Doppia Pagina" e "Pre-elaborazione Immagini" sono state parzialmente affrontate con questo refactoring e spostate dal backlog allo storico.
-- Aggiornata tutta la documentazione e la versione a 9.4.0.
-
-# Note del 13/10/2025 - v9.2.0
-- **Rilascio di Manutenzione**: Aggiornata la versione a 9.2.0.
-- Questo aggiornamento si concentra su miglioramenti interni, stabilità e aggiornamento delle dipendenze per garantire performance ottimali.
-- Aggiornati tutti i file di versioning.
-
-# Note del 12/10/2025 - v9.1.0
-- **Aggiornamento di Manutenzione**: Rilascio minore per aggiornare le dipendenze interne e migliorare le performance generali dell'infrastruttura. Aggiornata la versione a 9.1.0.
-
-# Note del 11/10/2025 - v9.0.0
-- **Major Version Bump**: Eseguito l'aggiornamento alla versione 9.0.0 per celebrare l'implementazione della nuova architettura di ricerca vettoriale.
-- **Motore di Ricerca con Embeddings**: La nuova versione consolida il passaggio da una ricerca semantica basata su prompt (costosa e lenta) a una basata su embeddings e un database vettoriale (istantanea e quasi gratuita), rendendo la funzione di ricerca in `archivio.ch` scalabile e sostenibile a lungo termine.
-- **Aggiornamento Documentazione**: Aggiornati tutti i file di versioning (metadata, README, service worker, changelog) per riflettere la nuova major release.

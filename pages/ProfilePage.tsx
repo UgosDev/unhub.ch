@@ -7,8 +7,7 @@ import {
     DocumentTextIcon, BoltIcon, CreditCardIcon, SparklesIcon, BuildingOffice2Icon, BookOpenIcon, 
     DocumentPlusIcon, ClipboardDocumentIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DownloadIcon,
     UserCircleIcon, InformationCircleIcon, TrashIcon, ChatBubbleLeftRightIcon, XMarkIcon, ClockIcon,
-    EyeIcon, ShieldCheckIcon, DocumentDuplicateIcon, CheckCircleIcon, UsersIcon, MapPinIcon, QuestionMarkCircleIcon,
-    CoinIcon
+    EyeIcon, ShieldCheckIcon, DocumentDuplicateIcon, CheckCircleIcon, UsersIcon, MapPinIcon, QuestionMarkCircleIcon
 } from '../components/icons';
 import type { AppSettings } from '../services/settingsService';
 import { ProcessingModeSelector } from '../components/ProcessingModeSelector';
@@ -438,7 +437,7 @@ const InstallHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 );
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavigate, settings, onUpdateSettings, onStartTutorial, archivedChats, onDeleteArchivedChat, setScanHistory, onResetChat, scrollToSection, onScrolledToSection, accessLogs }) => {
-    const { user, updateUser, reauthenticate, setupCoinTransfer, deleteCurrentUserAccount, redeemCoinTransferCode } = useAuth();
+    const { user, updateUser, reauthenticate } = useAuth();
     const { isInstallable, isInstalled, triggerInstall } = usePWA();
     const [isSaving, setIsSaving] = useState(false);
     const [viewingChat, setViewingChat] = useState<ArchivedChat | null>(null);
@@ -461,21 +460,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
     const [householdMembers, setHouseholdMembers] = useState<string[]>(user?.householdMembers || []);
     const [isAddressSaving, setIsAddressSaving] = useState(false);
     const [addressSaveSuccess, setAddressSaveSuccess] = useState(false);
-
-    // State for account deletion
-    const [deleteStep, setDeleteStep] = useState<'closed' | 'confirm' | 'success'>('closed');
-    const [deletePassword, setDeletePassword] = useState('');
-    const [transferSecret, setTransferSecret] = useState('');
-    const [deleteError, setDeleteError] = useState('');
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [generatedTransferCode, setGeneratedTransferCode] = useState('');
-    
-    // NUOVO: State per il recupero coin
-    const [transferCode, setTransferCode] = useState('');
-    const [secretWord, setSecretWord] = useState('');
-    const [redemptionMessage, setRedemptionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-    const [isRedeemingTransfer, setIsRedeemingTransfer] = useState(false);
-
 
     useEffect(() => {
         if (scrollToSection) {
@@ -685,36 +669,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
         return <div className="flex justify-center p-8"><LoadingSpinner /></div>;
     }
 
-    const handleStartDeletionProcess = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!transferSecret.trim()) {
-            setDeleteError("La parola segreta è obbligatoria per il futuro recupero dei coin.");
-            return;
-        }
-        setIsDeleting(true);
-        setDeleteError('');
-        try {
-            await reauthenticate(deletePassword);
-            const code = await setupCoinTransfer(transferSecret);
-            setGeneratedTransferCode(code);
-            setDeleteStep('success');
-        } catch (err) {
-            setDeleteError("Password non corretta o errore durante l'eliminazione. Riprova.");
-            setDeletePassword('');
-            setTransferSecret('');
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-    const handleFinalizeDeletion = async () => {
-        setIsDeleting(true);
-        try {
-            await deleteCurrentUserAccount();
-            // No need for further actions, onAuthStateChanged will handle the logout and UI change.
-        } catch (err) {
-            setDeleteError("Errore durante l'eliminazione finale dell'account. Copia il codice e riprova, o contatta il supporto.");
-            setIsDeleting(false);
+    const handleClearAllData = async () => {
+        if (confirm("ATTENZIONE: Stai per cancellare il tuo account e tutti i dati locali (scansioni, storico costi). Questa azione è IRREVERSIBILE. Sei sicuro di voler procedere?")) {
+            try {
+                alert("Tutti i dati verranno cancellati. Verrai disconnesso.");
+                onLogout();
+            } catch(e) {
+                 alert("Errore durante la cancellazione dei dati.");
+                 console.error(e);
+            }
         }
     };
     
@@ -744,25 +707,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
         if (confirm("Sei sicuro di voler unirti a questa famiglia? Potrai vedere i loro documenti condivisi e loro vedranno i tuoi.")) {
             updateUser(prev => prev ? ({ ...prev, familyId: familyIdToJoin.trim() }) : null);
             setFamilyIdToJoin('');
-        }
-    };
-
-    const handleRedeemTransferSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!transferCode.trim() || !secretWord.trim()) return;
-
-        setIsRedeemingTransfer(true);
-        setRedemptionMessage(null);
-        try {
-            const amount = await redeemCoinTransferCode(transferCode, secretWord);
-            setRedemptionMessage({ type: 'success', text: `Successo! ${amount.toLocaleString('it-CH')} ScanCoin sono stati aggiunti al tuo saldo.` });
-            setTransferCode('');
-            setSecretWord('');
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Si è verificato un errore.';
-            setRedemptionMessage({ type: 'error', text: message });
-        } finally {
-            setIsRedeemingTransfer(false);
         }
     };
 
@@ -912,48 +856,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                             {isRedeeming ? <LoadingSpinner className="w-5 h-5" /> : 'Riscatta'}
                         </button>
                     </div>
-                </div>
-                
-                 <div id="profile-section-recovery" className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-6 md:p-8">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-3"><CoinIcon className="w-7 h-7"/> Recupero ScanCoin</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Se hai eliminato un account precedente, inserisci qui il codice di trasferimento e la parola segreta per recuperare il tuo saldo ScanCoin rimanente.</p>
-                     {redemptionMessage && (
-                        <div className={`p-3 rounded-md text-sm mb-4 ${redemptionMessage.type === 'success' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'}`}>
-                            {redemptionMessage.text}
-                        </div>
-                    )}
-                    <form onSubmit={handleRedeemTransferSubmit} className="space-y-4">
-                         <div className="flex flex-col sm:flex-row gap-4">
-                             <div className="flex-1">
-                                <label htmlFor="transfer-code" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Codice di Trasferimento (6 lettere)</label>
-                                <input
-                                    id="transfer-code"
-                                    type="text"
-                                    value={transferCode}
-                                    onChange={(e) => setTransferCode(e.target.value.toUpperCase())}
-                                    maxLength={6}
-                                    className="mt-1 w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-lg font-mono tracking-widest"
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <label htmlFor="secret-word" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Parola Segreta</label>
-                                <input
-                                    id="secret-word"
-                                    type="password"
-                                    value={secretWord}
-                                    onChange={(e) => setSecretWord(e.target.value)}
-                                    className="mt-1 w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-lg"
-                                />
-                            </div>
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isRedeemingTransfer || !transferCode.trim() || !secretWord.trim()}
-                            className="w-full sm:w-auto px-6 py-2 font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-400"
-                        >
-                           {isRedeemingTransfer ? 'Verifica...' : 'Riscatta Coin'}
-                        </button>
-                    </form>
                 </div>
 
                 <div id="profile-section-preferences" className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-6 md:p-8">
@@ -1181,20 +1083,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                         </label>
                         <label className="flex items-start p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 cursor-pointer">
                             <div className="flex-grow">
-                                <span className="font-semibold text-slate-800 dark:text-slate-100">Accesso alle Note</span>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                    Consenti a Ugo di leggere e modificare il contenuto delle tue note per rispondere a domande o effettuare modifiche su tua richiesta. Quando disattivato, Ugo potrà solo creare nuove note.
-                                </p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={settings.ugoCanReadNotes}
-                                onChange={(e) => onUpdateSettings({ ugoCanReadNotes: e.target.checked })}
-                                className="flex-shrink-0 mt-1 ml-4 h-6 w-6 rounded text-purple-600 focus:ring-purple-500 border-slate-300"
-                            />
-                        </label>
-                        <label className="flex items-start p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 cursor-pointer">
-                            <div className="flex-grow">
                                 <span className="font-semibold text-slate-800 dark:text-slate-100">Archiviazione via Chat</span>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                                     Consenti a Ugo di archiviare i documenti per te. Puoi dire "archivia la fattura E-Corp".
@@ -1269,8 +1157,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                         <button onClick={onStartTutorial} className="w-full text-left font-semibold text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50">
                             Riavvia il tour guidato
                         </button>
-                        <button onClick={() => setDeleteStep('confirm')} className="w-full text-left font-semibold text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50">
-                            Elimina Account e Dati
+                        <button onClick={handleClearAllData} className="w-full text-left font-semibold text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50">
+                            Cancella tutti i dati dell'account
                         </button>
                      </div>
                 </div>
@@ -1342,68 +1230,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavi
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            )}
-
-            {deleteStep !== 'closed' && (
-                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setDeleteStep('closed')}>
-                    <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-                        {deleteStep === 'confirm' ? (
-                            <form onSubmit={handleStartDeletionProcess}>
-                                <div className="p-6">
-                                    <div className="text-center">
-                                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
-                                            <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
-                                        </div>
-                                        <h3 className="mt-4 text-xl font-bold text-slate-900 dark:text-slate-100">Elimina Account</h3>
-                                    </div>
-                                    <div className="mt-4 text-sm text-slate-500 dark:text-slate-400 space-y-2">
-                                        <p>Questa azione è <strong className="text-red-600">irreversibile</strong> e tutti i tuoi dati verranno eliminati.</p>
-                                        <p>I tuoi ScanCoin rimanenti (<strong className="text-purple-600">{user.subscription.scanCoinBalance}</strong>) non sono rimborsabili in denaro. Tuttavia, puoi trasferirli a un nuovo account creato da te. Per farlo, ti forniremo un codice di trasferimento dopo l'eliminazione.</p>
-                                        <p className="font-semibold">I coin non possono essere trasferiti a terzi per motivi legali.</p>
-                                    </div>
-                                    <div className="mt-5 space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Conferma la tua password</label>
-                                            <input type="password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md" required autoFocus />
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Crea una parola segreta</label>
-                                             <p className="text-xs text-slate-500 dark:text-slate-400">Servirà, insieme al codice, per sbloccare i coin sul tuo nuovo account.</p>
-                                            <input type="text" value={transferSecret} onChange={(e) => setTransferSecret(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md" required />
-                                        </div>
-                                        {deleteError && <p className="mt-2 text-sm text-red-500">{deleteError}</p>}
-                                    </div>
-                                </div>
-                                <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-3 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 rounded-b-2xl">
-                                    <button type="button" onClick={() => setDeleteStep('closed')} className="w-full sm:w-auto px-4 py-2 text-sm font-semibold rounded-md">Annulla</button>
-                                    <button type="submit" disabled={isDeleting} className="w-full sm:w-auto px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-slate-400">
-                                        {isDeleting ? 'Preparazione...' : 'Conferma e Visualizza Codice'}
-                                    </button>
-                                </div>
-                            </form>
-                        ) : (
-                             <div className="p-6 text-center">
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
-                                    <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
-                                </div>
-                                <h3 className="mt-4 text-xl font-bold text-slate-900 dark:text-slate-100">Passo Finale: Salva il tuo Codice</h3>
-                                <div className="mt-4 text-sm text-slate-500 dark:text-slate-400 space-y-3">
-                                    <p>Il tuo account sta per essere eliminato. Salva queste informazioni in un luogo sicuro per poter recuperare i tuoi ScanCoin in futuro.</p>
-                                    <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg">
-                                        <p className="font-semibold">Salva queste informazioni per recuperare i tuoi ScanCoin:</p>
-                                        <p className="mt-2">Il tuo codice di trasferimento è:</p>
-                                        <p className="text-2xl font-bold tracking-widest text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-800 p-2 rounded-md my-2">{generatedTransferCode}</p>
-                                        <p>Ricorda anche la <strong>parola segreta</strong> che hai impostato. Ti verranno chiesti entrambi al momento della registrazione di un nuovo account.</p>
-                                    </div>
-                                    {deleteError && <p className="mt-2 text-sm text-red-500">{deleteError}</p>}
-                                </div>
-                                <button onClick={handleFinalizeDeletion} disabled={isDeleting} className="mt-6 w-full px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-slate-400">
-                                    {isDeleting ? 'Eliminazione...' : "Ho salvato il codice, elimina l'account"}
-                                </button>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}

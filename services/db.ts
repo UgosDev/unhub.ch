@@ -1,5 +1,5 @@
 import { auth, firebase } from './firebase';
-import type { ScanHistoryEntry, ProcessedPageResult, QueuedFile, Note } from './geminiService';
+import type { ScanHistoryEntry, ProcessedPageResult, QueuedFile } from './geminiService';
 import type { ChatMessage } from '../components/Chatbot';
 import * as firestoreService from './firestoreService';
 import type { User } from './authService';
@@ -78,7 +78,7 @@ export const clearQueue = async (): Promise<void> => {
         const store = transaction.objectStore(QUEUE_STORE_NAME);
         const request = store.clear();
         request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(transaction.error);
     });
 };
 
@@ -107,21 +107,16 @@ export const onScanHistoryUpdate = (callback: (snapshot: firebase.firestore.Quer
 export const onChatHistoryUpdate = (callback: (snapshot: firebase.firestore.DocumentSnapshot) => void): (() => void) => firestoreService.onChatHistoryUpdate(getUserId(), callback);
 export const onArchivedChatsUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onArchivedChatsUpdate(getUserId(), callback);
 export const onAccessLogsUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onAccessLogsUpdate(getUserId(), callback);
-export const onNotesUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onNotesUpdate(getUserId(), callback);
 
 
 // --- WRITERS / DELETERS ---
 export const addOrUpdateWorkspaceDoc = (result: ProcessedPageResult): Promise<void> => firestoreService.addOrUpdateWorkspaceDoc(getUserId(), result);
 export const updateArchivedDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updateArchivedDoc(getUserId(), doc);
 export const deleteArchivedDoc = (uuid: string): Promise<void> => firestoreService.deleteArchivedDoc(getUserId(), uuid);
-export const updatePolizzaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updatePolizzaDoc(getUserId(), doc);
-export const deletePolizzaDoc = (uuid: string): Promise<void> => firestoreService.deletePolizzaDoc(getUserId(), uuid);
 export const addDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.addDisdettaDoc(getUserId(), doc);
-export const updateDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updateDisdettaDoc(getUserId(), doc);
-export const deleteDisdettaDoc = (uuid: string): Promise<void> => firestoreService.deleteDisdettaDoc(getUserId(), uuid);
 export const deleteWorkspaceDoc = (resultUuid: string): Promise<void> => firestoreService.deleteWorkspaceDoc(getUserId(), resultUuid);
 export const clearWorkspace = (): Promise<void> => firestoreService.clearWorkspace(getUserId());
-export const moveDocsToModule = (docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean; embeddings?: Record<string, number[]> }): Promise<void> => firestoreService.moveDocsToModule(getUserId(), docUuids, toModule, options);
+export const moveDocsToModule = (docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean }): Promise<void> => firestoreService.moveDocsToModule(getUserId(), docUuids, toModule, options);
 export const moveDocsBetweenCollections = (docUuids: string[], from: string, to: string): Promise<void> => firestoreService.moveDocsBetweenCollections(getUserId(), docUuids, from, to);
 export const addScanHistoryEntry = (entry: ScanHistoryEntry): Promise<void> => firestoreService.addScanHistoryEntry(getUserId(), entry);
 export const saveChatHistory = (history: ChatMessage[]): Promise<void> => firestoreService.saveChatHistory(getUserId(), history);
@@ -132,15 +127,6 @@ export const deleteArchivedChat = (id: string): Promise<void> => firestoreServic
 export const getStat = (statName: string): Promise<any> => firestoreService.getStat(getUserId(), statName);
 export const setStat = (statName: string, value: any): Promise<void> => firestoreService.setStat(getUserId(), statName, value);
 export const addAccessLogEntry = (entryData: Omit<firestoreService.AccessLogEntry, 'id' | 'timestamp'>): Promise<void> => firestoreService.addAccessLogEntry(getUserId(), entryData);
-export const addNote = (note: Omit<Note, 'id'>): Promise<string> => firestoreService.addNote(getUserId(), note);
-export const updateNote = (note: Note): Promise<void> => firestoreService.updateNote(getUserId(), note);
-export const deleteNote = (noteId: string): Promise<void> => firestoreService.deleteNote(getUserId(), noteId);
-
-// --- VECTOR SEARCH & EMBEDDINGS ---
-export const saveArchivioEmbedding = (docUuid: string, embedding: number[]): Promise<void> => firestoreService.saveArchivioEmbedding(getUserId(), docUuid, embedding);
-export const findNearestArchivedDocs = (queryVector: number[], limit: number): Promise<{uuid: string; distance: number}[]> => firestoreService.findNearestArchivedDocs(getUserId(), queryVector, limit);
-export const getArchivedDocsByUuids = (uuids: string[]): Promise<ProcessedPageResult[]> => firestoreService.getArchivedDocsByUuids(getUserId(), uuids);
-
 
 // --- BATCH WRITERS ---
 export const batchAddWorkspaceAndHistory = (results: ProcessedPageResult[], historyEntries: ScanHistoryEntry[]): Promise<void> => firestoreService.batchAddWorkspaceAndHistory(getUserId(), results, historyEntries);

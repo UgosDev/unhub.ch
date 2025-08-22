@@ -33,8 +33,6 @@ const ResultItem: React.FC<{
     const [isComparingDuplicates, setIsComparingDuplicates] = useState(false);
     const [extractedImageToView, setExtractedImageToView] = useState<{url: string, alt: string} | null>(null);
     const [uuidCopied, setUuidCopied] = useState(false);
-    const [isEditingMemo, setIsEditingMemo] = useState(false);
-    const [editableMemo, setEditableMemo] = useState(item.memo || '');
     
     useEffect(() => { setEditableAnalysis(item.analysis); }, [item.analysis]);
 
@@ -60,16 +58,6 @@ const ResultItem: React.FC<{
             setTimeout(() => setUuidCopied(false), 2000);
         });
     };
-    
-    const handleSaveMemo = () => {
-        onUpdate({ ...item, memo: editableMemo.trim() });
-        setIsEditingMemo(false);
-    };
-
-    const handleCancelMemo = () => {
-        setEditableMemo(item.memo || '');
-        setIsEditingMemo(false);
-    };
 
     const qualityBadge = {
         'Ottima': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
@@ -88,7 +76,6 @@ const ResultItem: React.FC<{
     
     const showRetry = item.analysis.categoria === 'ERRORE' || ['Bassa', 'Parziale'].includes(item.analysis.qualitaScansione);
     const isSafe = item.securityCheck?.isSafe ?? true;
-    const date = item.timestamp?.toDate ? item.timestamp.toDate() : new Date(item.timestamp);
 
     if (item.isPotentialDuplicateOf) {
         return (
@@ -188,7 +175,7 @@ const ResultItem: React.FC<{
                                 ></span>
                                 <span className="truncate" title={item.sourceFileName}>{item.sourceFileName}</span>
                                 <span className="flex-shrink-0 font-mono">
-                                    {date.toLocaleTimeString('it-CH', { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(item.timestamp).toLocaleTimeString('it-CH', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
 
@@ -291,44 +278,6 @@ const ResultItem: React.FC<{
                     </div>
                 </div>
             )}
-            <div className="border-t border-slate-200 dark:border-slate-700">
-                {isEditingMemo ? (
-                    <div className="p-3">
-                        <label htmlFor={`memo-${item.uuid}`} className="text-xs font-semibold text-slate-500 dark:text-slate-400">Memo Personale</label>
-                        <textarea
-                            id={`memo-${item.uuid}`}
-                            value={editableMemo}
-                            onChange={(e) => setEditableMemo(e.target.value)}
-                            className="mt-2 w-full p-2 text-sm bg-yellow-50 dark:bg-yellow-900/20 rounded-md border-yellow-300 dark:border-yellow-700/50 focus:ring-yellow-500 focus:border-yellow-500"
-                            rows={4}
-                            placeholder="Aggiungi una nota personale..."
-                            autoFocus
-                        />
-                        <div className="flex justify-end gap-2 mt-2">
-                            <button onClick={handleCancelMemo} className="px-3 py-1 text-sm font-semibold bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200 rounded-md hover:bg-slate-300">Annulla</button>
-                            <button onClick={handleSaveMemo} className="px-3 py-1 text-sm font-semibold bg-purple-600 text-white rounded-md hover:bg-purple-700">Salva Memo</button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="p-3">
-                        <div className="flex justify-between items-center">
-                            <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400">Memo Personale</h5>
-                            <button 
-                                onClick={() => { setEditableMemo(item.memo || ''); setIsEditingMemo(true); }} 
-                                title="Aggiungi o modifica memo"
-                                className="p-1.5 text-slate-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                            >
-                                <PencilIcon className="w-4 h-4"/>
-                            </button>
-                        </div>
-                        {item.memo ? (
-                            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-md whitespace-pre-wrap">{item.memo}</p>
-                        ) : (
-                            <p className="mt-2 text-sm text-slate-400 italic">Nessun memo aggiunto.</p>
-                        )}
-                    </div>
-                )}
-            </div>
         </div>
     );
 }
@@ -492,11 +441,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = (props) => {
     useEffect(() => {
         if (props.scrollToGroupId && groupRefs.current[props.scrollToGroupId]) {
             groupRefs.current[props.scrollToGroupId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            groupRefs.current[props.scrollToGroupId]?.classList.add('highlight-section-animation');
-            setTimeout(() => {
-                groupRefs.current[props.scrollToGroupId]?.classList.remove('highlight-section-animation');
-                props.onScrolledToGroup();
-            }, 2500);
+            props.onScrolledToGroup();
         }
     }, [props.scrollToGroupId, props.onScrolledToGroup]);
 

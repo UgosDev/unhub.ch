@@ -22,7 +22,6 @@ Elenco delle prossime funzionalità su cui concentrarsi.
 Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 ### Espansione Ecosistema (Nuovi Moduli Potenziali)
-- **calendario.ch**: Un modulo calendario intelligente che estrae automaticamente scadenze, appuntamenti e date di rinnovo dai documenti analizzati (fatture, polizze, contratti) e li aggiunge a un calendario personale. Aiuta a non mancare mai un pagamento o una scadenza di rinnovo.
 - **fogli.ch**: Sistema di condivisione sicura di stampanti. Permette agli utenti di trovare e utilizzare stampanti nella loro zona quando non ne hanno una a disposizione, gestendo il processo di stampa in modo sicuro.
 - **rimborsi.ch**: Modulo per la gestione dei rimborsi spese. Funziona in modo simile a `polizze.ch`, permettendo di archiviare scontrini, fatture e ricevute e di generare facilmente richieste di rimborso (via PDF o email) da inviare a datori di lavoro o enti.
 
@@ -69,31 +68,6 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
 
-# Note del 13/10/2025 - v9.2.0
-- **Rilascio di Manutenzione**: Aggiornata la versione a 9.2.0.
-- Questo aggiornamento si concentra su miglioramenti interni, stabilità e aggiornamento delle dipendenze per garantire performance ottimali.
-- Aggiornati tutti i file di versioning.
-
-# Note del 12/10/2025 - v9.1.0
-- **Aggiornamento di Manutenzione**: Rilascio minore per aggiornare le dipendenze interne e migliorare le performance generali dell'infrastruttura. Aggiornata la versione a 9.1.0.
-
-# Note del 11/10/2025 - v9.0.0
-- **Major Version Bump**: Eseguito l'aggiornamento alla versione 9.0.0 per celebrare l'implementazione della nuova architettura di ricerca vettoriale.
-- **Motore di Ricerca con Embeddings**: La nuova versione consolida il passaggio da una ricerca semantica basata su prompt (costosa e lenta) a una basata su embeddings e un database vettoriale (istantanea e quasi gratuita), rendendo la funzione di ricerca in `archivio.ch` scalabile e sostenibile a lungo termine.
-- **Aggiornamento Documentazione**: Aggiornati tutti i file di versioning (metadata, README, service worker, changelog) per riflettere la nuova major release.
-
-# Note del 10/10/2025 - v8.7.1
-- Eseguito l'aggiornamento della versione a 8.7.1.
-- Questo rilascio di manutenzione aggiorna le dipendenze interne e il versioning della cache del service worker.
-- Aggiornati i file di documentazione (README, CHANGELOG, metadata) per riflettere la nuova versione.
-
-# Note del 09/10/2025 - v8.7.0
-- Implementata la richiesta dell'utente di semplificare il flusso di lavoro.
-- **Flusso Invertito**: Rimosso il selettore di modalità globale dal passo 1. L'utente ora aggiunge prima i documenti.
-- **Selezione Modalità per File**: Nella nuova vista di conferma, ogni file ha un proprio selettore di modalità, permettendo elaborazioni diverse nello stesso batch. L'AI suggerisce la modalità migliore per ogni file.
-- **UI Semplificata**: L'interfaccia principale è stata riorganizzata per riflettere il nuovo flusso, eliminando la duplicazione del selettore e rendendo l'esperienza più fluida e logica.
-- Aggiornata la versione a 8.7.0 in tutti i file rilevanti.
-
 # Note del 08/10/2025 - v8.6.1
 - Aggiornamento della documentazione interna e preparazione per le prossime funzionalità. Allineamento dei file di versioning e log.
 
@@ -116,7 +90,7 @@ Cronologia delle note di lavoro per ogni versione rilasciata.
 # Note del 05/10/2025 - v7.4.3
 - **Modello di Consenso Opt-In**: Implementato un nuovo flusso di consenso per l'analisi dei documenti da parte di Ugo, basato su un modello "opt-in" per una maggiore protezione della privacy.
 - **Nuova Impostazione**: Aggiunta l'opzione `ugoContextAwarenessEnabled` (disattivata di default) in `services/settingsService.ts`.
-- **UI di Attivazione**: Aggiunto un interruttore dedicato in `pages/ProfilePage.tsx` per permettere l'utente di attivare/disattivare la funzionalità.
+- **UI di Attivazione**: Aggiunto un interruttore dedicato in `pages/ProfilePage.tsx` per permettere all'utente di attivare/disattivare la funzionalità.
 - **Logica Contestuale**: Modificata la funzione `handleSendMessage` in `App.tsx`. Se la funzione è disattivata, Ugo rileva le domande che richiedono contesto e risponde con un messaggio predefinito che invita l'utente ad attivare la funzione, includendo un'azione `[ACTION:navigate_to_profile]`.
 - **Istruzioni AI Aggiornate**: Il system prompt di Ugo è stato aggiornato per gestire correttamente entrambi gli scenari (con e senza contesto).
 - Aggiornata la documentazione e la versione a 7.4.3.
@@ -298,3 +272,290 @@ Cronologia delle note di lavoro per ogni versione rilasciata.
 - **Supporto Dialetti**: Ugo ora riconosce e risponde nei dialetti svizzeri con un tono umile.
 - **Documentazione**: Creato un nuovo file `Privato/ChatbotNotes.txt` per documentare in dettaglio queste logiche per riferimenti futuri.
 - Aggiornata tutta la documentazione e la versione a 6.25.0.
+
+# Note del 08/09/2025 - v6.24.0
+- Finalizzata e documentata l'implementazione del selettore di tema (Chiaro/Scuro/Sistema).
+- Risolti bug critici in `index.html` (configurazione Tailwind) e `ThemeContext.tsx` che impedivano al selettore di funzionare correttamente.
+- Aggiornata la documentazione (README, CHANGELOG) per riflettere la nuova funzionalità stabile.
+- Aggiornata la versione a 6.24.0.
+
+# Note del 07/09/2025 - v6.23.0
+- Implementata la "Proposta 1: Miglioramenti UI/UX" discussa.
+- **Selettore Tema**: Aggiunto `ThemeContext` e un selettore in `ProfilePage` per scegliere tra tema chiaro, scuro o di sistema.
+- **Vista a Griglia**: Aggiunto un interruttore in `ResultsDisplay` per passare dalla vista a lista a una nuova vista a griglia più compatta.
+- **Sistema di Tagging**: Aggiunta la possibilità di aggiungere/rimuovere tag ai fascicoli. I tag sono salvati sui singoli `ProcessedPageResult` e la ricerca è stata aggiornata per includerli.
+- Aggiornata tutta la documentazione e la versione a 6.23.0.
+
+# Note del 06/09/2025 - v6.22.0
+- Soddisfatta la richiesta di aggiornare la documentazione per riflettere l'aggiunta dell'importazione da Google Drive.
+- Aggiunto un nuovo pulsante "Importa da Drive" in `FileViews.tsx` che integra Google Picker.
+- La funzionalità si disattiva elegantemente se le credenziali API (`GOOGLE_CLIENT_ID` e `API_KEY`) non sono configurate.
+- Aggiornata tutta la documentazione (README, CHANGELOG, NotePersonali) e la versione a 6.22.0.
+
+# Note del 05/09/2025 - v6.21.0
+- Implementata una funzionalità dal backlog: "Pre-elaborazione Immagini".
+- Aggiunto un passaggio automatico in `App.tsx` che utilizza OpenCV.js per convertire le immagini in scala di grigi e migliorare il contrasto (CLAHE) prima di inviarle all'API Gemini.
+- Questo migliora l'accuratezza dell'OCR e la robustezza dell'analisi AI.
+- Aggiornata tutta la documentazione e la versione a 6.21.0.
+
+# Note del 04/09/2025 - v6.20.0
+- Implementata un'iniziativa di "Solidificazione UI" dal backlog.
+- Riprogettata la barra delle azioni in `ResultsDisplay.tsx` per essere contestuale.
+- Le azioni di gruppo ora appaiono solo dopo aver selezionato uno o più fascicoli.
+- Questo semplifica l'interfaccia quando non ci sono selezioni attive, rendendo il flusso di lavoro più intuitivo.
+- Aggiornata la documentazione e la versione a 6.20.0.
+
+# Note del 03/09/2025 - v6.19.2
+- Implementata la richiesta di rendere scaricabili i documenti legali (Termini di Servizio e Privacy Policy).
+- Aggiunto un pulsante "Download PDF" in entrambe le pagine, che genera un PDF del contenuto.
+- Il PDF generato include la versione corrente dell'applicazione nell'intestazione e nel nome del file.
+- Aggiornata la documentazione e la versione a 6.19.2.
+
+# Note del 02/09/2025 - v6.19.1
+- Implementata la richiesta di aggiungere un footer globale all'applicazione.
+- Rielaborati i layout delle pagine di Login, Registrazione, Prezzi e Changelog per includere il footer in modo consistente, migliorando l'aspetto professionale dell'intera applicazione.
+- Aggiornata la documentazione e la versione a 6.19.1.
+
+# Note del 01/09/2025 - v6.19.0
+- Implementata la richiesta di aggiungere un framework per la privacy e il consenso.
+- Aggiunta la richiesta di accettazione dei Termini e della Privacy Policy alla registrazione.
+- Create pagine dedicate per i documenti legali (con testo segnaposto).
+- Aggiunto un "Centro Privacy" nella pagina Profilo per centralizzare l'accesso ai documenti e la gestione dell'account.
+- Aggiornata la documentazione e la versione a 6.19.0.
+
+# Note del 01/09/2025 - v6.18.0
+- Implementata la funzionalità di metadati avanzati discussa.
+- **Watermark Potenziato**: La funzione `createWarpedImageFromCorners` ora include l'UUID (primi 8 caratteri) e il timestamp nel watermark visibile su tutte le immagini elaborate.
+- **Metadati JSON**: I file `dati_estratti.json` nei ZIP ora contengono una sezione `_metadata` con la versione dell'app, timestamp, modalità, UUID e hash.
+- **Metadati PDF**: I PDF generati ora includono metadati invisibili nelle proprietà del file (Titolo, Creatore, Parole Chiave con UUID e hash) per una migliore archiviazione.
+- Aggiornata tutta la documentazione e la versione a 6.18.0.
+
+# Note del 31/08/2025 - v6.17.1
+- In risposta al feedback dell'utente "Non vedo differenze", ho completamente ridisegnato il layout iniziale.
+- Rimosso il banner di benvenuto e implementata una struttura a tre colonne per i passaggi 1, 2 e 3 quando l'area di lavoro è vuota.
+- Questo migliora notevolmente l'allineamento visivo e la chiarezza del flusso di lavoro su schermi grandi. Questa modifica rientra nell'iniziativa "Solidificazione UI" dal backlog.
+- Aggiornata la documentazione e la versione a 6.17.1.
+
+# Note del 30/08/2025 - v6.17.0
+- Implementata la richiesta dell'utente di aggiungere una modalità di acquisizione via email (funzionalità presente nel backlog).
+- Creata l'intera interfaccia frontend in `EmailImportView.tsx`, simulando la ricezione di email, la gestione di una whitelist/blacklist e la selezione della modalità di scansione per gli allegati.
+- La funzionalità è ora pronta per la futura integrazione con un servizio backend.
+- Aggiornata tutta la documentazione (README, CHANGELOG, NotePersonali) e la versione a 6.17.0.
+
+# Note del 29/08/2025 - v6.16.2
+- **UI Refinement**: Migliorato il feedback visivo nel componente di caricamento file in risposta al feedback utente. Rimosso il bordo esterno colorato e applicata la colorazione dinamica direttamente alla linea tratteggiata e al pulsante della fotocamera. Questo rende l'interfaccia più pulita e coerente, come parte dell'iniziativa "Solidificazione UI" dal backlog.
+- Aggiornata la documentazione e la versione a 6.16.2.
+
+# Note del 28/08/2025 - v6.16.1
+- **Miglioramento Flusso Chat**: Implementato un miglioramento dell'esperienza utente per il chatbot Ugo. Ora, quando Ugo esegue un'azione di navigazione, la chat si chiude temporaneamente e si riapre in automatico dopo 1.5 secondi sulla nuova pagina, permettendo una conversazione più fluida.
+- **Correzione Bug Cronologia**: Risolto un bug critico in `handleOpenChat` che causava il reset della cronologia della conversazione ogni volta che la finestra della chat veniva aperta. Ora lo storico viene correttamente preservato.
+- Aggiornata la documentazione e la versione a 6.16.1.
+
+# Note del 27/07/2025 - v6.16.0
+- **Superpotenziamento Chatbot "Ugo"**: Implementate quattro nuove funzionalità avanzate per trasformare Ugo in un assistente proattivo:
+  1. **Assistenza Proattiva**: All'apertura, Ugo analizza l'area di lavoro e offre suggerimenti (es. segnala documenti non sicuri, saldo basso, ecc.).
+  2. **Esecuzione Azioni**: Ugo ora può eseguire comandi dati in linguaggio naturale, come unire fascicoli specifici, rispondendo con un JSON che l'app interpreta.
+  3. **Memoria a Lungo Termine**: La cronologia della chat è ora salvata in IndexedDB, persistendo tra le sessioni.
+  4. **Risposte Multimodali**: Ugo può includere contenuti ricchi, come immagini, nelle sue risposte.
+- Aggiornato `App.tsx` con la nuova logica, `services/db.ts` per la persistenza della chat e `components/Chatbot.tsx` per l'UI.
+- Aggiornata tutta la documentazione e la versione a 6.16.0.
+
+# Note del 26/08/2025 - v6.15.3
+- **Potenziamento Chatbot "Ugo"**: Implementate quattro nuove funzionalità per migliorare l'esperienza della chat:
+  1. **Saluti Contestuali**: Il messaggio di benvenuto di Ugo ora si adatta alla pagina corrente.
+  2. **Risposte Rapide**: Ugo può suggerire le prossime azioni con pulsanti interattivi.
+  3. **Feedback Granulare**: Aggiunte icone 👍/👎 per valutare le risposte di Ugo.
+  4. **Memoria Conversazione**: La cronologia della chat ora persiste durante la sessione del browser, anche dopo un ricaricamento della pagina.
+- Aggiornato il file `App.tsx` con la logica di gestione (sessionStorage, parsing risposte) e il componente `Chatbot.tsx` per l'UI.
+- Aggiornata la documentazione e la versione a 6.15.3.
+
+# Note del 25/08/2025 - v6.15.2
+- **Implementazione "Easter Egg"**: Implementato il sistema di ricompense "Utenti Gentili". Ora l'assistente 'Ugo' può premiare gli utenti cordiali con ScanCoin bonus (50 SC), basandosi su un'analisi del sentiment della conversazione. La funzione si attiva discretamente dopo il terzo messaggio dell'utente ed è limitata a una ricompensa per sessione per prevenire abusi.
+
+# Note del 24/08/2025 - v6.15.1
+- Soddisfatta una richiesta implicita dell'utente: la modalità demo non mostrava la nuova funzionalità di estrazione immagini.
+- Aggiornato `services/demoData.ts` per generare un logo di esempio e includerlo in uno dei documenti demo.
+- Il set di dati di esempio ora contiene un `ProcessedPageResult` con la proprietà `extractedImages`, rendendo la feature visibile in modalità demo.
+- Aggiornata la documentazione e la versione a 6.15.1.
+
+# Note del 23/08/2025 - v6.15.0
+- Implementata la "Proposta 1" dall'analisi precedente: **Estrazione Immagini Opzionale**.
+- Aggiunto un interruttore nel `ProcessingModeSelector` per attivare/disattivare la funzione.
+- L'interruttore è visibile solo per le modalità compatibili (`Chroma`, `Batch`, `Deep`, `Scontrino`).
+- Aggiornato `geminiService` per modificare dinamicamente il prompt e lo schema JSON in base all'opzione di estrazione.
+- Aggiunta la logica in `App.tsx` per ritagliare le immagini tramite OpenCV.js in base ai `boundingBox` restituiti da Gemini.
+- Aggiornato `ResultsDisplay` per mostrare le miniature delle immagini estratte sotto ogni risultato.
+- Aggiornata tutta la documentazione e la versione a 6.15.0.
+
+# Note del 22/08/2025 - v6.14.0
+- Implementata la "Proposta 2" dall'analisi precedente: **Miglioramento Fotocamera (Ritaglio Manuale)**.
+- Dopo lo scatto, l'utente viene ora portato a una nuova schermata `CropView`.
+- In questa vista è possibile trascinare i 4 angoli del documento per correggere il rilevamento automatico.
+- Durante il trascinamento, una lente d'ingrandimento ("loupe") appare per consentire un posizionamento di alta precisione.
+- L'utente può confermare il ritaglio, che applica la correzione prospettica tramite OpenCV.js, o annullare e ripetere lo scatto.
+- Aggiornata tutta la documentazione e la versione a 6.14.0.
+
+# Note del 21/08/2025 - v6.13.0
+- Implementata la "Proposta 1" dall'analisi precedente, focalizzata su robustezza e sicurezza.
+  1. **Persistenza Coda di Lavoro**: La coda di elaborazione viene ora salvata in IndexedDB. Se l'applicazione viene ricaricata, l'elaborazione riprende automaticamente da dove era stata interrotta, prevenendo la perdita di lavoro.
+  2. **Filtri di Sicurezza Gemini**: Attivati i filtri di sicurezza integrati di Gemini (`safetySettings`) per bloccare la generazione di contenuti potenzialmente dannosi (incitamento all'odio, molestie, ecc.), rendendo l'applicazione più sicura e responsabile.
+- Aggiornata tutta la documentazione e la versione a 6.13.0.
+
+# Note del 20/08/2025 - v6.12.0
+- Migliorato il rilevamento dei documenti in `useDocumentScanner.tsx` (OpenCV) abbassando la soglia di area minima. Questo permette di riconoscere anche documenti piccoli come scontrini o fogli piegati, come richiesto dall'utente.
+- Aggiornata la documentazione e la versione a 6.12.0.
+
+# Note del 19/08/2025 - v6.11.0
+- Implementata la "Modalità Scontrino" dal backlog.
+- Creato un nuovo modello AI specializzato in `geminiService` per estrarre dettagliatamente le voci degli scontrini.
+- Aggiunta la visualizzazione tabellare dei risultati in una sezione espandibile in `ResultsDisplay`.
+- Aggiornata l'intera UI (selettore modalità, modale info, dashboard, profilo) per integrare la nuova modalità.
+- Aggiornata tutta la documentazione e la versione a 6.11.0.
+
+# Note del 18/08/2025 - v6.10.0
+- Implementato un pacchetto di potenziamento basato sulle idee del backlog:
+  1. **Esportazione PDF per Fascicolo**: Aggiunto un pulsante su ogni fascicolo per scaricarlo direttamente come un singolo file PDF multi-pagina.
+  2. **Tentativi di Rianalisi Intelligenti**: Introdotta una logica che permette fino a 3 tentativi per correggere una scansione fallita o di bassa qualità. Il costo viene addebitato solo in caso di successo di una scansione precedentemente fallita. Il pulsante si disabilita dopo 3 tentativi.
+- Aggiornata tutta la documentazione e la versione a 6.10.0.
+
+# Note del 17/08/2025 - v6.9.9
+- **Fix**: Risolto un fastidioso bug di scorrimento sulla pagina "Scansione" che si verificava su dispositivi mobili. Lo scroll tornava continuamente in cima alla pagina.
+- Il problema è stato risolto semplificando la struttura CSS del layout in `Workspace.tsx`, in particolare la gestione della colonna "sticky".
+- Aggiornata la documentazione e la versione a 6.9.9.
+
+# Note del 16/08/2025 - v6.9.8
+- Implementata la configurazione delle modalità primarie da visualizzare nel selettore, gestibile dalla pagina Profilo.
+- Migliorata l'UI del selettore modalità, che ora mostra le due modalità primarie e nasconde le altre in una sezione espandibile.
+- Rinominato le modalità di scansione con nomi più moderni e descrittivi.
+- Aggiornata la documentazione e la versione a 6.9.8.
+
+# Note del 15/08/2025 - v6.9.7
+- Implementate diverse proposte dall'utente:
+  1. **ZIP Protetto (Punto 1)**: I download sono ora protetti da password (`123456`).
+  2. **Logo Navigabile (Punto 2)**: L'header ora reindirizza alla home page.
+  3. **Esempi Scansioni (Punto 4)**: La pagina prezzi ora mostra stime del numero di scansioni per pacchetto.
+  4. **Cookie Banner e Clarity (Punti 5, 6)**: Aggiunto banner per i cookie e script di Microsoft Clarity.
+- Aggiornata tutta la documentazione e la versione a 6.9.7.
+
+# Note del 14/08/2025 - v6.9.6
+- Implementato un pacchetto di "vittorie rapide" basato sul feedback dell'utente:
+  1. **Flash Automatico (Punto 2)**: Riabilitata la logica per l'attivazione automatica della torcia in `CameraView` e aggiunto un indicatore visivo dello stato del flash.
+  2. **Indicatori Visivi per Modalità (Punto 6)**: Aggiunto un bordo laterale colorato a tutti gli elementi nella coda di lavoro (`QueueView`) e nei risultati (`ResultsDisplay`) per identificare a colpo d'occhio la modalità di elaborazione.
+  3. **Selezione Modalità Sempre Attiva (Punto 5)**: Rimosso il blocco (`disabled`) dal selettore della modalità in `Workspace`, permettendo un flusso di lavoro più fluido.
+- Aggiornata la documentazione e la versione a 6.9.6.
+
+# Note del 13/08/2025
+- Aggiunta una lista di nuove idee e proposte fornite dall'utente al backlog per futura valutazione.
+- Fornita un'analisi dettagliata delle proposte, raggruppandole per priorità e fattibilità (Vittorie Rapide, Funzionalità Chiave, Funzionalità Avanzate).
+
+# Note del 12/08/2025 - v6.9.5
+- Implementata la richiesta dell'utente di aggiungere una modalità gratuita "No-AI".
+- Creata la nuova modalità "Acquisisci e Salva" a costo 0 ScanCoin.
+- Questa modalità bypassa l'analisi Gemini, eseguendo solo l'acquisizione e l'applicazione del watermark.
+- I risultati non hanno dati estratti e ogni scansione crea un fascicolo a sé.
+- Aggiornata tutta l'UI (selettore modalità, modale info, coda) e la documentazione per includere la nuova opzione.
+
+# Note del 11/08/2025 - v6.9.3
+- In risposta alla richiesta dell'utente, ho ripristinato lo storico delle sessioni, spostandolo dalla pagina Profilo alla Dashboard per una migliore centralizzazione delle informazioni.
+- Aggiunto un pulsante per scaricare lo storico completo in formato PDF dalla Dashboard.
+- Semplificata la pagina Profilo, che ora si concentra sui dati dell'account e le preferenze.
+- Aggiornata la documentazione e la versione a 6.9.3.
+
+# Note del 10/08/2025 - v6.9.4 (retrodatato per coerenza)
+- Implementata la "Proposta 1" dall'analisi del file NotePersonali: il "Modello Libro".
+- Aggiunta la nuova modalità di elaborazione "book" in `geminiService`, con costo e schema dedicati.
+- Aggiornata l'UI in `ProcessingModeSelector`, `ModeInfoModal`, `ResultsDisplay` e `QueueView` per supportare la nuova modalità.
+- Creata una nuova icona `BookOpenIcon`.
+- Aggiornata tutta la documentazione (README, CHANGELOG, metadata) alla versione 6.9.4.
+
+# Note del 29/07/2025 - v6.5.0
+- Implementata una funzionalità dal backlog UI/UX: **Scheda Info per Modelli**.
+- Creato il nuovo componente `ModeInfoModal.tsx` che mostra un popup di confronto per le modalità.
+- Aggiunta l'icona e la logica per aprire il modale in `Workspace.tsx`.
+- Aggiornata tutta la documentazione (README, CHANGELOG, metadata) alla versione 6.5.0.
+
+# Note del 28/07/2025 - v6.4.0
+- Implementata la "Proposta 1" (Performance): Il componente `VirtualItem` è stato potenziato per "scaricare" gli elementi che escono dalla vista, implementando una virtualizzazione completa e migliorando drasticamente le performance con lunghe liste.
+- Implementata la "Proposta 2" (Onboarding): Aggiunto un banner di benvenuto nell'area risultati (quando vuota) per guidare i nuovi utenti.
+- Aggiornata tutta la documentazione (README, CHANGELOG, metadata) alla versione 6.4.0.
+
+# Note del 27/07/2025 - v6.3.0
+- Soddisfatta la richiesta dell'utente di rendere l'aggiornamento delle statistiche totali istantaneo. La logica è stata spostata dalla funzione `handleClear` alla funzione `addResult`, che viene attivata per ogni pagina scansionata. Questo risolve la confusione per cui i totali si aggiornavano solo a fine sessione.
+- "Pulisci Sessione" ora salva solo lo storico della sessione.
+- Aggiornata tutta la documentazione (README, CHANGELOG, metadata) alla versione 6.3.0.
+
+# Note del 26/07/2025 - v6.2.0
+- **FIX CRITICO**: Corretto il prompt di Gemini in `geminiService.ts`. Le istruzioni per derivare i dati (`soggetto`, `titoloFascicolo`, ecc.) erano diventate contraddittorie, causando fallimenti nell'analisi AI e nell'estrazione del JSON. La logica è stata resa più sequenziale e chiara.
+- **FIX USABILITÀ**: Rimosso il blocco (`disabled`) dal `ProcessingModeSelector` in `Workspace.tsx`. Ora l'utente può cambiare la modalità di elaborazione per i file futuri anche mentre la coda corrente è in esecuzione.
+- Aggiornati tutti i file di documentazione e la versione a 6.2.0.
+
+# Note del 25/07/2025 - v6.1.0
+- Implementata la "Proposta 1" dalle note precedenti:
+  - Aggiunta la barra di ricerca per i fascicoli.
+  - Aggiunte scorciatoie da tastiera per Annulla/Ripristina, navigazione tra fascicoli e chiusura modali.
+- Implementata la "Proposta 2":
+  - Eseguito il refactoring completo di `CameraView.tsx` in tre custom hook (`useCameraStream`, `useDocumentScanner`, `useDeviceTilt`) per migliorare la manutenibilità.
+- Aggiornati i file di documentazione e la versione a 6.1.0.
+
+# Note del 24/07/2025 - v6.0.1
+- **Fix Fotocamera Critici**: Risolti bug che impedivano lo scatto (manuale e automatico). Corretto il comportamento del flash perché illumini la scena durante la ricerca del documento. Stabilizzata l'intera esperienza di scatto.
+- Aggiornata la documentazione e la versione a 6.0.1.
+
+# Note del 23/07/2025 - v6.0.0
+- **Major Version Bump**: Su richiesta dell'utente, la versione è stata portata a 6.0.0 per riflettere l'importanza della reintroduzione e stabilizzazione della funzionalità di scansione con OpenCV.
+- Le modifiche delle versioni 5.7.0 e 5.7.1 sono state consolidate sotto la nuova versione 6.0.0 nel CHANGELOG.
+- L'obiettivo è comunicare chiaramente che la funzionalità della fotocamera è ora una feature principale e matura dell'applicazione.
+
+# Note del 22/07/2025 - v5.7.1
+- **Fix UI Fotocamera**: Ripristinata l'interfaccia della fotocamera al layout precedente che era più funzionale e apprezzato dall'utente.
+- Il problema era un disallineamento del canvas dell'overlay con il video, causato da tentativi di fix precedenti.
+- La soluzione definitiva ha utilizzato CSS Grid per forzare la sovrapposizione perfetta di video e overlay, risolvendo tutti i problemi di layout.
+- L'algoritmo di rilevamento potenziato (Canny + morfologia) è stato mantenuto.
+- Aggiornata la versione a 5.7.1.
+
+# Note del 21/07/2025 - v5.7.0
+- Implementato il rilevamento dei bordi e il ritaglio automatico tramite OpenCV.js.
+- L'app ora mostra un contorno in tempo reale sul documento.
+- Lo scatto viene automaticamente ritagliato e corretto nella prospettiva.
+- La modalità "Scatto Rapido" è stata potenziata per scattare solo quando un documento è rilevato e il dispositivo è in piano.
+- Aggiornata la versione a 5.7.0.
+
+# Note del 20/07/2025 - v5.6.0
+- Implementata la "Modalità Scatto Rapido" nella fotocamera.
+- Aggiunto un interruttore per attivarla e la logica per scattare automaticamente quando il dispositivo è in piano.
+- Aggiornata la versione a 5.6.0.
+
+# Note del 19/07/2025 - v5.5.0
+- Implementata la funzionalità di feedback per le singole scansioni. L'utente può ora indicare se l'analisi di una pagina è buona o cattiva.
+- Aggiunto un campo opzionale `feedback` all'interfaccia `ProcessedPageResult`.
+- Aggiornata la versione a 5.5.0 in tutti i file rilevanti (metadata, readme, changelog).
+
+# Note del 18/07/2025 - v5.4.0
+- La chat è stata resa persistente, mantenendo la cronologia durante la navigazione. Lo stato è stato spostato in `App.tsx`.
+- Documentata la modifica e aggiornata la versione a 5.4.0.
+
+# Note del 17/07/2025 - v5.3.0
+Le seguenti modifiche sono state implementate:
+- Eseguito il rebranding delle modalità di elaborazione con nomi più commerciali:
+  - `Qualità` -> `Pixel Perfect`
+  - `Velocità` -> `Flash`
+  - `Business` -> `Multi-Task`
+- Aggiunto il costo per scansione (es. "0.10 CHF/scan") di fianco alla descrizione di ogni modalità per massima trasparenza.
+- Aggiornata tutta l'interfaccia (risultati, coda, profilo) per riflettere i nuovi nomi.
+
+# Note del 16/07/2025
+Le seguenti modifiche sono state implementate nella versione 5.2.0:
+- Aggiunti indicatori di modalità (con colore) e timestamp a ogni pagina scansionata per una maggiore chiarezza.
+- Implementata una filigrana (watermark) con il timestamp sulle immagini elaborate.
+- Introdotta la funzione "Riprova Scansione" per rielaborare le singole pagine fallite o di bassa qualità.
+- Migliorata la gestione degli errori con messaggi più dettagliati e specifici (connessione, API, file corrotto).
+- Aggiornamento di versioning, README e changelog.
+
+# Note del 15/07/2025
+Le seguenti modifiche sono state implementate nella versione 5.1.0:
+- Introduzione di un conteggio scansioni e costo lato client.
+- Differenziazione dei costi per modalità:
+    - Qualità: 0.10 CHF / pagina
+    - Velocità: 0.07 CHF / pagina
+    - Business: 0.15 CHF / pagina
+- Aggiornamento di versioning, README e changelog.

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import type { ProcessedPageResult, DocumentGroup, ProcessingTask, ProcessingMode } from '../services/geminiService';
-import type { PendingFileTask } from '../App';
-import { ImageInput } from './ImageInput';
+import type { ProcessedPageResult, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage } from '../services/geminiService';
+import { FileDropzone } from './FileViews';
 import { ResultsDisplay } from './ResultsDisplay';
 import { ErrorDisplay } from './ErrorDisplay';
 import { QueueView } from './QueueView';
+import { ProcessingModeSelector } from './ProcessingModeSelector';
 import { ProcessingView } from './ProcessingView';
 import { SparklesIcon, InformationCircleIcon, DocumentTextIcon } from './icons';
+import * as settingsService from '../services/settingsService';
 import { ModeInfoModal } from './ModeInfoModal';
 
 const DemoBanner: React.FC<{ onExit: () => void }> = ({ onExit }) => (
@@ -65,7 +66,7 @@ interface WorkspaceProps {
     onShouldExtractImagesChange: (shouldExtract: boolean) => void;
     onFilesSelected: (files: File[]) => void;
     onOpenCamera: () => void;
-    onOpenEmailImport: () => void; 
+    onOpenEmailImport: () => void; // Aggiunta prop
     onClear: () => void;
     onUpdateResult: (updatedResult: ProcessedPageResult) => void;
     onUpdateGroupTags: (groupId: string, newTags: string[]) => void;
@@ -108,10 +109,6 @@ interface WorkspaceProps {
     scrollToGroupId: string | null;
     onScrolledToGroup: () => void;
     onUgoSummarize: (groupIds: string[]) => void;
-    pendingFileTasks: PendingFileTask[];
-    onPendingTaskChange: (id: string, updates: Partial<Omit<PendingFileTask, 'id' | 'file'>>) => void;
-    onConfirmProcessing: () => void;
-    onCancelProcessing: () => void;
 }
 
 export const Workspace: React.FC<WorkspaceProps> = (props) => {
@@ -120,35 +117,57 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
     
     const [isModeInfoModalOpen, setIsModeInfoModalOpen] = useState(false);
 
-    // Layout a 2 colonne per lo stato iniziale (vuoto)
+    // Layout a 3 colonne per lo stato iniziale (vuoto)
     if (!hasResults && !isProcessing) {
         return (
              <>
                 {props.showTutorialBanner && <TutorialBanner onStart={props.onStartTutorial} onDismiss={props.onDismissTutorial} />}
                 {props.isDemoMode && <DemoBanner onExit={props.onExitDemo} />}
-                {error && <div className="lg:col-span-2"><ErrorDisplay error={error} /></div>}
+                {error && <div className="lg:col-span-3"><ErrorDisplay error={error} /></div>}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
-                    {/* Colonna 1: Aggiungi Documenti */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full items-start">
+                    {/* Colonna 1: Modalità */}
+                    <div>
+                        <div id="tutorial-mode-selector" className={`transition-all duration-500 rounded-2xl ${props.highlightedElement === 'mode-selector' ? 'ring-4 ring-offset-4 ring-offset-slate-50 dark:ring-offset-slate-900 ring-purple-500' : ''}`}>
+                            <div className="flex items-center gap-2 px-1 mb-4">
+                                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                                    1. Scegli Modalità
+                                </h2>
+                                <button
+                                    onClick={() => setIsModeInfoModalOpen(true)}
+                                    className="text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-400 transition-colors"
+                                    aria-label="Informazioni sulle modalità"
+                                >
+                                    <InformationCircleIcon className="w-6 h-6"/>
+                                </button>
+                            </div>
+                            <ProcessingModeSelector 
+                                currentMode={props.processingMode}
+                                onModeChange={props.onProcessingModeChange}
+                                shouldExtractImages={props.shouldExtractImages}
+                                onShouldExtractImagesChange={props.onShouldExtractImagesChange}
+                                disabled={false}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Colonna 2: Aggiungi Documenti */}
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 px-1 mb-4">
-                            1. Aggiungi Documenti
+                            2. Aggiungi Documenti
                         </h2>
-                        <ImageInput
-                            pendingFileTasks={props.pendingFileTasks}
-                            onPendingTaskChange={props.onPendingTaskChange}
-                            onFilesSelected={props.onFilesSelected}
-                            onConfirmProcessing={props.onConfirmProcessing}
-                            onCancelProcessing={props.onCancelProcessing}
-                            onOpenCamera={props.onOpenCamera}
+                        <FileDropzone 
+                            onFilesSelected={props.onFilesSelected} 
+                            onOpenCamera={props.onOpenCamera} 
                             onOpenEmailImport={props.onOpenEmailImport}
+                            processingMode={props.processingMode}
                         />
                     </div>
                     
-                    {/* Colonna 2: Raccogli Risultati (Placeholder) */}
+                    {/* Colonna 3: Raccogli Risultati (Placeholder) */}
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 px-1 mb-4">
-                            2. Raccogli i Risultati
+                            3. Raccogli i Risultati
                         </h2>
                         <div className="flex flex-col items-center justify-center text-center p-10 bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg min-h-[400px] border border-dashed border-slate-300 dark:border-slate-700">
                             <DocumentTextIcon className="w-16 h-16 mb-4 text-slate-300 dark:text-slate-600" />
@@ -173,24 +192,43 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
         );
     }
 
-    // Layout a 2 colonne quando ci sono risultati o è in corso l'elaborazione
+    // Layout classico a 2 colonne quando ci sono risultati o è in corso l'elaborazione
     return (
         <>
             <div className="flex flex-col lg:flex-row gap-8 w-full items-start">
                 {/* Pannello Sinistro (Input e Coda) */}
                 <div className="w-full lg:w-1/3 lg:max-w-md lg:sticky lg:top-24 flex flex-col gap-6 self-start">
+                    <div id="tutorial-mode-selector" className={`transition-all duration-500 rounded-2xl ${props.highlightedElement === 'mode-selector' ? 'ring-4 ring-offset-4 ring-offset-slate-50 dark:ring-offset-slate-900 ring-purple-500' : ''}`}>
+                        <div className="flex items-center gap-2 px-1 mb-4">
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                                1. Scegli Modalità
+                            </h2>
+                            <button
+                                onClick={() => setIsModeInfoModalOpen(true)}
+                                className="text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-400 transition-colors"
+                                aria-label="Informazioni sulle modalità"
+                            >
+                                <InformationCircleIcon className="w-6 h-6"/>
+                            </button>
+                        </div>
+                        <ProcessingModeSelector 
+                            currentMode={props.processingMode}
+                            onModeChange={props.onProcessingModeChange}
+                            shouldExtractImages={props.shouldExtractImages}
+                            onShouldExtractImagesChange={props.onShouldExtractImagesChange}
+                            disabled={isProcessing}
+                        />
+                    </div>
+                    
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 px-1 mb-4">
-                            1. Aggiungi Documenti
+                            2. Aggiungi Documenti
                         </h2>
-                        <ImageInput
-                           pendingFileTasks={props.pendingFileTasks}
-                           onPendingTaskChange={props.onPendingTaskChange}
-                           onFilesSelected={props.onFilesSelected}
-                           onConfirmProcessing={props.onConfirmProcessing}
-                           onCancelProcessing={props.onCancelProcessing}
-                           onOpenCamera={props.onOpenCamera}
-                           onOpenEmailImport={props.onOpenEmailImport}
+                        <FileDropzone 
+                            onFilesSelected={props.onFilesSelected} 
+                            onOpenCamera={props.onOpenCamera} 
+                            onOpenEmailImport={props.onOpenEmailImport} // Passato il nuovo handler
+                            processingMode={props.processingMode}
                         />
                     </div>
 

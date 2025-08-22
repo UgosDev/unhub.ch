@@ -4,20 +4,13 @@ import {
     ArchivioChLogoIcon, ArchivioChWordmarkIcon,
     PolizzeChLogoIcon, PolizzeChWordmarkIcon,
     DisdetteChLogoIcon, DisdetteChWordmarkIcon,
-    AppuntiChLogoIcon, AppuntiChWordmarkIcon,
-    SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, CoinIcon, MagnifyingGlassIcon, UsersIcon, DocumentTextIcon
+    SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, CoinIcon, MagnifyingGlassIcon, UsersIcon
 } from '../components/icons';
 
 const scansioniFeatures = [
     { icon: React.createElement(SparklesIcon, { className: "w-8 h-8"}), title: "Analisi AI Avanzata", description: "Estrai dati, classifica documenti e ottieni riassunti in pochi secondi con Google Gemini." },
     { icon: React.createElement(CameraIcon, { className: "w-8 h-8"}), title: "Scansione Professionale", description: "Usa la fotocamera con guida all'allineamento per scatti perfetti. L'AI ritaglia e raddrizza per te." },
     { icon: React.createElement(ShieldCheckIcon, { className: "w-8 h-8" }), title: "Privacy e Sicurezza AI", description: "Utilizziamo l'IA di Google Gemini con la garanzia che i tuoi dati non vengano usati per addestrare modelli. Sicurezza a livello enterprise per la tua tranquillità." }
-];
-
-const notesFeatures = [
-    { icon: React.createElement(DocumentTextIcon, { className: "w-8 h-8"}), title: "Note Contestuali", description: "Crea note personali, familiari o per consulenti e collegale direttamente ai tuoi documenti." },
-    { icon: React.createElement(DocumentDuplicateIcon, { className: "w-8 h-8"}), title: "Menzioni @Documento", description: "Tagga facilmente i documenti nelle tue note digitando '@' per un accesso rapido e contestuale." },
-    { icon: React.createElement(UsersIcon, { className: "w-8 h-8"}), title: "Condivisione Semplice", description: "Le note familiari sono automaticamente condivise con il tuo nucleo, facilitando la collaborazione." }
 ];
 
 export const brandAssets = {
@@ -65,14 +58,6 @@ export const brandAssets = {
             { icon: React.createElement(ChatBubbleLeftRightIcon, { className: "w-8 h-8"}), title: "Promemoria Scadenze", description: "Non perdere mai più una scadenza. Ti avvisiamo noi quando è il momento di agire." }
         ],
     },
-    notes: {
-        Logo: AppuntiChLogoIcon,
-        Wordmark: AppuntiChWordmarkIcon,
-        colorClass: 'yellow' as const,
-        heroTitle: React.createElement(React.Fragment, null, "Collega i puntini. ", React.createElement("br", null), React.createElement("span", { className: "text-yellow-500 dark:text-yellow-400" }, "Crea note intelligenti.")),
-        heroSubtitle: 'Arricchisci i tuoi documenti con note personali, familiari o per consulenti. Tagga i file con @ per creare un hub di conoscenza connesso.',
-        features: notesFeatures,
-    },
     default: {
         Logo: ScansioniChLogoIcon,
         Wordmark: ScansioniChWordmarkIcon,
@@ -88,49 +73,27 @@ export type BrandColor = typeof brandAssets[BrandKey]['colorClass'];
 
 export const getBrandKey = (): BrandKey => {
     try {
-        // 1. Priorità massima al parametro URL per il testing
         const urlParams = new URLSearchParams(window.location.search);
         const brandParam = urlParams.get('brand');
-        if (brandParam && ['scan', 'archivio', 'polizze', 'disdette', 'notes'].includes(brandParam)) {
-            // Rimuove il parametro per non interferire con la navigazione successiva
+        if (brandParam && (brandParam === 'scan' || brandParam === 'archivio' || brandParam === 'polizze' || brandParam === 'disdette')) {
+            // Remove the query param from URL to not interfere with other logic
             window.history.replaceState({}, document.title, window.location.pathname);
-            return brandParam as BrandKey;
+            return brandParam;
         }
-
-        // 2. Logica di produzione basata sull'hostname
-        const hostname = window.location.hostname;
-        if (hostname.includes('archivio.ch')) return 'archivio';
-        if (hostname.includes('polizze.ch')) return 'polizze';
-        if (hostname.includes('disdette.ch')) return 'disdette';
-        if (hostname.includes('appunti.ch')) return 'notes';
-        if (hostname.includes('scansioni.ch')) return 'scan';
-
-        // 3. Fallback per ambiente di sviluppo: rotazione automatica
-        const brandsInCycle: BrandKey[] = ['archivio', 'polizze', 'disdette', 'scan', 'notes'];
-        const sessionKey = 'dev-brand-cycle-index';
-        
-        let currentIndex = parseInt(sessionStorage.getItem(sessionKey) || '0', 10);
-        if (isNaN(currentIndex) || currentIndex >= brandsInCycle.length) {
-            currentIndex = 0;
-        }
-
-        const currentBrand = brandsInCycle[currentIndex];
-        
-        const nextIndex = (currentIndex + 1) % brandsInCycle.length;
-        sessionStorage.setItem(sessionKey, nextIndex.toString());
-
-        return currentBrand;
-        
     } catch (e) {
-        console.error("Impossibile determinare il brand, si torna al default.", e);
-        return 'scan'; // Default sicuro
+        console.error("Could not access URL parameters.", e);
     }
+    
+    const hostname = window.location.hostname;
+    if (hostname.includes('archivio.ch')) return 'archivio';
+    if (hostname.includes('polizze.ch')) return 'polizze';
+    if (hostname.includes('disdette.ch')) return 'disdette';
+    return 'scan';
 };
 
 export const colorStyles: Record<BrandColor, Record<string, string>> = {
     purple: { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-600', hoverBg: 'hover:bg-purple-700', shadow: 'hover:shadow-purple-500/30', ring: 'focus:ring-purple-500', border: 'focus:border-purple-500', darkText: 'dark:text-purple-400', hoverText: 'hover:text-purple-600 dark:hover:text-purple-400' },
     red: { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-600', hoverBg: 'hover:bg-red-700', shadow: 'hover:shadow-red-500/30', ring: 'focus:ring-red-500', border: 'focus:border-red-500', darkText: 'dark:text-red-400', hoverText: 'hover:text-red-600 dark:hover:text-red-400' },
     cyan: { text: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-600', hoverBg: 'hover:bg-cyan-700', shadow: 'hover:shadow-cyan-500/30', ring: 'focus:ring-cyan-500', border: 'focus:border-cyan-500', darkText: 'dark:text-cyan-400', hoverText: 'hover:text-cyan-600 dark:hover:text-cyan-400' },
-    green: { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-600', hoverBg: 'hover:bg-green-700', shadow: 'hover:shadow-green-500/30', ring: 'focus:ring-green-500', border: 'focus:border-green-500', darkText: 'dark:text-green-400', hoverText: 'hover:text-green-600 dark:hover:text-green-400' },
-    yellow: { text: 'text-yellow-500 dark:text-yellow-400', bg: 'bg-yellow-400', hoverBg: 'hover:bg-yellow-500', shadow: 'hover:shadow-yellow-500/30', ring: 'focus:ring-yellow-500', border: 'focus:border-yellow-500', darkText: 'dark:text-yellow-400', hoverText: 'hover:text-yellow-500 dark:hover:text-yellow-400' }
+    green: { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-600', hoverBg: 'hover:bg-green-700', shadow: 'hover:shadow-green-500/30', ring: 'focus:ring-green-500', border: 'focus:border-green-500', darkText: 'dark:text-green-400', hoverText: 'hover:text-green-600 dark:hover:text-green-400' }
 };
