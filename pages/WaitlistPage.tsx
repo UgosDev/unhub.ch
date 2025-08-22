@@ -8,6 +8,7 @@ interface WaitlistPageProps {
     brandKey: BrandKey;
     appLastUpdated?: string;
     onNavigate: (page: string) => void;
+    onBrandChange: (newBrand: BrandKey) => void;
 }
 
 const SECRET_CODE = 'australopiteco';
@@ -61,21 +62,15 @@ const PolizzeBackground: React.FC = () => {
 };
 
 
-const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, appLastUpdated, onNavigate }) => {
+const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, appLastUpdated, onNavigate, onBrandChange }) => {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
     const mouseLineRef = useRef<HTMLDivElement>(null);
-    const [currentBrandKey, setCurrentBrandKey] = useState<BrandKey>(brandKey);
 
-    const { Logo, Wordmark, colorClass } = brandAssets[currentBrandKey];
+    const { Logo, Wordmark, colorClass } = brandAssets[brandKey];
     const brandColors = colorStyles[colorClass] || colorStyles.purple;
-    
-    useEffect(() => {
-        setCurrentBrandKey(brandKey);
-    }, [brandKey]);
-
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -112,13 +107,13 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
 
         // Secret commands to switch views
         if (lowerCaseValue === 'scansioni.ch') {
-            setCurrentBrandKey('scan');
+            onBrandChange('scan');
         } else if (lowerCaseValue === 'archivio.ch') {
-            setCurrentBrandKey('archivio');
+            onBrandChange('archivio');
         } else if (lowerCaseValue === 'polizze.ch') {
-            setCurrentBrandKey('polizze');
+            onBrandChange('polizze');
         } else if (lowerCaseValue === 'disdette.ch') {
-            setCurrentBrandKey('disdette');
+            onBrandChange('disdette');
         } else if (lowerCaseValue === 'unhub.ch') {
             onNavigate('unhub');
         }
@@ -139,13 +134,13 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
         const siteCommands = ['scansioni.ch', 'archivio.ch', 'polizze.ch', 'disdette.ch', 'unhub.ch'];
         if (siteCommands.includes(lowerCaseValue)) {
              if (lowerCaseValue === 'scansioni.ch') {
-                setCurrentBrandKey('scan');
+                onBrandChange('scan');
             } else if (lowerCaseValue === 'archivio.ch') {
-                setCurrentBrandKey('archivio');
+                onBrandChange('archivio');
             } else if (lowerCaseValue === 'polizze.ch') {
-                setCurrentBrandKey('polizze');
+                onBrandChange('polizze');
             } else if (lowerCaseValue === 'disdette.ch') {
-                setCurrentBrandKey('disdette');
+                onBrandChange('disdette');
             } else if (lowerCaseValue === 'unhub.ch') {
                 onNavigate('unhub');
             }
@@ -211,7 +206,7 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
         }
     }
     
-    const currentContent = brandContent[currentBrandKey] || brandContent.scan;
+    const currentContent = brandContent[brandKey] || brandContent.scan;
 
     return (
         <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">

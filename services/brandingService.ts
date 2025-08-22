@@ -4,7 +4,7 @@ import {
     ArchivioChLogoIcon, ArchivioChWordmarkIcon,
     PolizzeChLogoIcon, PolizzeChWordmarkIcon,
     DisdetteChLogoIcon, DisdetteChWordmarkIcon,
-    SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, CoinIcon, MagnifyingGlassIcon, UsersIcon
+    SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, MagnifyingGlassIcon, UsersIcon
 } from '../components/icons';
 
 const scansioniFeatures = [
@@ -76,8 +76,7 @@ export const getBrandKey = (): BrandKey => {
         const urlParams = new URLSearchParams(window.location.search);
         const brandParam = urlParams.get('brand');
         if (brandParam && (brandParam === 'scan' || brandParam === 'archivio' || brandParam === 'polizze' || brandParam === 'disdette')) {
-            // Remove the query param from URL to not interfere with other logic
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // Non rimuoviamo il parametro per permettere il reload durante i test
             return brandParam;
         }
     } catch (e) {

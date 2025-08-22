@@ -1,4 +1,4 @@
-import React, { useEffect, type HTMLAttributes, type FC } from 'react';
+import React, { useEffect, type FC, type SVGProps } from 'react';
 import { SparklesIcon, BoltIcon, BuildingOffice2Icon, BookOpenIcon, XMarkIcon, CheckCircleIcon, XCircleIcon, DocumentPlusIcon, ClipboardDocumentIcon, UserCircleIcon } from './icons';
 import type { ProcessingMode } from '../services/geminiService';
 import { COST_PER_SCAN_COINS } from '../services/geminiService';
@@ -10,7 +10,7 @@ interface ModeInfoModalProps {
 const ModeCard: React.FC<{
     mode: ProcessingMode,
     title: string,
-    Icon: FC<HTMLAttributes<HTMLSpanElement>>,
+    Icon: FC<SVGProps<SVGSVGElement>>,
     activeClass: string,
     color: string,
     idealFor: string,
