@@ -1,22 +1,30 @@
-
-
-import React, { useState, useMemo, useEffect } from 'react';
-import type { ProcessedPageResult } from '../services/geminiService';
+import React from 'react';
+import type { ProcessedPageResult, Folder } from '../services/geminiService';
 import { performSemanticSearch } from '../services/geminiService';
 import { 
     ArchivioChLogoIcon, ArchivioChWordmarkIcon, DocumentTextIcon, LockClosedIcon, 
-    MagnifyingGlassIcon, XCircleIcon, TagIcon, EyeIcon, ArrowPathIcon, TrashIcon,
-    Bars3Icon, XMarkIcon
+    MagnifyingGlassIcon, XCircleIcon, FolderIcon, EyeIcon, ArrowPathIcon, TrashIcon,
+    Bars3Icon, XMarkIcon, FolderPlusIcon, EllipsisVerticalIcon, ChevronRightIcon, PencilIcon
 } from '../components/icons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { ListContextMenu, type ContextMenuAction } from '../components/ListContextMenu';
 
+// --- TIPI E INTERFACCE ---
 interface ArchivioProps {
     archivedDocs: ProcessedPageResult[];
-    onMoveDocument: (doc: ProcessedPageResult) => void;
+    folders: Folder[];
+    userUid: string;
+    onUpdateDocument: (uuid: string, updates: Partial<ProcessedPageResult>) => void;
     onDeleteDocument: (doc: ProcessedPageResult) => void;
+    onAddFolder: (folderData: Omit<Folder, 'id' | 'ownerUid'>) => Promise<string>;
+    onUpdateFolder: (folderId: string, updates: Partial<Folder>) => void;
+    onDeleteFolder: (folderId: string) => void;
 }
 
+interface FolderNode extends Folder {
+    children: FolderNode[];
+}
+
+// --- COMPONENTI INTERNI ---
 const DetailModal: React.FC<{ doc: ProcessedPageResult; onClose: () => void }> = ({ doc, onClose }) => (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
         <div className="bg-white dark:bg-slate-800 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
@@ -35,7 +43,7 @@ const DetailModal: React.FC<{ doc: ProcessedPageResult; onClose: () => void }> =
                     </div>
                     <div>
                         <label className="text-xs font-semibold text-slate-500">Dati Estratti</label>
-                        <div className="text-sm space-y-1 mt-1">
+                        <div className="text-sm space-y-1 mt-1 max-h-60 overflow-y-auto">
                             {doc.analysis.datiEstratti.map((d: any) => <p key={d.chiave}><strong>{d.chiave}:</strong> {d.valore}</p>)}
                         </div>
                     </div>
@@ -53,259 +61,327 @@ const DetailModal: React.FC<{ doc: ProcessedPageResult; onClose: () => void }> =
     </div>
 );
 
+const ArchivedItem: React.FC<{ item: ProcessedPageResult, onView: () => void, onDelete: () => void }> = ({ item, onView, onDelete }) => {
+    const handleDragStart = (e: React.DragEvent) => {
+        e.dataTransfer.setData("application/document-uuid", item.uuid);
+        e.dataTransfer.effectAllowed = "move";
+    };
 
-const ArchivedItem: React.FC<{ 
-    item: ProcessedPageResult, 
-    onView: () => void,
-    onContextMenu: (e: React.MouseEvent, doc: ProcessedPageResult) => void 
-}> = ({ item, onView, onContextMenu }) => (
-    <div 
-        className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 flex flex-col gap-3 transition-transform transform hover:-translate-y-1 hover:shadow-xl cursor-pointer"
-        onClick={onView}
-        onContextMenu={(e) => onContextMenu(e, item)}
-    >
-        <div className="flex items-start gap-4">
-            <div className="flex-grow min-w-0">
-                <div className="flex items-center gap-2">
-                    {item.isPrivate && <LockClosedIcon className="w-4 h-4 text-slate-500 flex-shrink-0" title="Questo documento è privato"/>}
-                    <p className="font-bold text-lg text-slate-800 dark:text-slate-100 truncate">{item.analysis.soggetto}</p>
+    return (
+        <div 
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 flex flex-col gap-3 transition-transform transform hover:-translate-y-1 hover:shadow-xl cursor-pointer group"
+            draggable
+            onDragStart={handleDragStart}
+        >
+            <div className="flex items-start gap-4" onClick={onView}>
+                <div className="flex-grow min-w-0">
+                    <div className="flex items-center gap-2">
+                        {item.isPrivate && <LockClosedIcon className="w-4 h-4 text-slate-500 flex-shrink-0" title="Questo documento è privato"/>}
+                        <p className="font-bold text-lg text-slate-800 dark:text-slate-100 truncate">{item.analysis.soggetto}</p>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 truncate">{item.analysis.riassunto}</p>
+                    {!item.isPrivate && item.ownerName ? (
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Aggiunto da: <span className="font-semibold">{item.ownerName}</span></p>
+                    ) : (
+                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 truncate">{new Date(item.timestamp).toLocaleDateString('it-CH')}</p>
+                    )}
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 truncate">{item.analysis.riassunto}</p>
-                {!item.isPrivate && item.ownerName ? (
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Aggiunto da: <span className="font-semibold">{item.ownerName}</span></p>
-                ) : (
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 truncate">{new Date(item.timestamp).toLocaleDateString('it-CH')}</p>
-                )}
+            </div>
+             <div className="flex justify-between items-end">
+                {item.tags && item.tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700/50 flex-grow">
+                        {item.tags.slice(0, 3).map(tag => (
+                            <span key={tag} className="px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded-full">{tag}</span>
+                        ))}
+                    </div>
+                ) : <div/>}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={onView} className="p-1.5 text-slate-400 hover:text-blue-500 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Visualizza"><EyeIcon className="w-4 h-4"/></button>
+                    <button onClick={onDelete} className="p-1.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Elimina"><TrashIcon className="w-4 h-4"/></button>
+                </div>
             </div>
         </div>
-        {item.tags && item.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700/50">
-                {item.tags.map(tag => (
-                    <span key={tag} className="px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded-full">{tag}</span>
-                ))}
-            </div>
-        )}
-    </div>
-);
+    );
+};
 
-const Pagination: React.FC<{ currentPage: number, totalPages: number, onPageChange: (page: number) => void }> = ({ currentPage, totalPages, onPageChange }) => (
-    <div className="flex justify-center items-center gap-2 mt-6">
-        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded-md disabled:opacity-50">Indietro</button>
-        <span className="text-sm text-slate-500">Pagina {currentPage} di {totalPages}</span>
-        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded-md disabled:opacity-50">Avanti</button>
-    </div>
-);
+const FolderModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (name: string, description: string, color: string) => void;
+    initialData?: Partial<Omit<Folder, 'id' | 'ownerUid' | 'parentId'>> | null;
+    title: string;
+}> = ({ isOpen, onClose, onSave, initialData, title }) => {
+    const [name, setName] = React.useState('');
+    const [description, setDescription] = React.useState('');
+    const [color, setColor] = React.useState('#a855f7');
+    const colors = ['#a855f7', '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#ec4899'];
 
+    React.useEffect(() => {
+        if (initialData) {
+            setName(initialData.name || '');
+            setDescription(initialData.description || '');
+            setColor(initialData.color || '#a855f7');
+        } else {
+            setName('');
+            setDescription('');
+            setColor('#a855f7');
+        }
+    }, [initialData, isOpen]);
 
-const Archivio: React.FC<ArchivioProps> = ({ archivedDocs, onMoveDocument, onDeleteDocument }) => {
-    const [view, setView] = useState<'family' | 'private'>('family');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<ProcessedPageResult[] | null>(null);
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchError, setSearchError] = useState<string | null>(null);
-    const [selectedTag, setSelectedTag] = useState<string | null>(null);
-    
-    // --- Nuovi stati ---
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [selectedDoc, setSelectedDoc] = useState<ProcessedPageResult | null>(null);
-    const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; position: { x: number; y: number }; targetDoc: ProcessedPageResult | null }>({ isOpen: false, position: { x: 0, y: 0 }, targetDoc: null });
+    if (!isOpen) return null;
 
-    const ITEMS_PER_PAGE = 10;
-
-    useEffect(() => {
-        // Reset pagination when filters change
-        setCurrentPage(1);
-    }, [view, selectedTag, searchResults]);
-
-    const handleSearch = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!searchQuery.trim()) return;
-
-        setIsSearching(true);
-        setSearchError(null);
-        setSearchResults(null);
-        try {
-            const results = await performSemanticSearch(searchQuery, archivedDocs);
-            setSearchResults(results);
-        } catch (error) {
-            console.error("Errore durante la ricerca semantica:", error);
-            setSearchError("Si è verificato un errore durante la ricerca. Riprova.");
-        } finally {
-            setIsSearching(false);
+        if (name.trim()) {
+            onSave(name, description, color);
         }
     };
 
-    const clearSearch = () => {
-        setSearchQuery('');
-        setSearchResults(null);
-        setSearchError(null);
+    return (
+         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                <form onSubmit={handleSubmit}>
+                    <header className="p-4 border-b border-slate-200 dark:border-slate-700">
+                        <h3 className="font-bold text-lg">{title}</h3>
+                    </header>
+                    <main className="p-6 space-y-4">
+                        <div>
+                            <label className="text-sm font-medium">Nome Cartella</label>
+                            <input value={name} onChange={e => setName(e.target.value)} required className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-700 rounded-md" />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium">Descrizione (opzionale)</label>
+                            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-700 rounded-md" />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium">Colore</label>
+                            <div className="mt-2 flex gap-2">
+                                {colors.map(c => (
+                                    <button type="button" key={c} onClick={() => setColor(c)} style={{ backgroundColor: c }} className={`w-8 h-8 rounded-full transition-transform ${color === c ? 'ring-2 ring-offset-2 ring-purple-500' : ''}`} />
+                                ))}
+                            </div>
+                        </div>
+                    </main>
+                    <footer className="p-4 flex justify-end gap-3 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
+                        <button type="button" onClick={onClose} className="px-4 py-2 font-semibold bg-slate-200 dark:bg-slate-600 rounded-lg">Annulla</button>
+                        <button type="submit" className="px-4 py-2 font-semibold bg-red-600 text-white rounded-lg">Salva</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// --- FUNZIONI HELPER ---
+const buildFolderTree = (folders: Folder[]): FolderNode[] => {
+    const folderMap = new Map<string, FolderNode>(folders.map(f => [f.id, { ...f, children: [] }]));
+    const tree: FolderNode[] = [];
+    folderMap.forEach(node => {
+        if (node.parentId && folderMap.has(node.parentId)) {
+            folderMap.get(node.parentId)!.children.push(node);
+        } else {
+            tree.push(node);
+        }
+    });
+    return tree;
+};
+
+const getBreadcrumbs = (folderId: string | null, folders: Folder[]): Folder[] => {
+    const crumbs: Folder[] = [];
+    const folderMap = new Map(folders.map(f => [f.id, f]));
+    let currentId = folderId;
+    while (currentId) {
+        const folder = folderMap.get(currentId);
+        if (folder) {
+            crumbs.unshift(folder);
+            currentId = folder.parentId;
+        } else {
+            break;
+        }
+    }
+    return crumbs;
+};
+
+// --- COMPONENTE PRINCIPALE ---
+const Archivio: React.FC<ArchivioProps> = (props) => {
+    const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null);
+    const [modalState, setModalState] = React.useState<{ type: 'new' | 'edit' | null; folder?: Folder | null, parentId?: string | null }>({ type: null });
+    const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+    const [selectedDoc, setSelectedDoc] = React.useState<ProcessedPageResult | null>(null);
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [searchResults, setSearchResults] = React.useState<ProcessedPageResult[] | null>(null);
+    const [isSearching, setIsSearching] = React.useState(false);
+    const searchTimeoutRef = React.useRef<number | null>(null);
+
+    const folderTree = React.useMemo(() => buildFolderTree(props.folders), [props.folders]);
+    const breadcrumbs = React.useMemo(() => getBreadcrumbs(selectedFolderId, props.folders), [selectedFolderId, props.folders]);
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        if (!query.trim()) {
+            setSearchResults(null);
+            setIsSearching(false);
+            return;
+        }
+
+        setIsSearching(true);
+        searchTimeoutRef.current = window.setTimeout(async () => {
+            const docsInScope = props.archivedDocs.filter(doc => (doc.folderId || null) === selectedFolderId);
+            const results = await performSemanticSearch(query, docsInScope);
+            setSearchResults(results);
+            setIsSearching(false);
+        }, 500);
+    };
+
+    const handleSaveFolder = async (name: string, description: string, color: string) => {
+        if (modalState.type === 'new') {
+            await props.onAddFolder({ name, description, color, parentId: modalState.parentId || null });
+        } else if (modalState.type === 'edit' && modalState.folder) {
+            await props.onUpdateFolder(modalState.folder.id, { ...modalState.folder, name, description, color });
+        }
+        setModalState({ type: null });
+    };
+
+    const handleDeleteFolder = (folderId: string) => {
+        if (confirm("Sei sicuro di voler eliminare questa cartella? I documenti al suo interno verranno spostati nell'archivio principale.")) {
+            props.onDeleteFolder(folderId);
+            if (selectedFolderId === folderId) setSelectedFolderId(null);
+        }
     };
     
-    const familyDocs = useMemo(() => archivedDocs.filter(doc => !doc.isPrivate), [archivedDocs]);
-    const privateDocs = useMemo(() => archivedDocs.filter(doc => doc.isPrivate), [archivedDocs]);
-
-    const isShowingSearchResults = searchResults !== null;
-    const docsForCurrentView = isShowingSearchResults ? searchResults : (view === 'family' ? familyDocs : privateDocs);
+    const displayedDocs = React.useMemo(() => {
+        if (searchResults !== null) return searchResults;
+        return props.archivedDocs.filter(doc => (doc.folderId || null) === selectedFolderId);
+    }, [props.archivedDocs, selectedFolderId, searchResults]);
     
-    const allTags = useMemo(() => {
-        const tagCounts = new Map<string, number>();
-        (view === 'family' ? familyDocs : privateDocs).forEach(doc => {
-            doc.tags?.forEach(tag => {
-                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-            });
-        });
-        return Array.from(tagCounts.entries()).sort((a,b) => b[1] - a[1]);
-    }, [familyDocs, privateDocs, view]);
-
-    const filteredDocs = useMemo(() => {
-        if (!selectedTag) return docsForCurrentView;
-        return docsForCurrentView.filter(doc => doc.tags?.includes(selectedTag));
-    }, [docsForCurrentView, selectedTag]);
-    
-    const paginatedDocs = useMemo(() => {
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        const end = start + ITEMS_PER_PAGE;
-        return filteredDocs.slice(start, end);
-    }, [filteredDocs, currentPage]);
-
-    const totalPages = Math.ceil(filteredDocs.length / ITEMS_PER_PAGE);
-
-    const handleViewChange = (newView: 'family' | 'private') => {
-        setView(newView);
-        setSelectedTag(null);
-        clearSearch();
-    };
-
-    const handleContextMenu = (e: React.MouseEvent, doc: ProcessedPageResult) => {
+    const handleDrop = (folderId: string | null, e: React.DragEvent) => {
         e.preventDefault();
-        setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, targetDoc: doc });
+        (e.currentTarget as HTMLElement).classList.remove('bg-red-100', 'dark:bg-red-900/50');
+        const uuid = e.dataTransfer.getData("application/document-uuid");
+        if (uuid) props.onUpdateDocument(uuid, { folderId: folderId || null });
     };
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; (e.currentTarget as HTMLElement).classList.add('bg-red-100', 'dark:bg-red-900/50'); };
+    const handleDragLeave = (e: React.DragEvent) => { (e.currentTarget as HTMLElement).classList.remove('bg-red-100', 'dark:bg-red-900/50'); };
 
-    const contextMenuActions = useMemo((): ContextMenuAction[] => {
-        if (!contextMenu.targetDoc) return [];
-        return [
-            { label: 'Apri Dettagli', icon: <EyeIcon className="w-5 h-5"/>, handler: () => setSelectedDoc(contextMenu.targetDoc) },
-            { type: 'separator' },
-            { 
-                label: `Sposta in Archivio ${contextMenu.targetDoc.isPrivate ? 'Familiare' : 'Privato'}`, 
-                icon: <ArrowPathIcon className="w-5 h-5"/>, 
-                handler: () => onMoveDocument(contextMenu.targetDoc!)
-            },
-            { label: 'Elimina Documento', icon: <TrashIcon className="w-5 h-5"/>, handler: () => onDeleteDocument(contextMenu.targetDoc!) }
-        ];
-    }, [contextMenu.targetDoc, onMoveDocument, onDeleteDocument]);
+    const FolderTreeItem: React.FC<{ node: FolderNode; level: number }> = ({ node, level }) => (
+        <div style={{ paddingLeft: `${level * 1.25}rem` }}>
+            <div 
+                onClick={() => { setSelectedFolderId(node.id); setIsSidebarOpen(false); }}
+                onDrop={(e) => { e.stopPropagation(); handleDrop(node.id, e) }}
+                onDragOver={(e) => { e.stopPropagation(); handleDragOver(e) }}
+                onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e) }}
+                className={`w-full text-left px-3 py-1.5 text-sm font-semibold rounded-md transition-colors flex justify-between items-center group cursor-pointer ${selectedFolderId === node.id ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+            >
+                <div className="flex items-center gap-2 truncate">
+                    <span style={{ color: node.color }}><FolderIcon className="w-5 h-5"/></span>
+                    <span className="truncate">{node.name}</span>
+                </div>
+                <div className="flex items-center opacity-0 group-hover:opacity-100">
+                     <button onClick={(e) => { e.stopPropagation(); setModalState({ type: 'new', parentId: node.id }); }} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600" title="Crea sottocartella"><FolderPlusIcon className="w-4 h-4"/></button>
+                     <button onClick={(e) => { e.stopPropagation(); setModalState({ type: 'edit', folder: node }); }} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600" title="Modifica"><PencilIcon className="w-4 h-4"/></button>
+                     <button onClick={(e) => { e.stopPropagation(); handleDeleteFolder(node.id); }} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600" title="Elimina"><TrashIcon className="w-4 h-4"/></button>
+                </div>
+            </div>
+            {node.children.length > 0 && (
+                <div className="mt-1 space-y-1">{node.children.sort((a,b) => a.name.localeCompare(b.name)).map(child => <FolderTreeItem key={child.id} node={child} level={level + 1} />)}</div>
+            )}
+        </div>
+    );
     
     const SidebarContent = () => (
-        <>
-            <h3 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-3">
-                <TagIcon className="w-5 h-5" />
-                Filtra per Tag
-            </h3>
-            <div className="flex flex-col items-start gap-1">
-                 <button onClick={() => setSelectedTag(null)} className={`w-full text-left px-3 py-1.5 text-sm font-semibold rounded-md transition-colors flex justify-between ${!selectedTag ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                    <span>Tutti i documenti</span>
-                    <span>{view === 'family' ? familyDocs.length : privateDocs.length}</span>
-                 </button>
-                {allTags.map(([tag, count]) => (
-                    <button key={tag} onClick={() => setSelectedTag(tag)} className={`w-full text-left px-3 py-1.5 text-sm font-semibold rounded-md transition-colors flex justify-between ${selectedTag === tag ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                        <span>{tag}</span>
-                        <span>{count}</span>
-                    </button>
-                ))}
-            </div>
-        </>
+        <div className="p-4 bg-white dark:bg-slate-800 h-full flex flex-col">
+            <button 
+                onClick={() => setModalState({ type: 'new', parentId: null })}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-colors"
+            >
+                <FolderPlusIcon className="w-5 h-5" /> Nuova Cartella
+            </button>
+            <nav className="mt-4 space-y-1 flex-grow overflow-y-auto">
+                 <div 
+                    onClick={() => { setSelectedFolderId(null); setIsSidebarOpen(false); }}
+                    onDrop={(e) => handleDrop(null, e)}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    className={`w-full text-left px-3 py-1.5 text-sm font-semibold rounded-md transition-colors flex items-center gap-2 cursor-pointer ${!selectedFolderId ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                    <FolderIcon className="w-5 h-5" /> Archivio Principale
+                 </div>
+                 {folderTree.sort((a,b) => a.name.localeCompare(b.name)).map(node => <FolderTreeItem key={node.id} node={node} level={0} />)}
+            </nav>
+        </div>
     );
 
     return (
-        <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+        <div className="flex w-full h-full">
             {selectedDoc && <DetailModal doc={selectedDoc} onClose={() => setSelectedDoc(null)} />}
-            <ListContextMenu {...contextMenu} actions={contextMenuActions} onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))} />
+            <FolderModal 
+                isOpen={!!modalState.type} 
+                onClose={() => setModalState({ type: null })}
+                onSave={handleSaveFolder}
+                initialData={modalState.type === 'edit' ? modalState.folder : null}
+                title={modalState.type === 'edit' ? 'Modifica Cartella' : (modalState.folder ? `Nuova Sottocartella in "${modalState.folder.name}"` : 'Nuova Cartella Principale')}
+            />
 
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">
-                        <ArchivioChLogoIcon className="w-8 h-8" />
-                    </div>
-                    <div>
-                        <ArchivioChWordmarkIcon className="h-7 text-slate-800 dark:text-slate-200" />
-                        <p className="text-slate-500 dark:text-slate-400">Il tuo archivio digitale permanente.</p>
-                    </div>
-                </div>
-                <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                    <Bars3Icon className="w-6 h-6"/>
-                </button>
-            </div>
+            {/* Sidebar per Desktop */}
+            <aside className="hidden lg:block w-72 flex-shrink-0 border-r border-slate-200 dark:border-slate-700">
+                <SidebarContent />
+            </aside>
             
-            <form onSubmit={handleSearch} className="relative">
-                <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                    type="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cerca la garanzia della TV acquistata l'anno scorso..."
-                    className="w-full pl-12 pr-4 py-4 text-lg bg-white dark:bg-slate-800 rounded-full border-2 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-            </form>
+            {/* Sidebar per Mobile */}
+            <div className={`fixed inset-0 z-40 lg:hidden transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="w-72 h-full"><SidebarContent /></div>
+                <div className="absolute inset-0 bg-black/50" onClick={() => setIsSidebarOpen(false)}></div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                {/* Sidebar Mobile (Drawer) */}
-                 {isSidebarOpen && (
-                    <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)}>
-                        <aside className="fixed top-0 left-0 bottom-0 w-72 bg-slate-50 dark:bg-slate-800 p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => setIsSidebarOpen(false)} className="absolute top-4 right-4 p-2"><XMarkIcon className="w-6 h-6"/></button>
-                            <SidebarContent />
-                        </aside>
+            <main className="flex-grow p-4 sm:p-6 flex flex-col gap-6">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 -ml-2"><Bars3Icon className="w-6 h-6"/></button>
+                        <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg hidden sm:block">
+                            <ArchivioChLogoIcon className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <ArchivioChWordmarkIcon className="h-7 text-slate-800 dark:text-slate-200" />
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">Il tuo archivio sicuro e organizzato.</p>
+                        </div>
+                    </div>
+                 </div>
+
+                 <div className="relative">
+                    <MagnifyingGlassIcon className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"/>
+                    <input type="search" value={searchQuery} onChange={handleSearchChange} placeholder="Cerca in questa cartella con linguaggio naturale..." className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-red-500"/>
+                 </div>
+
+                 <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
+                    <button onClick={() => setSelectedFolderId(null)} className="hover:text-red-600">Archivio</button>
+                    {breadcrumbs.map(crumb => (
+                        <React.Fragment key={crumb.id}>
+                            <ChevronRightIcon className="w-4 h-4 mx-1"/>
+                            <button onClick={() => setSelectedFolderId(crumb.id)} className="hover:text-red-600">{crumb.name}</button>
+                        </React.Fragment>
+                    ))}
+                 </div>
+
+                {isSearching ? (
+                     <div className="text-center py-10"><LoadingSpinner /></div>
+                ) : displayedDocs.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {displayedDocs.map((item) => <ArchivedItem key={item.uuid} item={item} onView={() => setSelectedDoc(item)} onDelete={() => props.onDeleteDocument(item)} />)}
+                    </div>
+                ) : (
+                    <div className="text-center p-10 bg-slate-100 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                        <DocumentTextIcon className="w-16 h-16 mb-4 text-slate-300 dark:text-slate-600 mx-auto" />
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">
+                           {searchResults !== null ? 'Nessun Risultato' : (selectedFolderId ? 'Cartella Vuota' : 'Archivio Vuoto')}
+                        </h2>
+                        <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                            {searchResults !== null ? `La tua ricerca per "${searchQuery}" non ha prodotto risultati.` : 'Sposta i documenti qui dalla pagina di scansione per iniziare.'}
+                        </p>
                     </div>
                 )}
-                
-                {/* Sidebar Desktop */}
-                <aside className="hidden lg:block lg:col-span-1">
-                    <div className="sticky top-24">
-                        <SidebarContent />
-                    </div>
-                </aside>
-                
-                <main className="col-span-1 lg:col-span-3">
-                     <div className="border-b border-slate-200 dark:border-slate-700 mb-6">
-                        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                            <button onClick={() => handleViewChange('family')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${view === 'family' ? 'border-red-500 text-red-600 dark:text-red-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>Archivio Familiare ({familyDocs.length})</button>
-                            <button onClick={() => handleViewChange('private')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${view === 'private' ? 'border-red-500 text-red-600 dark:text-red-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>Mio Archivio Privato ({privateDocs.length})</button>
-                        </nav>
-                    </div>
-
-                    {isSearching ? (
-                        <div className="text-center p-10"><LoadingSpinner /><p className="mt-2 text-slate-500">Ricerca in corso...</p></div>
-                    ) : searchError ? (
-                        <p className="text-center text-red-500">{searchError}</p>
-                    ) : isShowingSearchResults ? (
-                         <>
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold">Risultati Ricerca ({searchResults.length})</h2>
-                                <button onClick={clearSearch} className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
-                                    <XCircleIcon className="w-4 h-4" /> Pulisci
-                                </button>
-                            </div>
-                            {searchResults.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {searchResults.map((item) => <ArchivedItem key={item.uuid} item={item} onView={() => setSelectedDoc(item)} onContextMenu={handleContextMenu} />)}
-                                </div>
-                            ) : (
-                                 <div className="text-center p-10 bg-white dark:bg-slate-800/50 rounded-2xl"><h3 className="text-xl font-bold">Nessun Risultato</h3><p>Prova a riformulare la ricerca.</p></div>
-                            )}
-                         </>
-                    ) : paginatedDocs.length > 0 ? (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {paginatedDocs.map((item) => <ArchivedItem key={item.uuid} item={item} onView={() => setSelectedDoc(item)} onContextMenu={handleContextMenu} />)}
-                            </div>
-                            {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
-                        </>
-                    ) : (
-                        <div className="text-center p-10 bg-white dark:bg-slate-800/50 rounded-2xl"><h3 className="text-xl font-bold">Nessun Documento</h3><p>Non ci sono documenti in questa vista che corrispondono ai filtri.</p></div>
-                    )}
-                </main>
-            </div>
+            </main>
         </div>
     );
 };

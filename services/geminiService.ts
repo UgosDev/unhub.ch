@@ -77,6 +77,7 @@ export interface ProcessedPageResult {
     isPrivate?: boolean;
     ownerUid?: string;
     ownerName?: string;
+    folderId?: string | null;
 }
 
 export interface DocumentGroup {
@@ -123,6 +124,15 @@ export interface UsageHistoryEntry {
     scansByMode: { [key in ProcessingMode]: number };
     costInCoins: number;
     costInCHF: number;
+}
+
+export interface Folder {
+    id: string;
+    name: string;
+    parentId: string | null;
+    color: string;
+    description: string;
+    ownerUid: string;
 }
 
 

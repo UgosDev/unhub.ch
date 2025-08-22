@@ -4,6 +4,18 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.7.0]
+
+### Aggiunto
+* **[Archivio] Sistema di Cartelle**: Introdotto un sistema gerarchico completo per organizzare i documenti archiviati.
+* **[Archivio] UI a Cartelle**: Riprogettata la pagina Archivio con una **sidebar** per la navigazione ad albero delle cartelle e un'area contenuti principale con breadcrumbs.
+* **[Archivio] Gestione Cartelle**: Gli utenti possono ora **creare, rinominare, colorare ed eliminare** cartelle e sottocartelle tramite un'interfaccia modale e menu contestuali.
+* **[Archivio] Drag & Drop**: Implementato lo spostamento intuitivo dei documenti tra le cartelle e nell'archivio principale tramite trascinamento.
+
+### Migliorato
+* **[Archivio] Ricerca**: La ricerca semantica è ora contestuale alla cartella selezionata.
+* **[Archivio] Interfaccia**: L'interfaccia è ora completamente responsiva, con una sidebar a scomparsa su dispositivi mobili.
+
 ## [8.6.1]
 
 ### Modificato

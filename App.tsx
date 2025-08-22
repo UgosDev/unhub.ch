@@ -23,7 +23,7 @@ import { useTheme } from './contexts/ThemeContext';
 import { CameraView } from './components/CameraView';
 import { EmailImportView } from './components/EmailImportView'; // Importa la nuova vista
 import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, COIN_TO_CHF_RATE, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings } from './services/geminiService';
-import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage, QueuedFile, ScanHistoryEntry } from './services/geminiService';
+import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage, QueuedFile, ScanHistoryEntry, Folder } from './services/geminiService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Workspace } from './components/Workspace';
@@ -119,7 +119,7 @@ RULES & CAPABILITIES:
   - **Email Import**: Users can send documents to a temporary, unique email address to import them directly into the app.
   - **Offline Fallback Mode**: A setting in the Profile page. When enabled, it processes documents locally (for free) if the internet is lost.
   - **PWA**: The app can be installed on desktop and mobile for a faster, offline-first experience.
-  - **archivio.ch**: A secure, permanent archive for all documents. It can be shared with family members.
+  - **archivio.ch**: A secure, permanent archive for all documents. It can be shared with family members. It supports a hierarchical folder system for organization.
   - **disdette.ch**: A module to create and manage contract cancellation letters, simplifying the process.
 
 - **Available JSON Actions**:
@@ -148,7 +148,11 @@ RULES & CAPABILITIES:
 
 const UGO_ARCHIVIO_INSTRUCTION = `  - \\\`archiveDocument\\\`: Finds a document by its content/title and moves it to the permanent archive.
     - \\\`params\\\`: \\\`{ "query": "text to search in content, title, or summary", "isPrivate": boolean (optional, defaults to false) }\\\`
-    - Example: User says "archivia la fattura per la consulenza cloud in privato". You respond ONLY with: \\\`{"action":"archiveDocument","params":{"query":"consulenza cloud","isPrivate":true}}\\\``;
+    - Example: User says "archivia la fattura per la consulenza cloud in privato". You respond ONLY with: \\\`{"action":"archiveDocument","params":{"query":"consulenza cloud","isPrivate":true}}\\\`
+  - \\\`createFolder\\\`: Creates a new folder in the archive.
+    - \\\`params\\\`: \\\`{ "name": "folder name", "color": "hex color code (optional)", "parentId": "ID of parent folder (optional)" }\\\`
+  - \\\`moveDocumentToFolder\\\`: Finds a document and moves it to a specified folder.
+    - \\\`params\\\`: \\\`{ "docQuery": "text to find document", "folderName": "name of the target folder" }\\\``;
 
 const UGO_DISDETTE_INSTRUCTION = `  - \\\`createDisdetta\\\`: Starts the creation of a cancellation letter.
     - \\\`params\\\`: \\\`{ "contractDescription": "a short description of the contract to cancel" }\\\`
@@ -519,6 +523,7 @@ function AuthenticatedApp() {
   
   // --- STATI PER I MODULI ---
   const [archivedDocs, setArchivedDocs] = useState<ProcessedPageResult[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [polizzeDocs, setPolizzeDocs] = useState<ProcessedPageResult[]>([]);
   const [disdetteDocs, setDisdetteDocs] = useState<ProcessedPageResult[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
@@ -985,6 +990,10 @@ function AuthenticatedApp() {
             if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
             setArchivedDocs(snapshot.docs.map(doc => doc.data() as ProcessedPageResult));
         });
+        const unsubFolders = db.onFoldersUpdate(snapshot => {
+            if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
+            setFolders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Folder));
+        });
         const unsubPolizze = db.onPolizzeUpdate(snapshot => {
             if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
             setPolizzeDocs(snapshot.docs.map(doc => doc.data() as ProcessedPageResult));
@@ -1003,6 +1012,7 @@ function AuthenticatedApp() {
             unsubAccessLogs();
             unsubFeedback();
             unsubArchivio();
+            unsubFolders();
             unsubPolizze();
             unsubDisdette();
         };
@@ -3154,16 +3164,38 @@ function AuthenticatedApp() {
     }, [documentGroups, appSettings.ugoContextAwarenessEnabled, ugoSystemInstruction]);
     
     // --- Funzioni di gestione per Archivio ---
-    const handleMoveArchivedDocument = useCallback(async (doc: ProcessedPageResult) => {
-        const updatedDoc = { ...doc, isPrivate: !doc.isPrivate };
-        await db.updateArchivedDoc(updatedDoc);
-    }, []);
+    const handleUpdateArchivedDocument = useCallback(async (uuid: string, updates: Partial<ProcessedPageResult>) => {
+        const docToUpdate = archivedDocs.find(d => d.uuid === uuid);
+        if (docToUpdate) {
+            const updatedDoc = { ...docToUpdate, ...updates };
+            await db.updateArchivedDoc(updatedDoc);
+        }
+    }, [archivedDocs]);
     
     const handleDeleteArchivedDocument = useCallback(async (doc: ProcessedPageResult) => {
         if (confirm(`Sei sicuro di voler eliminare definitivamente il documento "${doc.analysis.soggetto}"? L'azione è irreversibile.`)) {
             await db.deleteArchivedDoc(doc.uuid);
         }
     }, []);
+
+    const handleAddFolder = useCallback(async (folderData: Omit<Folder, 'id' | 'ownerUid'>): Promise<string> => {
+        if (!user) return '';
+        return db.addFolder({ ...folderData, ownerUid: user.uid });
+    }, [user]);
+
+    const handleUpdateFolder = useCallback(async (folderId: string, updates: Partial<Folder>) => {
+        await db.updateFolder(folderId, updates);
+    }, []);
+
+    const handleDeleteFolder = useCallback(async (folderId: string) => {
+        const docsInFolder = archivedDocs.filter(doc => doc.folderId === folderId);
+        const updatePromises = docsInFolder.map(doc => {
+            const updatedDoc = { ...doc, folderId: null as any };
+            return db.updateArchivedDoc(updatedDoc);
+        });
+        await Promise.all(updatePromises);
+        await db.deleteFolder(folderId);
+    }, [archivedDocs]);
 
     // --- NUOVO: useEffect per la modalità di selezione elemento ---
     useEffect(() => {
@@ -3262,8 +3294,13 @@ function AuthenticatedApp() {
             case 'archivio':
                 return <Archivio 
                             archivedDocs={archivedDocs} 
-                            onMoveDocument={handleMoveArchivedDocument}
+                            folders={folders}
+                            userUid={user!.uid}
+                            onUpdateDocument={handleUpdateArchivedDocument}
                             onDeleteDocument={handleDeleteArchivedDocument}
+                            onAddFolder={handleAddFolder}
+                            onUpdateFolder={handleUpdateFolder}
+                            onDeleteFolder={handleDeleteFolder}
                         />;
             case 'polizze':
                 return <Polizze polizzeDocs={polizzeDocs} />;

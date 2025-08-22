@@ -72,7 +72,7 @@ interface WorkspaceProps {
     onUpdateGroupTags: (groupId: string, newTags: string[]) => void;
     onConfirmDuplicate: (pageNumber: number) => void;
     onDenyDuplicate: (pageNumber: number) => void;
-    onSendToApp: (group: DocumentGroup, targetApp: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean }) => void;
+    onSendToApp: (group: DocumentGroup, targetApp: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean, folderId?: string | null }) => void;
     onSendAll: () => void;
     onMoveSelectedToDefault: () => void;
     onDownloadSelected: () => void;

@@ -1,5 +1,5 @@
 import { db, firebase } from './firebase';
-import type { ProcessedPageResult, ScanHistoryEntry } from './geminiService';
+import type { ProcessedPageResult, ScanHistoryEntry, Folder } from './geminiService';
 import type { ChatMessage } from '../components/Chatbot';
 import type { User, Subscription } from './authService';
 import { defaultSettings } from './settingsService';
@@ -171,7 +171,7 @@ export const onModuleUpdate = (userId: string, module: 'archivio' | 'polizze' | 
 };
 
 // --- Document Movement ---
-export const moveDocsBetweenCollections = async (userId: string, docUuids: string[], fromCollection: string, toCollection: string, options?: { isPrivate?: boolean }): Promise<void> => {
+export const moveDocsBetweenCollections = async (userId: string, docUuids: string[], fromCollection: string, toCollection: string, options?: { isPrivate?: boolean, folderId?: string | null }): Promise<void> => {
     if (docUuids.length === 0) return;
     
     const batch = db.batch();
@@ -186,6 +186,7 @@ export const moveDocsBetweenCollections = async (userId: string, docUuids: strin
             
             if (toCollection === 'archivio') {
                 data.isPrivate = options?.isPrivate ?? false;
+                data.folderId = options?.folderId ?? null;
             }
             
             const toDocRef = toCollectionRef.doc(docSnap.id);
@@ -199,7 +200,7 @@ export const moveDocsBetweenCollections = async (userId: string, docUuids: strin
     await batch.commit();
 };
 
-export const moveDocsToModule = async (userId: string, docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean }): Promise<void> => {
+export const moveDocsToModule = async (userId: string, docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean, folderId?: string | null }): Promise<void> => {
     await moveDocsBetweenCollections(userId, docUuids, 'workspace', toModule, options);
 };
 
@@ -371,6 +372,30 @@ export const getAllUserProfilesForAdmin = async (): Promise<User[]> => {
     return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }) as User);
 };
 
+// --- Folder Management ---
+export const onFoldersUpdate = (userId: string, callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => {
+    const foldersCollection = db.collection(`users/${userId}/folders`);
+    return foldersCollection.onSnapshot(
+        (snapshot) => callback(snapshot),
+        (error) => console.error("Error listening to folders:", error)
+    );
+};
+
+export const addFolder = async (userId: string, folderData: Omit<Folder, 'id'>): Promise<string> => {
+    const foldersCollection = db.collection(`users/${userId}/folders`);
+    const docRef = await foldersCollection.add(folderData);
+    return docRef.id;
+};
+
+export const updateFolder = async (userId: string, folderId: string, updates: Partial<Omit<Folder, 'id' | 'ownerUid'>>): Promise<void> => {
+    const folderDocRef = db.collection(`users/${userId}/folders`).doc(folderId);
+    await folderDocRef.update(updates);
+};
+
+export const deleteFolder = async (userId: string, folderId: string): Promise<void> => {
+    const folderDocRef = db.collection(`users/${userId}/folders`).doc(folderId);
+    await folderDocRef.delete();
+};
 
 // --- BATCH WRITES ---
 export const batchAddWorkspaceAndHistory = async (userId: string, results: ProcessedPageResult[], historyEntries: ScanHistoryEntry[]): Promise<void> => {
