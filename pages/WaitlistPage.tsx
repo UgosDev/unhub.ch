@@ -180,7 +180,7 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
         },
         archivio: {
             title: <>Il tuo archivio digitale. <span className="text-red-400">Sicuro e per sempre.</span></>,
-            subtitle: 'Conserva, cerca e condividi i tuoi documenti più importanti. Inserisci la tua email per essere tra i primi ad accedere.',
+            subtitle: 'Conserva, cerca e condividi i tuoi documenti più importanti con la massima tranquillità. La ricerca semantica ti permette di trovare ciò che cerchi, sempre.',
         },
         polizze: {
             title: <>Tutte le tue polizze, <span className="text-cyan-400">a portata di mano.</span></>,
@@ -276,7 +276,7 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
                                 : 'bg-transparent border-slate-600 text-slate-300 hover:bg-slate-800 hover:border-slate-500'
                         }`}
                     >
-                        <HeartIcon className={`w-5 h-5 transition-colors ${hasLiked ? 'text-red-500' : 'text-slate-400'}`} fill={hasLiked ? 'currentColor' : 'none'} stroke="currentColor" />
+                        <HeartIcon className={`w-5 h-5 transition-colors ${hasLiked ? 'text-red-500' : 'text-slate-400'}`} fill={hasLiked ? 'currentColor' : 'none'} />
                         <span className="font-bold">{likeCount.toLocaleString('it-CH')}</span>
                     </button>
                     <a

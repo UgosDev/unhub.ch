@@ -10,7 +10,7 @@ interface ModeInfoModalProps {
 const ModeCard: React.FC<{
     mode: ProcessingMode,
     title: string,
-    Icon: FC<SVGProps<SVGSVGElement>>,
+    Icon: FC<any>,
     activeClass: string,
     color: string,
     idealFor: string,
