@@ -4,6 +4,7 @@ import { Footer } from '../components/Footer';
 import { generateLegalPdf } from '../services/pdfService';
 import { PrototypeBanner } from '../components/PrototypeBanner';
 import { type BrandKey } from '../services/brandingService';
+import LandingPageHeader from './LandingPageHeader';
 
 interface PrivacyPolicyPageProps {
     onNavigateBack: () => void;
@@ -72,20 +73,15 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onNavigateBack, o
                      <li><strong>Per la Comunicazione tra Applicazioni:</strong> Quando utilizzi la funzione "Invia a...", i dati del fascicolo selezionato vengono trasmessi direttamente dal tuo browser all'applicazione partner (es. `archivio.ch`) tramite un Broadcast Channel, senza passare attraverso i nostri server.</li>
                 </ul>
 
-                <h2>3. Conservazione dei Dati: Un'App Locale</h2>
-                <p><strong>scansioni.ch è un'applicazione che opera principalmente all'interno del tuo browser.</strong> Questo è un punto fondamentale per la tua privacy:</p>
-                <ul>
-                    <li><strong>Nessun Salvataggio su Server:</strong> Non conserviamo copie dei tuoi documenti, dei risultati dell'analisi o della cronologia delle chat sui nostri server.</li>
-                    <li><strong>Archiviazione Locale:</strong> Tutti i tuoi dati di lavoro (documenti caricati, analisi, cronologia chat, coda di elaborazione) sono salvati esclusivamente sul tuo dispositivo, utilizzando la tecnologia IndexedDB del tuo browser. Questo ti dà il pieno controllo sui tuoi dati.</li>
-                    <li><strong>Dati dell'Account:</strong> Le informazioni di base del tuo account (nome, email) e le tue preferenze sono salvate nel `localStorage` del tuo browser per mantenerti autenticato e ricordare le tue impostazioni.</li>
-                </ul>
+                <h2>3. Conservazione dei Dati</h2>
+                <p>I tuoi dati di lavoro (documenti analizzati, chat, ecc.) vengono salvati in modo sicuro su Google Firestore e sincronizzati tra i tuoi dispositivi. Non conserviamo copie delle immagini originali sui nostri server dopo l'elaborazione. Hai il pieno controllo per eliminare i tuoi dati in qualsiasi momento.</p>
 
                 <h2>4. I Tuoi Diritti e il Controllo sui Dati</h2>
-                <p>Dato che i tuoi dati risiedono sul tuo dispositivo, hai il massimo controllo:</p>
+                <p>Hai il massimo controllo sui tuoi dati:</p>
                 <ul>
                     <li><strong>Accesso e Modifica:</strong> Puoi visualizzare e modificare i dati estratti direttamente nell'interfaccia dell'applicazione.</li>
-                    <li><strong>Cancellazione:</strong> Puoi eliminare singoli documenti o interi fascicoli in qualsiasi momento. L'azione "Pulisci Sessione" rimuove tutti i risultati dall'area di lavoro.</li>
-                    <li><strong>Cancellazione Totale:</strong> Utilizzando l'opzione "Cancella Account e Dati" nella pagina Profilo, attiverai un processo che elimina in modo irreversibile tutti i dati che l'applicazione ha salvato nel tuo browser (IndexedDB e localStorage), seguito dal logout.</li>
+                    <li><strong>Cancellazione:</strong> Puoi eliminare singoli documenti o interi fascicoli in qualsiasi momento. L'azione "Pulisci Sessione" rimuove tutti i risultati dall'area di lavoro corrente.</li>
+                    <li><strong>Cancellazione Totale:</strong> Utilizzando l'opzione "Cancella Account e Dati" nella pagina Profilo, attiverai un processo che elimina in modo irreversibile tutti i tuoi dati dai nostri sistemi.</li>
                 </ul>
 
                 <h2>5. Cookie e Tecnologie Simili</h2>
@@ -100,6 +96,7 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onNavigateBack, o
     if (isStandalonePage && onNavigate) {
         return (
             <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
+                <LandingPageHeader onNavigate={onNavigate} brandKey={brandKey} />
                 <PrototypeBanner />
                 <main className="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8">
                     {content}

@@ -90,6 +90,10 @@ export const submitAnonymousFeedback = async (feedbackData: object): Promise<voi
     await firestoreService.submitAnonymousFeedback(feedbackData);
 };
 
+// --- Waitlist Stats ---
+export const onWaitlistLikesUpdate = (callback: (count: number) => void): (() => void) => firestoreService.onWaitlistLikesUpdate(callback);
+export const incrementWaitlistLikes = (): Promise<void> => firestoreService.incrementWaitlistLikes();
+
 
 // --- Firestore Wrappers ---
 // --- ONE-TIME GETTERS ---

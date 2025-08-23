@@ -156,6 +156,13 @@
     }
     .animate-toast-in { animation: toast-in 0.5s ease-out forwards; }
     .animate-toast-out { animation: toast-out 0.5s ease-out forwards; }
+
+    /* Donation Banner Animation */
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(100%); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
     
     /* --- NUOVO: Stile per feedback su elemento --- */
     .feedback-highlight-target {
@@ -166,133 +173,121 @@
       border-radius: 4px;
     }
 
-    /* --- REVISED: Stile per UnHubPage --- */
-    .unhub-orbital-container {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background-color: #0c0c14; /* Slightly darker */
-      color: white;
-      perspective: 1000px;
-      --unhub-purple: #a855f7;
-      --unhub-red: #ef4444;
-      --unhub-cyan: #06b6d4;
-      --unhub-green: #22c55e;
-      --unhub-gray: #6b7280;
-    }
-    .unhub-orbital-canvas {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      z-index: 0;
-      opacity: 0.6;
-    }
-    .unhub-scene {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      transition: transform 0.2s ease-out;
-      will-change: transform;
-    }
-    .unhub-center-content {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.5rem;
-    }
-    .unhub-core {
-      position: relative;
-      width: 220px; height: 220px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #2a2a3a 0%, #0c0c14 70%);
-      box-shadow: 0 0 30px rgba(168, 85, 247, 0.15), inset 0 0 20px rgba(40, 40, 60, 0.5);
-      cursor: pointer;
-      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .unhub-core:hover {
-      transform: scale(1.1);
-      box-shadow: 0 0 50px rgba(168, 85, 247, 0.3), inset 0 0 30px rgba(60, 60, 90, 0.7);
-    }
-    .unhub-search-form {
-      position: absolute;
-      width: 120%;
-      opacity: 0;
-      transform: scale(0.8);
-      transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-      pointer-events: none;
-    }
-    .unhub-core:hover .unhub-search-form {
-      opacity: 1;
-      transform: scale(1);
-      pointer-events: auto;
-    }
-    .unhub-search-input {
-        width: 100%;
-        padding: 12px 16px 12px 48px;
-        background-color: rgba(12, 12, 20, 0.8);
-        border: 2px solid #4a4a5a;
-        border-radius: 9999px;
+    /* --- NUOVO: Stile per UnHubPage (Split-Screen) --- */
+    .unhub-split-container {
+        display: flex;
+        width: 100vw;
+        height: 100vh;
+        background-color: #020617; /* slate-950 */
+        overflow: hidden;
         color: white;
-        font-size: 1rem;
-        outline: none;
-        transition: border-color 0.2s;
     }
-    .unhub-search-input:focus {
-        border-color: var(--unhub-purple);
+    #unhub-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        opacity: 0.5;
     }
-    .unhub-satellite {
-      position: absolute;
-      top: 50%; left: 50%;
-      width: 60px; height: 60px;
-      margin: -30px 0 0 -30px; /* Center it */
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #1a1a2a;
-      border: 2px solid var(--satellite-color);
-      box-shadow: 0 0 15px 0px var(--satellite-color);
-      cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      will-change: transform;
+    .unhub-panel {
+        flex: 1 1 50%;
+        padding: 4rem 2rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1);
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+        border-style: solid;
+        border-width: 0;
     }
-    .unhub-satellite:hover {
-      box-shadow: 0 0 25px 8px var(--satellite-color);
-      transform: var(--transform-string, 'scale(1)') scale(1.5) !important;
-    }
-    .unhub-satellite-label {
-      position: absolute;
-      bottom: 120%;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 4px 10px;
-      border-radius: 5px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.2s ease-in-out;
-      pointer-events: none;
-    }
-    .unhub-satellite:hover .unhub-satellite-label {
-        opacity: 1;
-    }
-    .material-symbols-outlined {
-        font-variation-settings: 'FILL' 1;
+    .unhub-panel::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: -1;
+        opacity: 0.1;
+        transition: opacity 0.7s ease;
     }
 
+    .unhub-panel--consumer {
+        --hub-color: #a855f7; /* purple-500 */
+        border-right-width: 1px;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    .unhub-panel--consumer::before {
+        background: radial-gradient(circle at 25% 50%, var(--hub-color) 0%, transparent 70%);
+    }
+
+    .unhub-panel--pro {
+        --hub-color: #06b6d4; /* cyan-500 */
+    }
+    .unhub-panel--pro::before {
+        background: radial-gradient(circle at 75% 50%, var(--hub-color) 0%, transparent 70%);
+    }
+
+    .unhub-split-container.hover-consumer .unhub-panel--consumer { flex-basis: 60%; }
+    .unhub-split-container.hover-consumer .unhub-panel--pro { flex-basis: 40%; filter: brightness(0.7); }
+    .unhub-split-container.hover-consumer .unhub-panel--consumer::before { opacity: 0.25; }
+
+    .unhub-split-container.hover-pro .unhub-panel--pro { flex-basis: 60%; }
+    .unhub-split-container.hover-pro .unhub-panel--consumer { flex-basis: 40%; filter: brightness(0.7); }
+    .unhub-split-container.hover-pro .unhub-panel--pro::before { opacity: 0.25; }
+
+    .unhub-panel-content {
+        transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .unhub-split-container.hover-consumer .unhub-panel--consumer .unhub-panel-content,
+    .unhub-split-container.hover-pro .unhub-panel--pro .unhub-panel-content {
+        transform: scale(1.05);
+    }
+    
+    .unhub-service-list {
+        margin-top: 2.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.25rem;
+    }
+    .unhub-service-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #d1d5db; /* gray-300 */
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+    }
+    .unhub-service-link:hover {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.05);
+        transform: translateX(5px);
+    }
+    .unhub-service-link .unhub-icon {
+        color: var(--hub-color);
+        transition: transform 0.2s ease;
+    }
+    .unhub-service-link:hover .unhub-icon {
+        transform: scale(1.2);
+    }
 
     /* Riduzione animazioni se richiesto dall'utente */
     @media (prefers-reduced-motion: reduce){
       .scanner-line,.mouse-scanner-line,.shimmer-effect,.animate-shake,
-      .animate-toast-in, .animate-toast-out,
-      .unhub-core, .unhub-satellite, .unhub-scene {
+      .animate-toast-in, .animate-toast-out, .animate-fade-in-up,
+      .unhub-panel, .unhub-panel-content, .unhub-service-link {
         animation:none !important; transition:none !important;
       }
+      #unhub-canvas { display: none; }
     }
   </style>
 </head>

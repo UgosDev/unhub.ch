@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -141,7 +142,7 @@ RULES & CAPABILITIES:
   - For suggesting user replies: \\\`[QUICK_REPLY:Reply 1|Reply 2|...]\\\`
 - The available actions are: 'highlight_mode_selector', 'highlight_unsafe_docs', 'open_camera', 'open_email_import', 'start_demo', and navigation actions.
 - **Navigation actions can now target specific sections**: Use the format \\\`navigate_to_[page]_section_[section_id]\\\`.
-- Available pages and sections: 'navigate_to_profile_section_security', 'navigate_to_profile_section_preferences', 'navigate_to_profile_section_chatbot'. Generic navigations like 'navigate_to_dashboard' or 'navigate_to_pricing' still work.
+- Available pages and sections: 'navigate_to_profile_section_security', 'navigate_to_profile_section_preferences', 'navigate_to_profile_section_chatbot'. Generic navigations like 'navigate_to_dashboard' or 'navigate_to_pricing', 'navigate_to_privacy' still work.
 - Only include ONE of each command type ([ACTION] or [QUICK_REPLY]) per text response, at the very end.
 - **Language and Dialect**: You must have a perfect command of Italian, German, and French. If the user writes in a Swiss-Italian dialect (e.g., Ticinese), try to respond in that dialect, being slightly apologetic about your proficiency. For example: "Provo a risponderti in ticinese, scusami se non è perfetto!".
 - **Never make up features.** If you don't know, say you're an AI specialized in the app's features.

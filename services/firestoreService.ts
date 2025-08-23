@@ -47,6 +47,35 @@ export const submitAnonymousFeedback = async (feedbackData: object): Promise<voi
     });
 };
 
+// --- Waitlist Stats ---
+export const onWaitlistLikesUpdate = (callback: (count: number) => void): (() => void) => {
+    const docRef = db.collection("public_stats").doc("waitlist");
+    return docRef.onSnapshot(
+        (doc) => {
+            if (doc.exists) {
+                callback(doc.data()?.likes || 0);
+            } else {
+                callback(0);
+            }
+        },
+        (error) => {
+            console.error("Error listening to likes:", error);
+        }
+    );
+};
+
+export const incrementWaitlistLikes = async (): Promise<void> => {
+    const docRef = db.collection("public_stats").doc("waitlist");
+    await db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(docRef);
+        if (!doc.exists) {
+            transaction.set(docRef, { likes: 1 });
+        } else {
+            transaction.update(docRef, { likes: firebase.firestore.FieldValue.increment(1) });
+        }
+    });
+};
+
 
 // --- User Profile ---
 const getUserId = (): string => {
