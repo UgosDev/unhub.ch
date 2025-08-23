@@ -94,7 +94,7 @@
     }
     .highlight-section-animation { animation: highlight-pulse 2.5s ease-in-out; }
 
-    /* --- Scanner BG & lines (per WaitlistPage) --- */
+    /* --- Scanner BG & lines (per WaitlistPage di scansioni.ch) --- */
     .waitlist-bg-grid{
       position:absolute; inset:0; pointer-events:none; opacity:.2;
       background-image:
@@ -125,104 +125,6 @@
       pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
       background:linear-gradient(90deg, rgba(0,255,255,0), rgba(0,255,255,.8), rgba(0,255,255,0));
       box-shadow:0 0 8px rgba(0,255,255,.6), 0 0 18px rgba(0,255,255,.3);
-      mix-blend-mode:screen;
-    }
-
-    /* --- Stile per animazione tritacarte (per WaitlistPage di disdette.ch) --- */
-    .shredder-container {
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
-      pointer-events: none;
-    }
-    @keyframes shred-fall {
-        0% { transform: translateY(-100vh); }
-        100% { transform: translateY(100vh); }
-    }
-    .shred-strip {
-        position: absolute;
-        top: 0;
-        height: 100vh;
-        background-color: rgba(134, 239, 172, 0.3); /* green-300 con opacità */
-        animation-name: shred-fall;
-        animation-timing-function: linear;
-        animation-iteration-count: infinite;
-    }
-    .mouse-shredder-line {
-      position:absolute; left:0; width:100%; height:1px; opacity:0;
-      pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
-      background:linear-gradient(90deg, rgba(34, 197, 94, 0), rgba(34, 197, 94, .8), rgba(34, 197, 94, 0)); /* green-500 */
-      box-shadow:0 0 8px rgba(34, 197, 94, .6), 0 0 18px rgba(34, 197, 94, .3);
-      mix-blend-mode:screen;
-    }
-
-    /* --- Stile per animazione cassaforte (per WaitlistPage di archivio.ch) --- */
-    .vault-bg {
-      position: absolute;
-      inset: 0;
-      background-color: #1a202c; /* gray-900 */
-      background-image: radial-gradient(circle at center, #4a5568 0%, #1a202c 70%); /* gray-600 to gray-900 */
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .vault-dial {
-      width: 400px;
-      height: 400px;
-      border-radius: 50%;
-      background-image: 
-        radial-gradient(circle at center, #718096, #2d3748),
-        repeating-conic-gradient(#4a5568 0% 0.5%, transparent 0.5% 3.6%); /* Ticks for 100 marks */
-      border: 10px solid #2d3748;
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 30px rgba(0,0,0,0.5);
-      position: relative;
-      animation: rotate-vault 15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-    }
-    @keyframes rotate-vault {
-      0% { transform: rotate(0deg); }
-      30% { transform: rotate(380deg); } /* First spin CW */
-      35% { transform: rotate(375deg); } /* Click back */
-      65% { transform: rotate(-120deg); } /* Second spin CCW */
-      70% { transform: rotate(-115deg); } /* Click back */
-      95% { transform: rotate(85deg); } /* Third spin CW */
-      100% { transform: rotate(90deg); } /* Final click */
-    }
-    .mouse-vault-line {
-      position:absolute; left:0; width:100%; height:1px; opacity:0;
-      pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
-      background:linear-gradient(90deg, rgba(254, 63, 39, 0), rgba(254, 63, 39, .8), rgba(254, 63, 39, 0)); /* red-500 */
-      box-shadow:0 0 8px rgba(254, 63, 39, .6), 0 0 18px rgba(254, 63, 39, .3);
-      mix-blend-mode:screen;
-    }
-    
-    /* --- NUOVO: Stile per animazione griglia esagonale (per WaitlistPage di polizze.ch) --- */
-    .polizze-bg {
-      position: absolute;
-      inset: 0;
-      background-color: #0c4a6e; /* sky-900 */
-      overflow: hidden;
-    }
-    @keyframes pulse-glow {
-        0%, 100% { opacity: 0.15; }
-        50% { opacity: 0.35; }
-    }
-    .hex-grid {
-        width: 120%;
-        height: 120%;
-        position: absolute;
-        top: -10%;
-        left: -10%;
-        background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="115.47"><path d="M50 0L100 28.867v57.735L50 115.47 0 86.602V28.867zM0 28.867L50 57.735 100 28.867M50 57.735v57.735" fill="none" stroke="%2306b6d4" stroke-width="2"/></svg>');
-        background-size: 100px 115.47px;
-        opacity: 0.15;
-        animation: pulse-glow 8s ease-in-out infinite;
-    }
-    .mouse-polizze-line {
-      position:absolute; left:0; width:100%; height:1px; opacity:0;
-      pointer-events:none; will-change:transform,opacity; transition:opacity .2s ease;
-      background:linear-gradient(90deg, rgba(6, 182, 212, 0), rgba(6, 182, 212, .8), rgba(6, 182, 212, 0)); /* cyan-500 */
-      box-shadow:0 0 8px rgba(6, 182, 212, .6), 0 0 18px rgba(6, 182, 212, .3);
       mix-blend-mode:screen;
     }
 
@@ -264,120 +166,131 @@
       border-radius: 4px;
     }
 
-    /* --- NUOVO: Stile per UnHubPage --- */
-    .unhub-nexus-container {
+    /* --- REVISED: Stile per UnHubPage --- */
+    .unhub-orbital-container {
       position: relative;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background-color: #0d0d1a; /* Dark deep blue */
+      background-color: #0c0c14; /* Slightly darker */
+      color: white;
+      perspective: 1000px;
       --unhub-purple: #a855f7;
       --unhub-red: #ef4444;
       --unhub-cyan: #06b6d4;
       --unhub-green: #22c55e;
       --unhub-gray: #6b7280;
     }
-    .unhub-nexus-canvas {
+    .unhub-orbital-canvas {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0; width: 100%; height: 100%;
       z-index: 0;
+      opacity: 0.6;
     }
-    @keyframes node-pulse-glow {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 20px 0px var(--node-color); }
-      50% { transform: scale(1.05); box-shadow: 0 0 30px 10px var(--node-color); }
-    }
-    .unhub-node {
+    .unhub-scene {
       position: absolute;
-      transform: translate(-50%, -50%);
-      z-index: 10;
-      cursor: pointer;
-      width: 120px;
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
+      top: 0; left: 0; width: 100%; height: 100%;
+      transition: transform 0.2s ease-out;
+      will-change: transform;
     }
-    .unhub-node-core {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: var(--node-color);
-      box-shadow: 0 0 20px 0px var(--node-color);
-      animation: node-pulse-glow 5s infinite ease-in-out;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      will-change: transform, box-shadow;
-    }
-    .unhub-node:hover .unhub-node-core {
-      transform: scale(1.5);
-      box-shadow: 0 0 40px 15px var(--node-color);
-      animation-play-state: paused;
-    }
-    .unhub-node-info {
+    .unhub-center-content {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.5rem;
+      gap: 1.5rem;
+    }
+    .unhub-core {
+      position: relative;
+      width: 220px; height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #2a2a3a 0%, #0c0c14 70%);
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.15), inset 0 0 20px rgba(40, 40, 60, 0.5);
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .unhub-core:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 50px rgba(168, 85, 247, 0.3), inset 0 0 30px rgba(60, 60, 90, 0.7);
+    }
+    .unhub-search-form {
+      position: absolute;
+      width: 120%;
       opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
       pointer-events: none;
-      transition: opacity 0.3s ease-in-out;
-      will-change: opacity;
     }
-    .unhub-node:hover .unhub-node-info {
+    .unhub-core:hover .unhub-search-form {
       opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
     }
-    .unhub-node-info .material-symbols-outlined {
-        font-size: 32px;
+    .unhub-search-input {
+        width: 100%;
+        padding: 12px 16px 12px 48px;
+        background-color: rgba(12, 12, 20, 0.8);
+        border: 2px solid #4a4a5a;
+        border-radius: 9999px;
+        color: white;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s;
     }
-    .unhub-node-name {
-      font-size: 0.875rem;
+    .unhub-search-input:focus {
+        border-color: var(--unhub-purple);
+    }
+    .unhub-satellite {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 60px; height: 60px;
+      margin: -30px 0 0 -30px; /* Center it */
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a2a;
+      border: 2px solid var(--satellite-color);
+      box-shadow: 0 0 15px 0px var(--satellite-color);
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      will-change: transform;
+    }
+    .unhub-satellite:hover {
+      box-shadow: 0 0 25px 8px var(--satellite-color);
+      transform: var(--transform-string, 'scale(1)') scale(1.5) !important;
+    }
+    .unhub-satellite-label {
+      position: absolute;
+      bottom: 120%;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 0.8rem;
       font-weight: 600;
-      text-shadow: 0 0 5px black;
       white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+      pointer-events: none;
     }
-    @media (max-width: 768px) {
-      .unhub-nexus-container > main {
-        height: 60vh;
-        justify-content: center;
-      }
-      .unhub-node {
-        width: 60px;
-        height: 60px;
-      }
-      .unhub-node-core {
-        width: 30px;
-        height: 30px;
-      }
-      .unhub-node-scan    { top: 85% !important; left: 15% !important; }
-      .unhub-node-archivio { top: 85% !important; left: 32.5% !important; }
-      .unhub-node-polizze  { top: 85% !important; left: 50% !important; }
-      .unhub-node-disdette { top: 85% !important; left: 67.5% !important; }
-      .unhub-node-soon     { top: 85% !important; left: 85% !important; }
-
-      .unhub-node:hover .unhub-node-info {
-          transform: translate(-50%, -120%);
-      }
-      .unhub-node-name {
-          font-size: 0.75rem;
-      }
-      .unhub-node-info .material-symbols-outlined {
-          font-size: 24px;
-      }
+    .unhub-satellite:hover .unhub-satellite-label {
+        opacity: 1;
+    }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 1;
     }
 
 
     /* Riduzione animazioni se richiesto dall'utente */
     @media (prefers-reduced-motion: reduce){
       .scanner-line,.mouse-scanner-line,.shimmer-effect,.animate-shake,
-      .animate-toast-in, .animate-toast-out, .shred-strip, .vault-dial, .hex-grid,
-      .unhub-node-core {
+      .animate-toast-in, .animate-toast-out,
+      .unhub-core, .unhub-satellite, .unhub-scene {
         animation:none !important; transition:none !important;
       }
     }

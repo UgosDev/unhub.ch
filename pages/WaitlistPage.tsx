@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircleIcon } from '../components/icons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { brandAssets, colorStyles, type BrandKey } from '../services/brandingService';
+import InteractiveBackground from '../components/InteractiveBackground';
 
 interface WaitlistPageProps {
     onAccessGranted: () => void;
@@ -13,92 +14,14 @@ interface WaitlistPageProps {
 
 const SECRET_CODE = 'australopiteco';
 
-// Componente per l'effetto tritacarte (disdette.ch)
-const ShredderBackground: React.FC = () => {
-    const [strips, setStrips] = useState<React.CSSProperties[]>([]);
-
-    useEffect(() => {
-        const generateStrips = () => {
-            const newStrips: React.CSSProperties[] = [];
-            const count = Math.floor(window.innerWidth / 25);
-            for (let i = 0; i < count; i++) {
-                newStrips.push({
-                    left: `${Math.random() * 100}%`,
-                    width: `${Math.random() * 3 + 1}px`,
-                    animationDuration: `${Math.random() * 5 + 4}s`,
-                    animationDelay: `${Math.random() * -5}s`,
-                });
-            }
-            setStrips(newStrips);
-        };
-        generateStrips();
-    }, []);
-
-    return (
-        <div className="shredder-container">
-            {strips.map((style, i) => (
-                <div key={i} className="shred-strip" style={style} />
-            ))}
-        </div>
-    );
-};
-
-// Componente per l'effetto cassaforte (archivio.ch)
-const VaultBackground: React.FC = () => {
-    return (
-        <div className="vault-bg">
-            <div className="vault-dial"></div>
-        </div>
-    );
-};
-
-// Nuovo componente per l'effetto griglia esagonale (polizze.ch)
-const PolizzeBackground: React.FC = () => {
-    return (
-        <div className="polizze-bg">
-            <div className="hex-grid"></div>
-        </div>
-    );
-};
-
-
 const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, appLastUpdated, onNavigate, onBrandChange }) => {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
-    const mouseLineRef = useRef<HTMLDivElement>(null);
 
     const { Logo, Wordmark, colorClass } = brandAssets[brandKey];
     const brandColors = colorStyles[colorClass] || colorStyles.purple;
-
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            if (mouseLineRef.current) {
-                mouseLineRef.current.style.top = `${e.clientY}px`;
-            }
-        };
-        const handleMouseEnter = () => {
-            if (mouseLineRef.current) mouseLineRef.current.style.opacity = '1';
-        };
-        const handleMouseLeave = () => {
-            if (mouseLineRef.current) mouseLineRef.current.style.opacity = '0';
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        document.body.addEventListener('mouseenter', handleMouseEnter);
-        document.body.addEventListener('mouseleave', handleMouseLeave);
-        
-        // Initial fade in for the mouse line
-        const timeoutId = setTimeout(handleMouseEnter, 200);
-
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            document.body.removeEventListener('mouseenter', handleMouseEnter);
-            document.body.removeEventListener('mouseleave', handleMouseLeave);
-            clearTimeout(timeoutId);
-        };
-    }, []);
     
     const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -175,7 +98,6 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
         scan: {
             title: <>Il futuro della digitalizzazione è <span className="text-purple-400">in arrivo</span>.</>,
             subtitle: 'Stiamo mettendo a punto gli ultimi dettagli. Lascia la tua email per essere tra i primi ad accedere alla nuova versione di scansioni.ch.',
-            mouseLineClass: 'mouse-scanner-line',
             background: (
                 <>
                     <div className="waitlist-bg-grid"></div>
@@ -189,20 +111,14 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
         disdette: {
             title: <>Elimina la burocrazia. <span className="text-green-400">Semplifica le disdette.</span></>,
             subtitle: 'Stiamo per lanciare il modo più semplice per gestire e inviare le tue disdette contrattuali. Inserisci la tua email per ottenere l\'accesso anticipato.',
-            mouseLineClass: 'mouse-shredder-line',
-            background: <ShredderBackground />
         },
         archivio: {
             title: <>Il tuo archivio digitale. <span className="text-red-400">Sicuro e per sempre.</span></>,
             subtitle: 'Conserva, cerca e condividi i tuoi documenti più importanti. Inserisci la tua email per essere tra i primi ad accedere.',
-            mouseLineClass: 'mouse-vault-line',
-            background: <VaultBackground />
         },
         polizze: {
             title: <>Tutte le tue polizze, <span className="text-cyan-400">a portata di mano.</span></>,
             subtitle: 'Centralizza le tue assicurazioni, monitora le scadenze e non perdere mai più un dettaglio importante. Lascia la tua email per l\'accesso anticipato.',
-            mouseLineClass: 'mouse-polizze-line',
-            background: <PolizzeBackground />
         }
     }
     
@@ -210,10 +126,8 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
 
     return (
         <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Effects Container */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
-                {currentContent.background}
-                <div ref={mouseLineRef} className={currentContent.mouseLineClass}></div>
+            <div className="absolute inset-0 z-0">
+                {brandKey === 'scan' ? currentContent.background : <InteractiveBackground brandKey={brandKey} />}
             </div>
             
             <main className="relative z-10 text-center flex flex-col items-center w-full">
