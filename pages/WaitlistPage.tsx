@@ -17,7 +17,7 @@ const SECRET_CODE = 'australopiteco';
 
 const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, appLastUpdated, onNavigate, onBrandChange }) => {
     const [email, setEmail] = useState('');
-    const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+    const [acceptedTerms, setAcceptedTerms] = useState(false); // Unified state
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
@@ -126,6 +126,14 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
             return;
         }
 
+        if (!acceptedTerms) {
+            setError("Devi accettare l'informativa sulla privacy e iscriverti per continuare.");
+            const form = e.currentTarget as HTMLFormElement;
+            form.classList.add('animate-shake');
+            setTimeout(() => form.classList.remove('animate-shake'), 500);
+            return;
+        }
+
         if (!/\S+@\S+\.\S+/.test(email)) {
             setError('Inserisci un indirizzo email valido.');
             const form = e.currentTarget as HTMLFormElement;
@@ -138,10 +146,10 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
         try {
             await new Promise(resolve => setTimeout(resolve, 1500));
             // In a real app, we'd send the email and newsletterOptIn value to a backend service.
-            console.log(`Submitting email: ${email}, Newsletter Opt-in: ${newsletterOptIn}`);
+            console.log(`Submitting email: ${email}, Newsletter Opt-in: ${acceptedTerms}`);
             setMessage(`Grazie! ${email} è stato aggiunto alla nostra waitlist. Ti faremo sapere non appena saremo pronti!`);
             setEmail('');
-            setNewsletterOptIn(false);
+            setAcceptedTerms(false);
             setSubmissionStatus('success');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Si è verificato un errore. Riprova più tardi.');
@@ -223,21 +231,21 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
                                 <label className="flex items-start gap-3 text-slate-300">
                                     <input
                                         type="checkbox"
-                                        checked={newsletterOptIn}
-                                        onChange={(e) => setNewsletterOptIn(e.target.checked)}
+                                        checked={acceptedTerms}
+                                        onChange={(e) => setAcceptedTerms(e.target.checked)}
                                         className="mt-1 h-5 w-5 rounded text-purple-500 bg-slate-700 border-slate-600 focus:ring-purple-500 flex-shrink-0"
                                     />
                                     <span className="text-xs">
-                                        Accetto di ricevere aggiornamenti sullo sviluppo e offerte esclusive. Dichiaro di aver letto la{' '}
+                                        Accetto di ricevere aggiornamenti sullo sviluppo e offerte esclusive e dichiaro di aver letto e accettato la{' '}
                                         <button type="button" onClick={() => onNavigate('privacy')} className="font-semibold underline hover:text-white">
                                             Privacy Policy
-                                        </button>.
+                                        </button>.*
                                     </span>
                                 </label>
                             </div>
                             <button
                                 type="submit"
-                                disabled={submissionStatus === 'submitting'}
+                                disabled={submissionStatus === 'submitting' || !acceptedTerms}
                                 className={`relative overflow-hidden w-full max-w-xs px-8 py-4 text-lg font-bold text-white rounded-full transition-transform transform hover:scale-105 shadow-xl ${brandColors.bg} ${brandColors.hoverBg} ${brandColors.shadow} disabled:bg-slate-400 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center`}
                             >
                                 <span className="shimmer-effect"></span>
