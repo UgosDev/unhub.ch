@@ -15,6 +15,10 @@ Elenco delle prossime funzionalità su cui concentrarsi.
 - **Problema**: Attualmente la gestione degli abbonamenti e dei pacchetti è simulata.
 - **Soluzione**: Integrare un sistema di pagamento reale (es. Stripe) per gestire gli abbonamenti mensili e l'acquisto di pacchetti di scansioni. Questo include la creazione di una UI per la gestione del piano da parte dell'utente.
 
+### 1.2. Dashboard Dinamica per Archivio
+- **Descrizione**: Trasformare la vista principale dell'Archivio in una dashboard con widget intelligenti.
+- **Widget**: "Accesso Rapido" (documenti recenti), "In Scadenza" (l'AI rileva scadenze da fatture/polizze), "Da Organizzare" (suggerimenti di archiviazione per file nella root).
+
 ---
 
 ## 2. BACKLOG DELLE IDEE (DA CONSIDERARE)
@@ -26,15 +30,20 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 - **rimborsi.ch**: Modulo per la gestione dei rimborsi spese. Funziona in modo simile a `polizze.ch`, permettendo di archiviare scontrini, fatture e ricevute e di generare facilmente richieste di rimborso (via PDF o email) da inviare a datori di lavoro o enti.
 
 ### Funzionalità Principali
+- **Gestione Permessi Avanzata**: Sistema di condivisione granulare (Viewer, Editor) per file e cartelle, con possibilità di condivisione tramite link sicuri a scadenza.
 - **Modalità Batch Asincrona**: Possibilità di inviare scansioni a un orario prestabilito (es. notte) a un costo ridotto. Richiede infrastruttura backend.
 - **Potenziamento Esportazione PDF**: Aggiungere opzioni avanzate come la selezione della qualità, l'inclusione dei dati estratti e la protezione con password personalizzata per i PDF.
 - **Metadati Avanzati**: Espandere i metadati per includere dati EXIF/XMP completi nelle immagini, offrendo una tracciabilità di livello professionale.
 - **Integrazione Import da App di Messaggistica**: Aggiungere la possibilità di caricare documenti da scansionare direttamente da Telegram o WhatsApp. La prima fase si concentrerà solo sull'importazione (input), con la gestione delle risposte (invio file modificati) da implementare in un secondo momento.
+- **Integrazione Completa con Telegram**: Sviluppare un'interfaccia conversazionale completa tramite un sistema a due bot:
+  - **`Scansioni.ch Manager Bot`**: Un bot transazionale per operazioni come caricamento multi-step di scansioni, richiesta saldo, storico, e ricerca/richiesta documenti dall'archivio.
+  - **`Ugo Assistente Bot`**: Una chat separata e interconnessa per l'assistente AI Ugo, che offre un'esperienza conversazionale completa, analizza documenti e può eseguire azioni complesse, mantenendo il contesto delle operazioni eseguite nel Manager Bot.
 - **Integrazione Deep Scan Cloud**: Possibilità di avviare una scansione massiva ("Deep Scan") su servizi come Google Drive, Google Foto, o sul filesystem del dispositivo.
 - **Reintroduzione Rilevamento Duplicati**: Potenziare o ripristinare la logica per identificare e gestire i documenti duplicati in modo efficace.
 - **Ricarica Indirizzo Email Temporaneo**: Aggiungere un pulsante per generare un nuovo indirizzo email per l'importazione una volta scaduto quello precedente.
 
 ### UI/UX & Fotocamera
+- **Anteprime e Azioni Rapide in Archivio**: Introdurre anteprime al passaggio del mouse e una barra di azioni rapide direttamente sulla card del documento per velocizzare l'interazione.
 - **"Solidificazione" UI**: Revisione generale dell'interfaccia per migliorare la coerenza, gli spazi e l'impatto visivo.
 - **Scansione Doppia Pagina (Modalità Libro)**: La fotocamera dovrebbe mostrare una guida per inquadrare due pagine di un libro contemporaneamente e dividerle automaticamente.
 - **Pre-elaborazione Immagini**: Introdurre passaggi client-side (bianco e nero, contrasto, ottimizzazione peso) per migliorare la qualità dell'immagine inviata all'AI e ridurre i tempi di caricamento.
@@ -399,7 +408,7 @@ Cronologia delle note di lavoro per ogni versione rilasciata.
 - Implementata la "Proposta 1" dall'analisi precedente, focalizzata su robustezza e sicurezza.
   1. **Persistenza Coda di Lavoro**: La coda di elaborazione viene ora salvata in IndexedDB. Se l'applicazione viene ricaricata, l'elaborazione riprende automaticamente da dove era stata interrotta, prevenendo la perdita di lavoro.
   2. **Filtri di Sicurezza Gemini**: Attivati i filtri di sicurezza integrati di Gemini (`safetySettings`) per bloccare la generazione di contenuti potenzialmente dannosi (incitamento all'odio, molestie, ecc.), rendendo l'applicazione più sicura e responsabile.
-- Aggiornata tutta la documentazione e la versione a 6.13.0.
+- Aggiornata la documentazione e la versione a 6.13.0.
 
 # Note del 20/08/2025 - v6.12.0
 - Migliorato il rilevamento dei documenti in `useDocumentScanner.tsx` (OpenCV) abbassando la soglia di area minima. Questo permette di riconoscere anche documenti piccoli come scontrini o fogli piegati, come richiesto dall'utente.

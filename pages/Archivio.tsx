@@ -61,7 +61,7 @@ const DetailModal: React.FC<{ doc: ProcessedPageResult; onClose: () => void }> =
     </div>
 );
 
-const ArchivedItem: React.FC<{ item: ProcessedPageResult, onView: () => void, onDelete: () => void }> = ({ item, onView, onDelete }) => {
+const ArchivedItem: React.FC<{ item: ProcessedPageResult, onView: () => void, onDelete: () => void, folderPath?: string }> = ({ item, onView, onDelete, folderPath }) => {
     const handleDragStart = (e: React.DragEvent) => {
         e.dataTransfer.setData("application/document-uuid", item.uuid);
         e.dataTransfer.effectAllowed = "move";
@@ -84,6 +84,11 @@ const ArchivedItem: React.FC<{ item: ProcessedPageResult, onView: () => void, on
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Aggiunto da: <span className="font-semibold">{item.ownerName}</span></p>
                     ) : (
                         <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 truncate">{new Date(item.timestamp).toLocaleDateString('it-CH')}</p>
+                    )}
+                     {folderPath && (
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 truncate" title={folderPath}>
+                            <span className="font-semibold">Percorso:</span> {folderPath}
+                        </p>
                     )}
                 </div>
             </div>
@@ -186,22 +191,6 @@ const buildFolderTree = (folders: Folder[]): FolderNode[] => {
     return tree;
 };
 
-const getBreadcrumbs = (folderId: string | null, folders: Folder[]): Folder[] => {
-    const crumbs: Folder[] = [];
-    const folderMap = new Map(folders.map(f => [f.id, f]));
-    let currentId = folderId;
-    while (currentId) {
-        const folder = folderMap.get(currentId);
-        if (folder) {
-            crumbs.unshift(folder);
-            currentId = folder.parentId;
-        } else {
-            break;
-        }
-    }
-    return crumbs;
-};
-
 // --- COMPONENTE PRINCIPALE ---
 const Archivio: React.FC<ArchivioProps> = (props) => {
     const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null);
@@ -211,10 +200,50 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
     const [searchQuery, setSearchQuery] = React.useState('');
     const [searchResults, setSearchResults] = React.useState<ProcessedPageResult[] | null>(null);
     const [isSearching, setIsSearching] = React.useState(false);
+    const [isGlobalSearch, setIsGlobalSearch] = React.useState(true);
     const searchTimeoutRef = React.useRef<number | null>(null);
 
+    const folderMap = React.useMemo(() => new Map(props.folders.map(f => [f.id, f])), [props.folders]);
+
+    const getFolderPath = React.useCallback((folderId: string | null | undefined): string => {
+        if (!folderId) return 'Archivio Principale';
+        let path = '';
+        let currentId: string | null = folderId;
+        const pathParts: string[] = [];
+        while (currentId) {
+            const folder = folderMap.get(currentId);
+            if (folder) {
+                pathParts.unshift(folder.name);
+                currentId = folder.parentId;
+            } else {
+                break;
+            }
+        }
+        return `Archivio > ${pathParts.join(' > ')}`;
+    }, [folderMap]);
+    
+    const breadcrumbs = React.useMemo(() => {
+        const crumbs: Folder[] = [];
+        let currentId = selectedFolderId;
+        while (currentId) {
+            const folder = folderMap.get(currentId);
+            if (folder) {
+                crumbs.unshift(folder);
+                currentId = folder.parentId;
+            } else {
+                break;
+            }
+        }
+        return crumbs;
+    }, [selectedFolderId, folderMap]);
+
     const folderTree = React.useMemo(() => buildFolderTree(props.folders), [props.folders]);
-    const breadcrumbs = React.useMemo(() => getBreadcrumbs(selectedFolderId, props.folders), [selectedFolderId, props.folders]);
+    
+    React.useEffect(() => {
+        if (!selectedFolderId) {
+            setIsGlobalSearch(true);
+        }
+    }, [selectedFolderId]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -229,13 +258,22 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
 
         setIsSearching(true);
         searchTimeoutRef.current = window.setTimeout(async () => {
-            const docsInScope = props.archivedDocs.filter(doc => (doc.folderId || null) === selectedFolderId);
-            const results = await performSemanticSearch(query, docsInScope);
-            setSearchResults(results);
-            setIsSearching(false);
+            const docsInScope = (isGlobalSearch || !selectedFolderId)
+                ? props.archivedDocs
+                : props.archivedDocs.filter(doc => (doc.folderId || null) === selectedFolderId);
+
+            try {
+                const results = await performSemanticSearch(query, docsInScope);
+                setSearchResults(results);
+            } catch (error) {
+                console.error("Semantic search failed:", error);
+                // Optionally show an error to the user
+            } finally {
+                setIsSearching(false);
+            }
         }, 500);
     };
-
+    
     const handleSaveFolder = async (name: string, description: string, color: string) => {
         if (modalState.type === 'new') {
             await props.onAddFolder({ name, description, color, parentId: modalState.parentId || null });
@@ -294,7 +332,7 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
     const SidebarContent = () => (
         <div className="p-4 bg-white dark:bg-slate-800 h-full flex flex-col">
             <button 
-                onClick={() => setModalState({ type: 'new', parentId: null })}
+                onClick={() => setModalState({ type: 'new', parentId: selectedFolderId })}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-colors"
             >
                 <FolderPlusIcon className="w-5 h-5" /> Nuova Cartella
@@ -349,12 +387,30 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
                     </div>
                  </div>
 
-                 <div className="relative">
-                    <MagnifyingGlassIcon className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"/>
-                    <input type="search" value={searchQuery} onChange={handleSearchChange} placeholder="Cerca in questa cartella con linguaggio naturale..." className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-red-500"/>
+                 <div>
+                    <div className="relative">
+                        {isSearching 
+                            ? <LoadingSpinner className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"/>
+                            : <MagnifyingGlassIcon className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"/>
+                        }
+                        <input type="search" value={searchQuery} onChange={handleSearchChange} placeholder={isGlobalSearch ? "Cerca in tutto l'archivio..." : "Cerca nella cartella corrente..."} className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-red-500"/>
+                    </div>
+                     {selectedFolderId && (
+                        <div className="mt-2">
+                            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer w-fit">
+                                <input 
+                                    type="checkbox" 
+                                    checked={!isGlobalSearch} 
+                                    onChange={(e) => setIsGlobalSearch(!e.target.checked)}
+                                    className="h-4 w-4 rounded text-red-600 focus:ring-red-500 border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700"
+                                />
+                                Cerca solo in questa cartella
+                            </label>
+                        </div>
+                    )}
                  </div>
 
-                 <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
+                 <div className="flex items-center text-sm text-slate-500 dark:text-slate-400 flex-wrap">
                     <button onClick={() => setSelectedFolderId(null)} className="hover:text-red-600">Archivio</button>
                     {breadcrumbs.map(crumb => (
                         <React.Fragment key={crumb.id}>
@@ -363,12 +419,19 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
                         </React.Fragment>
                     ))}
                  </div>
+                 
+                 {searchResults !== null && (
+                    <div className="pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <h3 className="text-lg font-semibold">Risultati della ricerca per "{searchQuery}" <span className="text-base font-normal text-slate-500">({searchResults.length})</span></h3>
+                    </div>
+                 )}
+
 
                 {isSearching ? (
                      <div className="text-center py-10"><LoadingSpinner /></div>
                 ) : displayedDocs.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {displayedDocs.map((item) => <ArchivedItem key={item.uuid} item={item} onView={() => setSelectedDoc(item)} onDelete={() => props.onDeleteDocument(item)} />)}
+                        {displayedDocs.map((item) => <ArchivedItem key={item.uuid} item={item} onView={() => setSelectedDoc(item)} onDelete={() => props.onDeleteDocument(item)} folderPath={searchResults !== null ? getFolderPath(item.folderId) : undefined} />)}
                     </div>
                 ) : (
                     <div className="text-center p-10 bg-slate-100 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">

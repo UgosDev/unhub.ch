@@ -4,6 +4,13 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.8.0]
+
+### Aggiunto
+* **[Archivio] Ricerca Globale Unificata**: Potenziata la barra di ricerca del modulo Archivio. Ora è possibile effettuare una ricerca semantica (in linguaggio naturale) su **tutti i documenti** presenti nell'archivio, non solo nella cartella corrente.
+* **[Archivio] Ambito di Ricerca**: Aggiunto un interruttore per limitare la ricerca alla sola cartella attualmente visualizzata, offrendo massima flessibilità.
+* **[Archivio] Percorso nei Risultati**: I risultati della ricerca ora mostrano il percorso completo della cartella in cui si trova il documento, fornendo un contesto immediato.
+
 ## [8.7.0]
 
 ### Aggiunto
