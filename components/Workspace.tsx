@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import type { ProcessedPageResult, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage } from '../services/geminiService';
 import { FileDropzone } from './FileViews';
 import { ResultsDisplay } from './ResultsDisplay';
@@ -6,9 +7,10 @@ import { ErrorDisplay } from './ErrorDisplay';
 import { QueueView } from './QueueView';
 import { ProcessingModeSelector } from './ProcessingModeSelector';
 import { ProcessingView } from './ProcessingView';
-import { SparklesIcon, InformationCircleIcon, DocumentTextIcon } from './icons';
+import { SparklesIcon, InformationCircleIcon, DocumentTextIcon, DocumentPlusIcon, XMarkIcon } from './icons';
 import * as settingsService from '../services/settingsService';
 import { ModeInfoModal } from './ModeInfoModal';
+import { LoadingSpinner } from './LoadingSpinner';
 
 const DemoBanner: React.FC<{ onExit: () => void }> = ({ onExit }) => (
     <div className="bg-blue-100 dark:bg-blue-900/50 border border-blue-400 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-xl relative mb-4 flex items-center justify-between shadow-md">
@@ -65,8 +67,14 @@ interface WorkspaceProps {
     shouldExtractImages: boolean;
     onShouldExtractImagesChange: (shouldExtract: boolean) => void;
     onFilesSelected: (files: File[]) => void;
+    pendingFiles: File[];
+    onRemovePendingFile: (index: number) => void;
+    suggestedMode: ProcessingMode | null;
+    isSuggestingMode: boolean;
+    onConfirmProcessing: () => void;
+    onClearPending: () => void;
     onOpenCamera: () => void;
-    onOpenEmailImport: () => void; // Aggiunta prop
+    onOpenEmailImport: () => void;
     onClear: () => void;
     onUpdateResult: (updatedResult: ProcessedPageResult) => void;
     onUpdateGroupTags: (groupId: string, newTags: string[]) => void;
@@ -112,10 +120,97 @@ interface WorkspaceProps {
 }
 
 export const Workspace: React.FC<WorkspaceProps> = (props) => {
-    const { documentGroups, error, processingQueue, currentTaskProgress, isProcessing } = props;
+    const { 
+        documentGroups, error, processingQueue, currentTaskProgress, isProcessing, 
+        pendingFiles, onFilesSelected, onConfirmProcessing, onClearPending, onRemovePendingFile,
+        suggestedMode, isSuggestingMode 
+    } = props;
     const hasResults = documentGroups.length > 0;
     
     const [isModeInfoModalOpen, setIsModeInfoModalOpen] = useState(false);
+
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        if (acceptedFiles && acceptedFiles.length > 0) {
+          onFilesSelected(acceptedFiles);
+        }
+    }, [onFilesSelected]);
+      
+    const { getRootProps: getMoreFilesRootProps, getInputProps: getMoreFilesInputProps, isDragActive: isMoreFilesDragActive } = useDropzone({
+        onDrop,
+        accept: { 
+          'image/*': ['.jpeg', '.jpg', '.png', '.webp'],
+          'application/pdf': ['.pdf']
+        },
+        multiple: true,
+    });
+
+    // Layout per la conferma dei file in attesa
+    if (pendingFiles.length > 0) {
+        return (
+            <div className="max-w-4xl mx-auto flex flex-col gap-6 animate-fade-in">
+                 <style>{`@keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in { animation: fade-in 0.5s ease-out; }`}</style>
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Rivedi e Conferma</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Hai selezionato {pendingFiles.length} file. Scegli una modalità e avvia l'elaborazione.</p>
+                </div>
+                
+                <div className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-4 max-h-60 overflow-y-auto">
+                    <ul className="space-y-2">
+                        {pendingFiles.map((file, index) => (
+                            <li key={`${file.name}-${index}`} className="flex items-center gap-3 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-md">
+                                <DocumentTextIcon className="w-5 h-5 text-slate-500" />
+                                <span className="text-sm text-slate-700 dark:text-slate-200 truncate flex-grow text-left">{file.name}</span>
+                                <span className="text-xs text-slate-400 flex-shrink-0">{(file.size / 1024).toFixed(1)} KB</span>
+                                 <button onClick={() => onRemovePendingFile(index)} className="p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-slate-500 hover:text-red-500">
+                                    <XMarkIcon className="w-4 h-4" />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                
+                <div
+                    {...getMoreFilesRootProps()}
+                    className={`w-full p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors duration-300 ease-in-out
+                        border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/20
+                        ${isMoreFilesDragActive ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : ''}`}
+                >
+                    <input {...getMoreFilesInputProps()} />
+                    <div className="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
+                        <DocumentPlusIcon className="w-8 h-8 mb-2" />
+                        <p className="font-semibold">Aggiungi altri file</p>
+                        <p className="text-sm">Trascina qui o clicca per selezionare</p>
+                    </div>
+                </div>
+    
+                <div>
+                     <div className="flex items-center gap-2 mb-4">
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Scegli Modalità</h2>
+                        {isSuggestingMode && <LoadingSpinner className="w-5 h-5" />}
+                    </div>
+                    <div id="tutorial-mode-selector">
+                        <ProcessingModeSelector 
+                            currentMode={props.processingMode}
+                            onModeChange={props.onProcessingModeChange}
+                            shouldExtractImages={props.shouldExtractImages}
+                            onShouldExtractImagesChange={props.onShouldExtractImagesChange}
+                            disabled={false}
+                            suggestedMode={suggestedMode}
+                        />
+                    </div>
+                </div>
+                
+                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <button onClick={onClearPending} className="font-semibold text-red-600 dark:text-red-400 hover:underline">
+                        Annulla
+                    </button>
+                    <button id="tutorial-start-processing" onClick={onConfirmProcessing} className="px-8 py-3 text-lg font-bold bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-transform transform hover:scale-105 shadow-lg">
+                        Avvia Elaborazione ({pendingFiles.length} file)
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // Layout a 3 colonne per lo stato iniziale (vuoto)
     if (!hasResults && !isProcessing) {
@@ -123,69 +218,28 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
              <>
                 {props.showTutorialBanner && <TutorialBanner onStart={props.onStartTutorial} onDismiss={props.onDismissTutorial} />}
                 {props.isDemoMode && <DemoBanner onExit={props.onExitDemo} />}
-                {error && <div className="lg:col-span-3"><ErrorDisplay error={error} /></div>}
+                {error && <ErrorDisplay error={error} />}
+                 <div className="text-center max-w-2xl mx-auto">
+                    <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-200">Inizia una Nuova Sessione</h2>
+                    <p className="mt-2 text-slate-500 dark:text-slate-400">Trascina i tuoi documenti qui sotto per avviare l'analisi intelligente.</p>
+                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full items-start">
-                    {/* Colonna 1: Modalità */}
-                    <div>
-                        <div id="tutorial-mode-selector" className={`transition-all duration-500 rounded-2xl ${props.highlightedElement === 'mode-selector' ? 'ring-4 ring-offset-4 ring-offset-slate-50 dark:ring-offset-slate-900 ring-purple-500' : ''}`}>
-                            <div className="flex items-center gap-2 px-1 mb-4">
-                                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-                                    1. Scegli Modalità
-                                </h2>
-                                <button
-                                    onClick={() => setIsModeInfoModalOpen(true)}
-                                    className="text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-400 transition-colors"
-                                    aria-label="Informazioni sulle modalità"
-                                >
-                                    <InformationCircleIcon className="w-6 h-6"/>
-                                </button>
-                            </div>
-                            <ProcessingModeSelector 
-                                currentMode={props.processingMode}
-                                onModeChange={props.onProcessingModeChange}
-                                shouldExtractImages={props.shouldExtractImages}
-                                onShouldExtractImagesChange={props.onShouldExtractImagesChange}
-                                disabled={false}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Colonna 2: Aggiungi Documenti */}
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 px-1 mb-4">
-                            2. Aggiungi Documenti
-                        </h2>
-                        <FileDropzone 
-                            onFilesSelected={props.onFilesSelected} 
-                            onOpenCamera={props.onOpenCamera} 
-                            onOpenEmailImport={props.onOpenEmailImport}
-                            processingMode={props.processingMode}
-                        />
-                    </div>
-                    
-                    {/* Colonna 3: Raccogli Risultati (Placeholder) */}
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 px-1 mb-4">
-                            3. Raccogli i Risultati
-                        </h2>
-                        <div className="flex flex-col items-center justify-center text-center p-10 bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg min-h-[400px] border border-dashed border-slate-300 dark:border-slate-700">
-                            <DocumentTextIcon className="w-16 h-16 mb-4 text-slate-300 dark:text-slate-600" />
-                            <p className="text-slate-500 dark:text-slate-400 max-w-md">I tuoi documenti analizzati appariranno qui, raggruppati in fascicoli.</p>
-                             <div className="my-4 text-slate-500 dark:text-slate-400 text-sm font-semibold flex items-center w-full max-w-xs">
-                                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
-                                <span className="flex-shrink mx-4">OPPURE</span>
-                                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
-                            </div>
-                            <button
-                                onClick={props.onStartDemo}
-                                className="w-full max-w-xs flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                            >
-                                <SparklesIcon className="w-5 h-5" />
-                                <span>Prova una Demo</span>
-                            </button>
-                        </div>
-                    </div>
+                <div className="mt-8 max-w-xl mx-auto" id="tutorial-file-dropzone">
+                    <FileDropzone 
+                        onFilesSelected={onFilesSelected} 
+                        onOpenCamera={props.onOpenCamera} 
+                        onOpenEmailImport={props.onOpenEmailImport}
+                        processingMode={props.processingMode}
+                    />
+                </div>
+                 <div className="mt-12 text-center">
+                     <button
+                        onClick={props.onStartDemo}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors mx-auto"
+                    >
+                        <SparklesIcon className="w-5 h-5" />
+                        <span>Non hai file? Prova una Demo</span>
+                    </button>
                 </div>
                 {isModeInfoModalOpen && <ModeInfoModal onClose={() => setIsModeInfoModalOpen(false)} />}
             </>
@@ -198,34 +252,12 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
             <div className="flex flex-col lg:flex-row gap-8 w-full items-start">
                 {/* Pannello Sinistro (Input e Coda) */}
                 <div className="w-full lg:w-1/3 lg:max-w-md lg:sticky lg:top-24 flex flex-col gap-6 self-start">
-                    <div id="tutorial-mode-selector" className={`transition-all duration-500 rounded-2xl ${props.highlightedElement === 'mode-selector' ? 'ring-4 ring-offset-4 ring-offset-slate-50 dark:ring-offset-slate-900 ring-purple-500' : ''}`}>
-                        <div className="flex items-center gap-2 px-1 mb-4">
-                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-                                1. Scegli Modalità
-                            </h2>
-                            <button
-                                onClick={() => setIsModeInfoModalOpen(true)}
-                                className="text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-400 transition-colors"
-                                aria-label="Informazioni sulle modalità"
-                            >
-                                <InformationCircleIcon className="w-6 h-6"/>
-                            </button>
-                        </div>
-                        <ProcessingModeSelector 
-                            currentMode={props.processingMode}
-                            onModeChange={props.onProcessingModeChange}
-                            shouldExtractImages={props.shouldExtractImages}
-                            onShouldExtractImagesChange={props.onShouldExtractImagesChange}
-                            disabled={isProcessing}
-                        />
-                    </div>
-                    
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 px-1 mb-4">
-                            2. Aggiungi Documenti
+                            Aggiungi Altri Documenti
                         </h2>
                         <FileDropzone 
-                            onFilesSelected={props.onFilesSelected} 
+                            onFilesSelected={onFilesSelected} 
                             onOpenCamera={props.onOpenCamera} 
                             onOpenEmailImport={props.onOpenEmailImport} // Passato il nuovo handler
                             processingMode={props.processingMode}

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -1999,7 +2000,7 @@ function AuthenticatedApp() {
         .filter((item): item is File => item !== null);
     
     if (capturedFiles.length > 0) {
-        addFilesToQueue(capturedFiles, processingMode);
+        handleFileSelection(capturedFiles);
     } else if (imageDataUrls.length > 0) {
         setError("Errore nella conversione delle immagini catturate dalla fotocamera.");
     }
@@ -2107,20 +2108,30 @@ function AuthenticatedApp() {
         alert("Questo fascicolo contiene documenti non sicuri e non può essere archiviato.");
         return;
     }
-    const confirmationMessage = `Stai per spostare il fascicolo "${group.title}" (${group.pageCount} pagine) nel modulo ${targetModule}. Il fascicolo verrà rimosso dall'area di lavoro. Procedere?`;
-    if (!confirm(confirmationMessage)) {
-        return;
+    
+    const docUuids = group.pages.map(p => p.uuid);
+    
+    const moveAndConfirm = async () => {
+        try {
+            await db.moveDocsToModule(docUuids, targetModule, options);
+            // The real-time listener will handle removing the docs from the workspace UI
+            alert(`Fascicolo "${group.title}" spostato in ${targetModule} con successo!`);
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            setError(`Errore durante lo spostamento del fascicolo a ${targetModule}: ${errorMessage}`);
+        } finally {
+            setConfirmationModal(null);
+        }
     }
 
-    try {
-        const docUuids = group.pages.map(p => p.uuid);
-        await db.moveDocsToModule(docUuids, targetModule, options);
-        // The real-time listener will handle removing the docs from the workspace UI
-        alert(`Fascicolo "${group.title}" spostato in ${targetModule} con successo!`);
-    } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : String(e);
-        setError(`Errore durante lo spostamento del fascicolo a ${targetModule}: ${errorMessage}`);
-    }
+    setConfirmationModal({
+        isOpen: true,
+        title: `Sposta Fascicolo in ${targetModule}`,
+        message: `Stai per spostare il fascicolo "${group.title}" (${group.pageCount} pagine). Il fascicolo verrà rimosso dall'area di lavoro. Procedere?`,
+        onConfirm: moveAndConfirm,
+        onCancel: () => setConfirmationModal(null),
+    });
+    
   }, [isDemoMode]);
 
   const handleCreateDisdetta = useCallback(async (data: DisdettaData) => {
@@ -2665,6 +2676,13 @@ function AuthenticatedApp() {
         });
     }, [documentGroups]);
 
+    const handleAddFolder = useCallback(async (folderData: Omit<Folder, 'id' | 'ownerUid'>): Promise<string> => {
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
+        return await db.addFolder({ ...folderData, ownerUid: user.uid });
+    }, [user]);
+
     const handleBotFunctionCall = useCallback(async (actionData: { action: string, params: any }) => {
         let confirmationMessage = "Azione eseguita con successo!";
         switch (actionData.action) {
@@ -2691,10 +2709,63 @@ function AuthenticatedApp() {
 
                 if (groupsToArchive.length > 0) {
                     const group = groupsToArchive[0]; // Archive the first match
-                    await handleMoveDocumentsToModule(group, 'archivio', { isPrivate: !!isPrivate });
-                    confirmationMessage = `Ok, ho archiviato il fascicolo "${group.title}"${isPrivate ? ' come privato' : ''}.`;
+                    if (!group.isSafe) {
+                        confirmationMessage = `Il fascicolo "${group.title}" non è sicuro e non può essere archiviato.`;
+                        break;
+                    }
+                    const docUuids = group.pages.map(p => p.uuid);
+                    try {
+                        await db.moveDocsToModule(docUuids, 'archivio', { isPrivate: !!isPrivate });
+                        confirmationMessage = `Ok, ho archiviato il fascicolo "${group.title}"${isPrivate ? ' come privato' : ''}.`;
+                    } catch (e) {
+                         confirmationMessage = `Si è verificato un errore durante l'archiviazione: ${e instanceof Error ? e.message : String(e)}`;
+                    }
                 } else {
                     confirmationMessage = `Non ho trovato nessun fascicolo che corrisponda a "${query}".`;
+                }
+                break;
+            }
+            case 'createFolder': {
+                if (!appSettings.ugoArchivioEnabled) {
+                    confirmationMessage = "La gestione delle cartelle via chat non è attiva. Puoi attivarla dal tuo profilo.";
+                    break;
+                }
+                const { name, color, parentId } = actionData.params;
+                try {
+                    await handleAddFolder({ name, color, parentId: parentId || null, description: 'Creata da Ugo' });
+                    confirmationMessage = `Ok, ho creato la cartella "${name}".`;
+                    navigate('archivio');
+                } catch(e) {
+                    confirmationMessage = `Errore durante la creazione della cartella: ${e instanceof Error ? e.message : String(e)}`;
+                }
+                break;
+            }
+            case 'moveDocumentToFolder': {
+                if (!appSettings.ugoArchivioEnabled) {
+                    confirmationMessage = "La gestione delle cartelle via chat non è attiva. Puoi attivarla dal tuo profilo.";
+                    break;
+                }
+                const { docQuery, folderName } = actionData.params;
+                const groupsToMove = findGroupsByQuery(docQuery);
+                const targetFolder = folders.find(f => f.name.toLowerCase() === folderName.toLowerCase());
+
+                if (groupsToMove.length === 0) {
+                    confirmationMessage = `Non ho trovato un fascicolo per "${docQuery}".`;
+                } else if (!targetFolder) {
+                    confirmationMessage = `Non trovo una cartella chiamata "${folderName}".`;
+                } else {
+                    const group = groupsToMove[0];
+                    if (!group.isSafe) {
+                        confirmationMessage = `Il fascicolo "${group.title}" non è sicuro e non può essere spostato.`;
+                        break;
+                    }
+                    const docUuids = group.pages.map(p => p.uuid);
+                    try {
+                        await db.moveDocsToModule(docUuids, 'archivio', { folderId: targetFolder.id });
+                        confirmationMessage = `Fatto! Ho spostato "${group.title}" in "${targetFolder.name}".`;
+                    } catch (e) {
+                        confirmationMessage = `Si è verificato un errore durante lo spostamento: ${e instanceof Error ? e.message : String(e)}`;
+                    }
                 }
                 break;
             }
@@ -2740,7 +2811,7 @@ function AuthenticatedApp() {
                 break;
         }
         setChatHistory(prev => [...prev, { role: 'model', text: confirmationMessage }]);
-    }, [documentGroups, handleMergeGroups, isInstallable, isInstalled, triggerInstall, handleUpdateSettings, handleStartTutorial, appSettings, findGroupsByQuery, handleMoveDocumentsToModule, navigate]);
+    }, [findGroupsByQuery, handleMergeGroups, appSettings.ugoArchivioEnabled, appSettings.ugoDisdetteEnabled, navigate, isInstallable, isInstalled, triggerInstall, handleUpdateSettings, handleStartTutorial, handleAddFolder, folders, user]);
 
     const processUgoMessage = useCallback(async (message: string) => {
         if (!chatRef.current || !user) return;
@@ -3178,11 +3249,6 @@ function AuthenticatedApp() {
         }
     }, []);
 
-    const handleAddFolder = useCallback(async (folderData: Omit<Folder, 'id' | 'ownerUid'>): Promise<string> => {
-        if (!user) return '';
-        return db.addFolder({ ...folderData, ownerUid: user.uid });
-    }, [user]);
-
     const handleUpdateFolder = useCallback(async (folderId: string, updates: Partial<Folder>) => {
         await db.updateFolder(folderId, updates);
     }, []);
@@ -3287,6 +3353,52 @@ function AuthenticatedApp() {
         }
     };
 
+    const handleFileSelection = useCallback(async (newFiles: File[]) => {
+        if (newFiles.length === 0) return;
+
+        const isFirstBatch = pendingFiles.length === 0;
+
+        setPendingFiles(prev => [...prev, ...newFiles]);
+
+        if (isFirstBatch) {
+            setIsSuggestingMode(true);
+            setSuggestedMode(null);
+            try {
+                const suggestion = await suggestProcessingMode(newFiles[0]);
+                if (suggestion) {
+                    setSuggestedMode(suggestion);
+                    setProcessingMode(suggestion);
+                }
+            } finally {
+                setIsSuggestingMode(false);
+            }
+        }
+    }, [pendingFiles.length, setProcessingMode]);
+
+    const handleConfirmAndQueueFiles = useCallback(() => {
+        if (pendingFiles.length > 0) {
+            addFilesToQueue(pendingFiles, processingMode);
+            setPendingFiles([]);
+            setSuggestedMode(null);
+        }
+    }, [pendingFiles, addFilesToQueue, processingMode]);
+
+    const handleClearPendingFiles = useCallback(() => {
+        setPendingFiles([]);
+        setSuggestedMode(null);
+    }, []);
+
+    const handleRemovePendingFile = useCallback((fileIndex: number) => {
+        setPendingFiles(prev => {
+            const newFiles = prev.filter((_, index) => index !== fileIndex);
+            if (newFiles.length === 0) {
+                setSuggestedMode(null);
+                setProcessingMode(appSettings.defaultProcessingMode);
+            }
+            return newFiles;
+        });
+    }, [appSettings.defaultProcessingMode]);
+
 
     const renderPage = () => {
         const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan';
@@ -3298,7 +3410,7 @@ function AuthenticatedApp() {
                             userUid={user!.uid}
                             onUpdateDocument={handleUpdateArchivedDocument}
                             onDeleteDocument={handleDeleteArchivedDocument}
-                            onAddFolder={handleAddFolder}
+                            onAddFolder={handleAddFolder as any}
                             onUpdateFolder={handleUpdateFolder}
                             onDeleteFolder={handleDeleteFolder}
                         />;
@@ -3333,7 +3445,13 @@ function AuthenticatedApp() {
                         onProcessingModeChange={setProcessingMode}
                         shouldExtractImages={shouldExtractImages}
                         onShouldExtractImagesChange={setShouldExtractImages}
-                        onFilesSelected={(files) => addFilesToQueue(files)}
+                        onFilesSelected={handleFileSelection}
+                        pendingFiles={pendingFiles}
+                        onRemovePendingFile={handleRemovePendingFile}
+                        suggestedMode={suggestedMode}
+                        isSuggestingMode={isSuggestingMode}
+                        onConfirmProcessing={handleConfirmAndQueueFiles}
+                        onClearPending={handleClearPendingFiles}
                         onOpenCamera={() => setIsCameraOpen(true)}
                         onOpenEmailImport={() => setIsEmailImportOpen(true)}
                         onClear={handleClear}
@@ -3442,7 +3560,13 @@ function AuthenticatedApp() {
                     onProcessingModeChange={setProcessingMode}
                     shouldExtractImages={shouldExtractImages}
                     onShouldExtractImagesChange={setShouldExtractImages}
-                    onFilesSelected={(files) => addFilesToQueue(files)}
+                    onFilesSelected={handleFileSelection}
+                    pendingFiles={pendingFiles}
+                    onRemovePendingFile={handleRemovePendingFile}
+                    suggestedMode={suggestedMode}
+                    isSuggestingMode={isSuggestingMode}
+                    onConfirmProcessing={handleConfirmAndQueueFiles}
+                    onClearPending={handleClearPendingFiles}
                     onOpenCamera={() => setIsCameraOpen(true)}
                     onOpenEmailImport={() => setIsEmailImportOpen(true)}
                     onClear={handleClear}

@@ -113,19 +113,20 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesSelected, onO
   });
   
   const modeStyles: { [key in ProcessingMode]?: { border: string; text: string; hoverBg: string; } } = {
-    quality: { border: 'border-purple-500', text: 'text-purple-600 dark:text-purple-400', hoverBg: 'hover:bg-purple-50 dark:hover:bg-purple-900/20' },
-    scontrino: { border: 'border-orange-500', text: 'text-orange-600 dark:text-orange-400', hoverBg: 'hover:bg-orange-50 dark:hover:bg-orange-900/20' },
-    speed: { border: 'border-yellow-500', text: 'text-yellow-600 dark:text-yellow-400', hoverBg: 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20' },
-    business: { border: 'border-green-500', text: 'text-green-600 dark:text-green-400', hoverBg: 'hover:bg-green-50 dark:hover:bg-green-900/20' },
-    book: { border: 'border-blue-500', text: 'text-blue-600 dark:text-blue-400', hoverBg: 'hover:bg-blue-50 dark:hover:bg-blue-900/20' },
-    'no-ai': { border: 'border-slate-500', text: 'text-slate-600 dark:text-slate-400', hoverBg: 'hover:bg-slate-100 dark:hover:bg-slate-700/50' },
+    quality: { border: 'border-purple-400', text: 'text-purple-600 dark:text-purple-400', hoverBg: 'hover:bg-purple-50 dark:hover:bg-purple-900/20' },
+    scontrino: { border: 'border-orange-400', text: 'text-orange-600 dark:text-orange-400', hoverBg: 'hover:bg-orange-50 dark:hover:bg-orange-900/20' },
+    speed: { border: 'border-yellow-400', text: 'text-yellow-600 dark:text-yellow-400', hoverBg: 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20' },
+    business: { border: 'border-green-400', text: 'text-green-600 dark:text-green-400', hoverBg: 'hover:bg-green-50 dark:hover:bg-green-900/20' },
+    book: { border: 'border-blue-400', text: 'text-blue-600 dark:text-blue-400', hoverBg: 'hover:bg-blue-50 dark:hover:bg-blue-900/20' },
+    identity: { border: 'border-indigo-400', text: 'text-indigo-600 dark:text-indigo-400', hoverBg: 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20' },
+    'no-ai': { border: 'border-slate-400', text: 'text-slate-600 dark:text-slate-400', hoverBg: 'hover:bg-slate-100 dark:hover:bg-slate-700/50' },
   };
   
   const currentStyle = modeStyles[processingMode] || modeStyles['no-ai']!;
   const isDriveButtonDisabled = !isDriveConfigured || !isGapiReady || isFetchingFromDrive;
 
   return (
-    <div id="tutorial-file-dropzone" className="w-full flex flex-col items-center justify-center p-4 text-center bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
+    <div className="w-full flex flex-col items-center justify-center p-4 text-center bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
       <div
         {...getRootProps()}
         className={`w-full p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors duration-300 ease-in-out

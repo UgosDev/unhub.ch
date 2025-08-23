@@ -80,10 +80,10 @@ const ModeButton: React.FC<{mode: typeof allModes[0], currentMode: ProcessingMod
       className={`relative p-3 text-left rounded-xl border border-transparent transition-all duration-200 w-full
         ${currentMode === mode.id ? `ring-2 ${mode.activeClass}` : 'bg-white dark:bg-slate-800 shadow-md hover:shadow-lg hover:ring-2 hover:ring-slate-300 dark:hover:ring-slate-600'}
         ${disabled ? 'pointer-events-none' : ''} ${className}
-        ${isSuggested ? 'highlight-animation !ring-2 !ring-purple-500' : ''}`}
+        ${isSuggested ? 'ring-2 ring-purple-500 shadow-lg' : ''}`}
     >
         {isSuggested && (
-            <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-purple-600 text-white text-xs font-bold rounded-full">
+            <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-purple-600 text-white text-xs font-bold rounded-full shadow-md">
                 Consigliato
             </div>
         )}
