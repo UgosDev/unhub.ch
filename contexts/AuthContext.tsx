@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback, useRef } from 'react';
 import * as authService from '../services/authService';
 import { persistencePromise, auth, firebase } from '../services/firebase';
-import type { User } from '../services/authService';
+import type { User, PasskeyCredential } from '../services/authService';
 import * as firestoreService from '../services/firestoreService';
 import * as otpauth from 'otpauth';
 
@@ -28,6 +28,10 @@ interface AuthContextType {
     verifyRecoveryCode: (code: string) => Promise<void>;
     cancel2fa: () => Promise<void>;
     reauthenticate: (password: string) => Promise<void>;
+    // NUOVE FUNZIONI PASSKEY
+    registerPasskey: () => Promise<void>;
+    authenticateWithPasskey: () => Promise<void>;
+    revokePasskey: (credentialId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,7 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [pending2faUser, setPending2faUser] = useState<firebase.User | null>(null);
     const profileListenerUnsubscribeRef = useRef<(() => void) | null>(null);
 
-    const logSuccessfulLogin = useCallback(async (method: 'Password' | 'Google' | '2FA' | 'Recovery Code', userToLog: firebase.User) => {
+    const logSuccessfulLogin = useCallback(async (method: 'Password' | 'Google' | '2FA' | 'Recovery Code' | 'Passkey', userToLog: firebase.User) => {
         try {
             let ipAddress = 'N/A';
             let location = 'N/A';
@@ -308,6 +312,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await authService.reauthenticate(password);
     };
 
+    // --- NUOVE FUNZIONI PASSKEY ---
+    const registerPasskey = async () => {
+        if (!user) throw new Error("Devi essere loggato per registrare una passkey.");
+        const newCredential = await authService.registerPasskey(user);
+        await updateUser(prev => {
+            if (!prev) return null;
+            const newPasskeys = [...(prev.passkeys || []), newCredential];
+            return { ...prev, passkeys: newPasskeys };
+        });
+    };
+
+    const authenticateWithPasskey = async () => {
+        setIsAuthenticating(true);
+        try {
+            const authenticatedUserId = await authService.authenticateWithPasskey();
+            // This is a complex flow. The backend would issue a new session token.
+            // Here, we simulate a login by fetching the user's full profile and setting it.
+            // This requires a temporary impersonation of the Firebase user.
+            const firebaseUser = { uid: authenticatedUserId } as firebase.User; // Mock
+            // We can't fully log in without a Firebase token, but we can set up the app state
+            // after this point. `onAuthStateChanged` should ideally take over.
+            // For this demo, we'll manually fetch the profile.
+            const appUser = await firestoreService.getUserProfile(authenticatedUserId);
+            if (appUser) {
+                setUser({ uid: authenticatedUserId, ...appUser });
+                await logSuccessfulLogin('Passkey', firebaseUser);
+            } else {
+                throw new Error("Profilo utente non trovato per questa passkey.");
+            }
+        } catch(e) {
+             throw e;
+        } finally {
+            setIsAuthenticating(false);
+        }
+    };
+
+    const revokePasskey = async (credentialId: string) => {
+        if (!user) return;
+        await updateUser(prev => {
+            if (!prev) return null;
+            const newPasskeys = (prev.passkeys || []).filter(p => p.id !== credentialId);
+            return { ...prev, passkeys: newPasskeys };
+        });
+    };
+
     const value = { 
         user, 
         isLoading, 
@@ -322,7 +371,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         verify2fa,
         verifyRecoveryCode,
         cancel2fa,
-        reauthenticate
+        reauthenticate,
+        registerPasskey,
+        authenticateWithPasskey,
+        revokePasskey,
     };
 
     return (

@@ -33,6 +33,10 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 - **Pre-elaborazione Immagini**: Introdurre passaggi client-side (bianco e nero, contrasto, ottimizzazione peso) per migliorare la qualità dell'immagine inviata all'AI e ridurre i tempi di caricamento.
 
 ### Sicurezza, Monetizzazione e Infrastruttura
+- **Backend per Passkey (WebAuthn)**: Completare l'implementazione della funzionalità di accesso con Passkey, attualmente simulata lato frontend.
+  - **Endpoint di Registrazione**: Creare endpoint per generare la `challenge` di registrazione e per verificare la risposta del client, salvando la chiave pubblica in modo sicuro.
+  - **Endpoint di Autenticazione**: Creare endpoint per generare la `challenge` di login e per verificare l'asserzione firmata dal client per concedere l'accesso.
+  - **Gestione Credenziali**: Implementare la logica per la gestione (revoca) delle credenziali salvate.
 - **Blocco Geografico e Rilevamento VPN**: Implementare un sistema backend per limitare l'accesso al servizio solo agli utenti in Svizzera e per bloccare l'uso di VPN/proxy per aggirare le restrizioni. Richiede integrazione con servizi di IP Intelligence.
 - **Modalità "Lock"**: Nuova modalità a 45 SC che rende un documento scansionato a prova di manomissione, garantendo l'immutabilità anche nelle app partner.
 - **Ricarica Automatica ScanCoin**: Impostare una soglia minima di saldo per la ricarica automatica (richiede integrazione pagamenti).

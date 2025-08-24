@@ -28,7 +28,7 @@ export interface AccessLogEntry {
     id?: string;
     timestamp: firebase.firestore.Timestamp;
     status: 'Success'; // Only logging successes for now
-    method: 'Password' | 'Google' | '2FA' | 'Recovery Code';
+    method: 'Password' | 'Google' | '2FA' | 'Recovery Code' | 'Passkey';
     userAgent: string;
     ipAddress: string;
     location: string;
@@ -129,6 +129,7 @@ export const createUserProfile = async (userId: string, name: string, email: str
         twoFactorRecoveryCodes: [],
         familyId: userId,
         settings: defaultSettings,
+        passkeys: [], // NUOVO: Inizializza il campo passkeys
     });
 };
 

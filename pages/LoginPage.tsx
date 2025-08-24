@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { GoogleIcon } from '../components/icons';
+import { GoogleIcon, ShieldCheckIcon } from '../components/icons';
 import { Footer } from '../components/Footer';
 import { PrototypeBanner } from '../components/PrototypeBanner';
 import { brandAssets, colorStyles, type BrandKey } from '../services/brandingService';
@@ -22,10 +22,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onNavigate,
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [view, setView] = useState<'login' | 'reset'>('login');
     const [isUsingRecoveryCode, setIsUsingRecoveryCode] = useState(false);
-    const { login, signInWithGoogle, sendPasswordReset, isAwaiting2fa, verify2fa, verifyRecoveryCode, cancel2fa } = useAuth();
+    const [isPasskeyAvailable, setIsPasskeyAvailable] = useState(false);
+    const { login, signInWithGoogle, sendPasswordReset, isAwaiting2fa, verify2fa, verifyRecoveryCode, cancel2fa, authenticateWithPasskey } = useAuth();
 
     const { Logo, Wordmark, colorClass } = brandAssets[brandKey];
     const brandColors = colorStyles[colorClass] || colorStyles.purple;
+
+    useEffect(() => {
+        const checkPasskeySupport = async () => {
+            if (window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()) {
+                setIsPasskeyAvailable(true);
+            }
+        };
+        checkPasskeySupport();
+    }, []);
 
     const handleLoginSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,6 +60,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onNavigate,
             // onAuthStateChanged will handle the UI update.
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Accesso con Google fallito.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    const handlePasskeySignIn = async () => {
+        setError(null);
+        setMessage(null);
+        setIsSubmitting(true);
+        try {
+            await authenticateWithPasskey();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Autenticazione con Passkey fallita.');
         } finally {
             setIsSubmitting(false);
         }
@@ -177,6 +200,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onNavigate,
                             <>
                                 <h2 className="text-2xl font-bold text-center text-slate-800 dark:text-slate-200 mb-1">Bentornato!</h2>
                                 <p className="text-center text-slate-500 dark:text-slate-400 mb-6">Accedi per continuare.</p>
+                                {isPasskeyAvailable && (
+                                    <div className="mb-4">
+                                        <button onClick={handlePasskeySignIn} disabled={isSubmitting} className={`w-full flex justify-center items-center gap-3 py-3 px-4 border border-transparent rounded-full shadow-sm text-sm font-bold text-white ${brandColors.bg} ${brandColors.hoverBg} focus:outline-none focus:ring-2 focus:ring-offset-2 ${brandColors.ring} disabled:bg-slate-400 disabled:cursor-wait`}>
+                                            <ShieldCheckIcon className="w-5 h-5" />
+                                            Accedi con Passkey
+                                        </button>
+                                    </div>
+                                )}
                                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                                     <div>
                                         <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
@@ -190,8 +221,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister, onNavigate,
                                         <button type="button" onClick={switchToReset} className={`font-medium ${brandColors.text} ${brandColors.hoverText}`.replace('hover:text-', 'hover:text-opacity-80 dark:hover:text-')}>Password dimenticata?</button>
                                     </div>
                                     <div>
-                                        <button type="submit" disabled={isSubmitting} className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-sm text-sm font-bold text-white ${brandColors.bg} ${brandColors.hoverBg} focus:outline-none focus:ring-2 focus:ring-offset-2 ${brandColors.ring} disabled:bg-slate-400 disabled:cursor-wait`}>
-                                            {isSubmitting && !error ? 'Accesso in corso...' : 'Accedi'}
+                                        <button type="submit" disabled={isSubmitting} className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-sm text-sm font-bold text-white bg-slate-500 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-slate-400 disabled:cursor-wait`}>
+                                            {isSubmitting && !error ? 'Accesso in corso...' : 'Accedi con Email'}
                                         </button>
                                     </div>
                                 </form>

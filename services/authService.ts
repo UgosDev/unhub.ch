@@ -15,6 +15,13 @@ export interface Subscription {
     addressMismatchCount?: number;
 }
 
+// NUOVO: Interfaccia per le credenziali Passkey
+export interface PasskeyCredential {
+    id: string; // The credential ID, as a base64url string
+    name: string; // A user-friendly name for the device/key
+    createdAt: string; // ISO timestamp
+}
+
 export interface User {
     uid: string;
     name: string;
@@ -30,6 +37,7 @@ export interface User {
     twoFactorRecoveryCodes?: string[];
     familyId?: string;
     settings?: Partial<AppSettings>;
+    passkeys?: PasskeyCredential[]; // NUOVO: Array per le Passkey
 }
 
 type FirebaseUser = firebase.User;
@@ -75,6 +83,7 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
                 twoFactorRecoveryCodes: [],
                 familyId: firebaseUser.uid,
                 settings: defaultSettings,
+                passkeys: [],
             };
         }
 
@@ -97,6 +106,7 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             twoFactorRecoveryCodes: appData.twoFactorRecoveryCodes,
             familyId: appData.familyId,
             settings: mergedSettings,
+            passkeys: appData.passkeys || [],
         };
     } catch (error) {
         console.warn("Failed to get or create user profile from Firestore (likely offline). Returning a temporary user object to maintain session.", error);
@@ -125,6 +135,7 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             twoFactorRecoveryCodes: [],
             familyId: firebaseUser.uid,
             settings: defaultSettings,
+            passkeys: [],
         };
     }
 };
@@ -283,4 +294,102 @@ export async function reauthenticate(password: string): Promise<void> {
     }
     const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
     await user.reauthenticateWithCredential(credential);
+}
+
+// --- NUOVE FUNZIONI PER PASSKEY/WEBAUTHN ---
+
+// Helper per convertire ArrayBuffer in stringa base64url
+const bufferToBase64Url = (buffer: ArrayBuffer) =>
+    btoa(String.fromCharCode(...new Uint8Array(buffer)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
+/**
+ * Avvia la registrazione di una nuova Passkey per l'utente corrente.
+ * NOTA: Questa è una simulazione frontend. In produzione, la "challenge"
+ * dovrebbe provenire da un backend sicuro.
+ */
+export async function registerPasskey(user: User): Promise<PasskeyCredential> {
+    if (!window.PublicKeyCredential) {
+        throw new Error("Il tuo browser non supporta le Passkey (WebAuthn).");
+    }
+
+    // 1. Simula la ricezione di una challenge dal backend
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+    const credential = await navigator.credentials.create({
+        publicKey: {
+            challenge,
+            rp: { name: "scansioni.ch", id: window.location.hostname },
+            user: {
+                id: new TextEncoder().encode(user.uid),
+                name: user.email,
+                displayName: user.name,
+            },
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }], // ES256
+            authenticatorSelection: {
+                authenticatorAttachment: "platform", // o "cross-platform" per chiavi USB
+                requireResidentKey: true,
+                userVerification: "preferred",
+            },
+            timeout: 60000,
+            attestation: "none",
+        },
+    }) as PublicKeyCredential | null;
+
+    if (!credential) {
+        throw new Error("Registrazione della Passkey annullata o fallita.");
+    }
+
+    // 2. Simula l'invio della credenziale al backend per la verifica e il salvataggio.
+    // In un'app reale, invieresti `credential` al tuo server.
+    // Qui, generiamo un nome e restituiamo direttamente la nuova credenziale.
+    
+    const deviceName = prompt("Dai un nome a questo dispositivo (es. 'iPhone di Mario')", `Dispositivo del ${new Date().toLocaleDateString()}`);
+    if (!deviceName) throw new Error("Nome del dispositivo richiesto.");
+    
+    return {
+        id: bufferToBase64Url(credential.rawId),
+        name: deviceName,
+        createdAt: new Date().toISOString(),
+    };
+}
+
+/**
+ * Avvia l'autenticazione con una Passkey.
+ * NOTA: Simulazione frontend. Manca la verifica lato server.
+ * @returns L'UID dell'utente autenticato.
+ */
+export async function authenticateWithPasskey(): Promise<string> {
+    if (!window.PublicKeyCredential) {
+        throw new Error("Il tuo browser non supporta le Passkey (WebAuthn).");
+    }
+    
+    // 1. Simula la ricezione di una challenge dal backend
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+    const assertion = await navigator.credentials.get({
+        publicKey: {
+            challenge,
+            timeout: 60000,
+            userVerification: "required",
+        },
+    }) as PublicKeyCredential | null;
+
+    if (!assertion) {
+        throw new Error("Autenticazione con Passkey annullata o fallita.");
+    }
+
+    // 2. Simula la verifica dell'asserzione sul backend.
+    // In un'app reale, invieresti `assertion` al server.
+    // Il server verificherebbe la firma e restituirebbe una sessione.
+    // Qui, estraiamo l'user handle (UID) e lo restituiamo.
+    
+    const userHandle = (assertion.response as AuthenticatorAssertionResponse).userHandle;
+    if (!userHandle) {
+        throw new Error("Impossibile identificare l'utente dalla Passkey.");
+    }
+    
+    return new TextDecoder().decode(userHandle);
 }
