@@ -204,7 +204,7 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
             <div className="absolute inset-0 z-0">
                 {brandKey === 'scan' ? currentContent.background : <InteractiveBackground brandKey={brandKey} />}
             </div>
-
+            
             <main className="relative z-10 text-center flex flex-col items-center w-full">
                 <Logo className="h-16 w-16 mb-4" />
                 <Wordmark className="h-10 mb-8" />

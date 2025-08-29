@@ -1,387 +1,77 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback, useRef } from 'react';
-import * as authService from '../services/authService';
-import { persistencePromise, auth, firebase } from '../services/firebase';
-import type { User, PasskeyCredential } from '../services/authService';
-import * as firestoreService from '../services/firestoreService';
-import * as otpauth from 'otpauth';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { firebase } from '../services/firebase';
 
-// Helper for hashing recovery codes
-async function sha256(message: string): Promise<string> {
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+export interface User {
+  uid: string;
+  email: string | null;
+  name: string | null;
+  subscription: {
+    plan: 'free' | 'pro';
+    scanCoinBalance: number;
+    monthlyScanCoinAllowance: number;
+    nextRefillDate: string;
+  };
+  address: string;
+  householdMembers: string[];
+  addressConfirmed: boolean;
+  is2faEnabled: boolean;
+  twoFactorSecret?: string;
+  twoFactorRecoveryCodes?: string[];
+  familyId: string;
 }
 
 interface AuthContextType {
-    user: User | null;
-    isLoading: boolean;
-    isAuthenticating: boolean;
-    isAwaiting2fa: boolean;
-    login: (email: string, password: string) => Promise<void>;
-    logout: () => Promise<void>;
-    register: (name: string, email: string, password: string) => Promise<void>;
-    updateUser: (newUserOrFn: User | ((prevUser: User | null) => User | null)) => Promise<void>;
-    signInWithGoogle: () => Promise<void>;
-    sendPasswordReset: (email: string) => Promise<void>;
-    verify2fa: (code: string) => Promise<void>;
-    verifyRecoveryCode: (code: string) => Promise<void>;
-    cancel2fa: () => Promise<void>;
-    reauthenticate: (password: string) => Promise<void>;
-    // NUOVE FUNZIONI PASSKEY
-    registerPasskey: () => Promise<void>;
-    authenticateWithPasskey: () => Promise<void>;
-    revokePasskey: (credentialId: string) => Promise<void>;
+  user: User | null;
+  loading: boolean;
+  updateUser: (updater: (prev: User | null) => User | null) => Promise<void>;
+  reauthenticate: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isAuthenticating, setIsAuthenticating] = useState(false);
-    const [pending2faUser, setPending2faUser] = useState<firebase.User | null>(null);
-    const profileListenerUnsubscribeRef = useRef<(() => void) | null>(null);
+    // Mock user data for prototype
+    const [user, setUser] = useState<User | null>({
+        uid: 'mock-user-123',
+        email: 'utente@esempio.com',
+        name: 'Mario Rossi',
+        subscription: {
+            plan: 'pro',
+            scanCoinBalance: 2500,
+            monthlyScanCoinAllowance: 500,
+            nextRefillDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        address: "Via Esempio 123\n6900 Lugano\nSvizzera",
+        householdMembers: ["Maria Bianchi"],
+        addressConfirmed: true,
+        is2faEnabled: false,
+        familyId: `fam-${Math.random().toString(36).substring(2, 9)}`,
+    });
+    const [loading, setLoading] = useState(false);
 
-    const logSuccessfulLogin = useCallback(async (method: 'Password' | 'Google' | '2FA' | 'Recovery Code' | 'Passkey', userToLog: firebase.User) => {
-        try {
-            let ipAddress = 'N/A';
-            let location = 'N/A';
-
-            try {
-                const response = await fetch('https://ipapi.co/json/');
-                if (response.ok) {
-                    const data = await response.json();
-                    ipAddress = data.ip || 'N/A';
-                    location = (data.city && data.country_name) ? `${data.city}, ${data.country_name}` : 'Posizione non disponibile';
-                }
-            } catch (geoError) {
-                console.warn("Could not fetch geolocation data:", geoError);
-            }
-
-            await firestoreService.addAccessLogEntry(userToLog.uid, {
-                status: 'Success',
-                method,
-                userAgent: navigator.userAgent,
-                ipAddress,
-                location,
-            });
-        } catch (error) {
-            console.error("Failed to add access log entry:", error);
-        }
-    }, []);
-
-    useEffect(() => {
-        let authUnsubscribe: (() => void) | undefined;
-        const initialize = async () => {
-            await persistencePromise.catch(error => {
-                console.error("Error enabling Firestore persistence, app might not work offline.", error);
-            });
-
-            authUnsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-                // First, clear any previous live listener
-                if (profileListenerUnsubscribeRef.current) {
-                    profileListenerUnsubscribeRef.current();
-                    profileListenerUnsubscribeRef.current = null;
-                }
-
-                if (firebaseUser) {
-                    // User is signed in to Firebase Auth. Now get our app-specific profile.
-                    setIsAuthenticating(true);
-                    try {
-                        const appUser = await authService.getAppUser(firebaseUser);
-
-                        if (appUser.is2faEnabled) {
-                            setPending2faUser(firebaseUser);
-                            setUser(null); // Explicitly clear user until 2FA is complete
-                            setIsAuthenticating(false);
-                            setIsLoading(false);
-                        } else {
-                            // The very first sign-in for a new user is logged here
-                            const isFirstSignIn = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
-                            if (isFirstSignIn) {
-                                const method = firebaseUser.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Password';
-                                await logSuccessfulLogin(method, firebaseUser);
-                            }
-
-                            // For non-2FA users, we attach a live listener to their profile
-                            profileListenerUnsubscribeRef.current = firestoreService.onUserProfileUpdate(firebaseUser.uid, (liveProfileData) => {
-                                if (liveProfileData) {
-                                    setUser({ uid: firebaseUser.uid, ...liveProfileData });
-                                } else {
-                                    // Profile doesn't exist in Firestore, this is an error state for a logged-in user.
-                                    console.error(`User ${firebaseUser.uid} authenticated but has no Firestore profile. Logging out.`);
-                                    authService.logout(); // This will trigger onAuthStateChanged again with firebaseUser=null
-                                }
-                                setIsAuthenticating(false);
-                                setIsLoading(false);
-                            });
-                        }
-                    } catch (error) {
-                        console.error("Error setting up user session:", error);
-                        await authService.logout(); // Force logout on critical error
-                        setUser(null);
-                        setPending2faUser(null);
-                        setIsAuthenticating(false);
-                        setIsLoading(false);
-                    }
+    const updateUser = async (updater: (prev: User | null) => User | null) => {
+        setUser(updater);
+        // In a real app, this would also save to a backend/firestore.
+        console.log("User updated (mock)");
+    };
+    
+    const reauthenticate = async (password: string): Promise<void> => {
+        // This is a mock. In a real app, you would use firebase.auth().currentUser.reauthenticateWithCredential
+        console.log("Reauthenticating with password:", password);
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                if (password === 'password') { // Mock correct password
+                    resolve();
                 } else {
-                    // User is signed out
-                    setUser(null);
-                    setPending2faUser(null);
-                    setIsAuthenticating(false);
-                    setIsLoading(false);
+                    reject(new Error("Mock: Invalid password"));
                 }
-            });
-        };
-        
-        initialize();
-
-        return () => {
-            if (authUnsubscribe) authUnsubscribe();
-            if (profileListenerUnsubscribeRef.current) {
-                profileListenerUnsubscribeRef.current();
-            }
-        };
-    }, [logSuccessfulLogin]);
-
-    const login = async (email: string, password: string) => {
-        setIsAuthenticating(true);
-        try {
-            const firebaseUser = await authService.login(email, password);
-            await logSuccessfulLogin('Password', firebaseUser);
-            // onAuthStateChanged will handle the rest of the state updates.
-        } catch (error) {
-            setIsAuthenticating(false);
-            throw error;
-        }
-    };
-    
-    const signInWithGoogle = async () => {
-        setIsAuthenticating(true);
-        try {
-            await authService.signInWithGoogle();
-             // onAuthStateChanged will handle profile creation and logging the first sign-in.
-        } catch(error) {
-            setIsAuthenticating(false);
-            throw error;
-        }
-    };
-
-    const register = async (name: string, email: string, password: string) => {
-        setIsAuthenticating(true);
-        try {
-            await authService.register(name, email, password);
-             // onAuthStateChanged will handle profile creation and logging the first sign-in.
-        } catch(error) {
-            setIsAuthenticating(false);
-            throw error;
-        }
-    };
-
-    const finalizeLogin = (firebaseUser: firebase.User) => {
-        profileListenerUnsubscribeRef.current = firestoreService.onUserProfileUpdate(firebaseUser.uid, (liveProfileData) => {
-            if (liveProfileData) {
-                setUser({ uid: firebaseUser!.uid, ...liveProfileData });
-            } else {
-                setUser(null);
-            }
-            setPending2faUser(null);
-            setIsAuthenticating(false);
+            }, 1000);
         });
     };
 
-    const verify2fa = async (code: string) => {
-        if (!pending2faUser) throw new Error("Nessun login 2FA in attesa.");
+    const value = { user, loading, updateUser, reauthenticate };
 
-        setIsAuthenticating(true);
-        try {
-            const profile = await firestoreService.getUserProfile(pending2faUser.uid);
-            if (!profile || !profile.is2faEnabled || !profile.twoFactorSecret) {
-                throw new Error("2FA non è configurato correttamente per questo account.");
-            }
-    
-            const totp = new otpauth.TOTP({
-                issuer: 'scansioni.ch',
-                label: pending2faUser.email!,
-                algorithm: 'SHA1',
-                digits: 6,
-                period: 30,
-                secret: otpauth.Secret.fromBase32(profile.twoFactorSecret),
-            });
-    
-            const delta = totp.validate({ token: code, window: 1 });
-    
-            if (delta === null) {
-                throw new Error("Codice di verifica non corretto.");
-            }
-    
-            await logSuccessfulLogin('2FA', pending2faUser);
-            finalizeLogin(pending2faUser);
-    
-        } catch (error) {
-            setIsAuthenticating(false);
-            throw error;
-        }
-    };
-
-    const verifyRecoveryCode = async (code: string) => {
-        if (!pending2faUser) throw new Error("Nessun login 2FA in attesa.");
-        setIsAuthenticating(true);
-        try {
-            const profile = await firestoreService.getUserProfile(pending2faUser.uid);
-            if (!profile || !profile.twoFactorRecoveryCodes || profile.twoFactorRecoveryCodes.length === 0) {
-                throw new Error("Nessun codice di recupero disponibile per questo account.");
-            }
-    
-            const hashedCode = await sha256(code);
-            
-            if (!profile.twoFactorRecoveryCodes.includes(hashedCode)) {
-                throw new Error("Codice di recupero non valido.");
-            }
-            
-            // Invalidate the used code
-            const updatedRecoveryCodes = profile.twoFactorRecoveryCodes.filter(
-                (c: string) => c !== hashedCode
-            );
-            await firestoreService.updateUserProfile(pending2faUser.uid, {
-                twoFactorRecoveryCodes: updatedRecoveryCodes
-            });
-            
-            await logSuccessfulLogin('Recovery Code', pending2faUser);
-            finalizeLogin(pending2faUser);
-    
-        } catch (error) {
-            setIsAuthenticating(false);
-            throw error;
-        }
-    };
-
-    const cancel2fa = async () => {
-        await authService.logout();
-    };
-
-    const sendPasswordReset = async (email: string) => {
-        await authService.sendPasswordReset(email);
-    };
-
-    const logout = async () => {
-        if (profileListenerUnsubscribeRef.current) {
-            profileListenerUnsubscribeRef.current();
-            profileListenerUnsubscribeRef.current = null;
-        }
-        await authService.logout();
-    };
-
-    const updateUser = useCallback(async (newUserOrFn: User | ((prevUser: User | null) => User | null)) => {
-        const currentUser = user || (pending2faUser ? await authService.getAppUser(pending2faUser) : null);
-        const newUserForDb = typeof newUserOrFn === 'function' ? newUserOrFn(currentUser) : newUserOrFn;
-    
-        if (newUserForDb) {
-            // Prepare a separate object for the local state update.
-            const newUserForState = { ...newUserForDb };
-            
-            // Check for Firestore sentinel values and replace them for the local state.
-            // This prevents React state errors with non-serializable objects.
-            if (newUserForState.twoFactorSecret && typeof newUserForState.twoFactorSecret === 'object') {
-                newUserForState.twoFactorSecret = undefined;
-            }
-
-            // Optimistic update with the cleaned object.
-            if (!pending2faUser) {
-                setUser(newUserForState as User);
-            }
-            
-            try {
-                // Send the original object (with sentinels) to Firestore.
-                const { uid, ...profileData } = newUserForDb;
-                await authService.updateUserProfile(uid, profileData);
-            } catch (e) {
-                console.error("Failed to update user profile in Firestore.", e);
-                // Revert optimistic update on failure.
-                if (!pending2faUser) {
-                    setUser(currentUser);
-                }
-            }
-        } else {
-            setUser(null);
-        }
-    }, [user, pending2faUser]);
-
-    const reauthenticate = async (password: string) => {
-        await authService.reauthenticate(password);
-    };
-
-    // --- NUOVE FUNZIONI PASSKEY ---
-    const registerPasskey = async () => {
-        if (!user) throw new Error("Devi essere loggato per registrare una passkey.");
-        const newCredential = await authService.registerPasskey(user);
-        await updateUser(prev => {
-            if (!prev) return null;
-            const newPasskeys = [...(prev.passkeys || []), newCredential];
-            return { ...prev, passkeys: newPasskeys };
-        });
-    };
-
-    const authenticateWithPasskey = async () => {
-        setIsAuthenticating(true);
-        try {
-            const authenticatedUserId = await authService.authenticateWithPasskey();
-            // This is a complex flow. The backend would issue a new session token.
-            // Here, we simulate a login by fetching the user's full profile and setting it.
-            // This requires a temporary impersonation of the Firebase user.
-            const firebaseUser = { uid: authenticatedUserId } as firebase.User; // Mock
-            // We can't fully log in without a Firebase token, but we can set up the app state
-            // after this point. `onAuthStateChanged` should ideally take over.
-            // For this demo, we'll manually fetch the profile.
-            const appUser = await firestoreService.getUserProfile(authenticatedUserId);
-            if (appUser) {
-                setUser({ uid: authenticatedUserId, ...appUser });
-                await logSuccessfulLogin('Passkey', firebaseUser);
-            } else {
-                throw new Error("Profilo utente non trovato per questa passkey.");
-            }
-        } catch(e) {
-             throw e;
-        } finally {
-            setIsAuthenticating(false);
-        }
-    };
-
-    const revokePasskey = async (credentialId: string) => {
-        if (!user) return;
-        await updateUser(prev => {
-            if (!prev) return null;
-            const newPasskeys = (prev.passkeys || []).filter(p => p.id !== credentialId);
-            return { ...prev, passkeys: newPasskeys };
-        });
-    };
-
-    const value = { 
-        user, 
-        isLoading, 
-        isAuthenticating, 
-        isAwaiting2fa: !!pending2faUser,
-        login, 
-        logout, 
-        register, 
-        updateUser, 
-        signInWithGoogle, 
-        sendPasswordReset,
-        verify2fa,
-        verifyRecoveryCode,
-        cancel2fa,
-        reauthenticate,
-        registerPasskey,
-        authenticateWithPasskey,
-        revokePasskey,
-    };
-
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {
