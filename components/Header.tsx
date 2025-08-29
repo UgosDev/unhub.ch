@@ -29,6 +29,7 @@ const NavLink: React.FC<{ page: string, currentPage: string, onNavigate: (page: 
     
     return (
         <button
+            id={`nav-link-${page}`}
             onClick={() => onNavigate(page)}
             className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses} ${className}`}
             style={isActive ? activeStyle : {}}

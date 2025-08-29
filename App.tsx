@@ -4,6 +4,10 @@
 
 
 
+
+
+
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -348,80 +352,76 @@ const tutorialSteps: TutorialStep[] = [
         id: 'document-group',
         elementSelector: '#tutorial-document-group',
         title: '3. Risultati Organizzati',
-        content: "Ecco il risultato! L'AI ha analizzato i tuoi documenti e li ha organizzati in 'fascicoli'. I fascicoli raggruppano automaticamente le pagine correlate.",
+        content: "Ecco il risultato! L'AI ha raggruppato i documenti in 'fascicoli'. Da qui puoi gestirli: scaricarli, espanderli o inviarli ai moduli specializzati.",
         tooltipPosition: 'top',
     },
     {
-        id: 'group-actions',
-        elementSelector: '#tutorial-group-actions',
-        title: '4. Gestisci un Fascicolo',
-        content: "Da qui puoi gestire il fascicolo: scaricarlo, inviarlo alle app partner, oppure espanderlo per vedere le singole pagine.",
+        id: 'ecosystem-intro',
+        elementSelector: '#tutorial-header-nav',
+        title: "4. L'Ecosistema UnHub",
+        content: "L'area di lavoro è temporanea. Ora ti mostrerò i moduli specializzati dove conservare i tuoi documenti in modo permanente e intelligente.",
         tooltipPosition: 'bottom',
     },
     {
-        id: 'expand-group',
-        elementSelector: '#tutorial-document-group',
-        title: '5. Esplora un Fascicolo',
-        content: "Ora espanderemo il primo fascicolo per te, così potrai vedere le singole pagine analizzate che contiene.",
-        tooltipPosition: 'top',
-    },
-    {
-        id: 'page-details',
-        elementSelector: '#tutorial-page-details',
-        title: '6. Dettagli della Pagina',
-        content: "Ogni pagina mostra i dati estratti, il suo stato di sicurezza e ti permette di modificare, riprovare l'analisi o darci un feedback sulla qualità.",
-        tooltipPosition: 'top',
-    },
-    {
-        id: 'multi-selection',
-        elementSelector: '.tutorial-group-checkbox-1', // Seleziona il checkbox del secondo gruppo
-        title: '7. Seleziona Più Fascicoli',
-        content: "Usa i checkbox per selezionare più fascicoli contemporaneamente. Ora selezioneremo il secondo per te...",
+        id: 'archivio-page',
+        elementSelector: '#nav-link-archivio',
+        title: "5. archivio.ch: Il Caveau Digitale",
+        content: "Questo è il tuo archivio sicuro a lungo termine. Organizza in cartelle, cerca con linguaggio naturale e condividi con la famiglia.",
         tooltipPosition: 'bottom',
+        preAction: () => {},
     },
     {
-        id: 'bulk-actions',
-        elementSelector: '#tutorial-bulk-actions',
-        title: '8. Azioni di Gruppo',
-        content: "Con più fascicoli selezionati, puoi usare questa barra per unirli, correggerne il raggruppamento o scaricarli tutti insieme.",
+        id: 'polizze-page',
+        elementSelector: '#nav-link-polizze',
+        title: "6. polizze.ch: Portafoglio Assicurativo",
+        content: "Qui centralizzi le tue polizze. L'AI analizza scadenze e premi, e puoi condividere i documenti con il tuo consulente.",
         tooltipPosition: 'bottom',
+        preAction: () => {},
+    },
+    {
+        id: 'disdette-page',
+        elementSelector: '#nav-link-disdette',
+        title: "7. disdette.ch: Disdette Semplici",
+        content: "Crea lettere di disdetta in pochi click. Il sistema ti aiuta a non dimenticare le scadenze importanti.",
+        tooltipPosition: 'bottom',
+        preAction: () => {},
     },
     {
         id: 'dashboard',
         elementSelector: '#tutorial-dashboard-stat',
-        title: '9. Controlla la Dashboard',
-        content: "Questa è la tua Dashboard. Qui puoi vedere le tue statistiche di utilizzo, i costi e lo storico completo delle tue scansioni.",
+        title: '8. Dashboard: Le Tue Statistiche',
+        content: "Qui vedi le tue statistiche di utilizzo, i costi e lo storico completo delle tue scansioni.",
         tooltipPosition: 'right',
-        preAction: () => {}, // Sarà sovrascritto in App.tsx
+        preAction: () => {},
     },
     {
         id: 'profile',
         elementSelector: '#tutorial-profile-settings',
-        title: '10. Gestisci il Profilo',
-        content: "Nella pagina Profilo puoi personalizzare l'app, come scegliere il tema visivo, gestire le preferenze e il tuo account.",
+        title: '9. Profilo: Personalizza l\'App',
+        content: "Nella pagina Profilo puoi personalizzare l'app, scegliere il tema visivo e gestire il tuo account.",
         tooltipPosition: 'right',
-        preAction: () => {}, // Sarà sovrascritto in App.tsx
+        preAction: () => {},
     },
     {
         id: 'pricing',
         elementSelector: '#tutorial-coincount',
-        title: '11. Ricarica ScanCoin',
-        content: "Questo è il tuo saldo ScanCoin. Se si esaurisce, clicca qui per accedere alla pagina dei prezzi e acquistare una ricarica.",
+        title: '10. Ricarica ScanCoin',
+        content: "Questo è il tuo saldo ScanCoin. Se si esaurisce, clicca qui per acquistare una ricarica.",
         tooltipPosition: 'bottom',
-        preAction: () => {}, // Sarà sovrascritto in App.tsx
+        preAction: () => {},
     },
     {
         id: 'chatbot',
         elementSelector: '#tutorial-chatbot',
-        title: '12. Parla con Ugo',
+        title: '11. Parla con Ugo',
         content: "Hai domande? Clicca qui per parlare con Ugo, il nostro assistente AI. Può aiutarti e anche eseguire comandi per te!",
         tooltipPosition: 'left',
-        preAction: () => {}, // Sarà sovrascritto in App.tsx
+        preAction: () => {},
     },
     {
         id: 'final',
         title: 'Tour Completato!',
-        content: 'Ora sei pronto per iniziare. Buon lavoro!',
+        content: 'Ora sei pronto per esplorare l\'intero ecosistema UnHub. Buon lavoro!',
         tooltipPosition: 'center',
     },
 ];
@@ -944,7 +944,11 @@ function AuthenticatedApp() {
         const unsubHistory = db.onScanHistoryUpdate(snapshot => {
             if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as ScanHistoryEntry);
-            setScanHistory(data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            setScanHistory(data.sort((a, b) => {
+                const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+                const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+                return dateB.getTime() - dateA.getTime();
+            }));
             setIsLoadingHistory(false);
              if (!historyLoaded.current) {
                 historyLoaded.current = true;
@@ -2646,11 +2650,16 @@ function AuthenticatedApp() {
         };
 
         const dynamicSteps = tutorialSteps.map(step => {
-            if (step.id === 'dashboard') return { ...step, preAction: () => navigateForTutorial('dashboard') };
-            if (step.id === 'profile') return { ...step, preAction: () => navigateForTutorial('profile') };
-            if (step.id === 'pricing') return { ...step, preAction: () => navigateForTutorial('scan') };
-            if (step.id === 'chatbot') return { ...step, preAction: () => navigateForTutorial('scan') };
-            return step;
+            switch(step.id) {
+                case 'archivio-page': return { ...step, preAction: () => navigateForTutorial('archivio') };
+                case 'polizze-page': return { ...step, preAction: () => navigateForTutorial('polizze') };
+                case 'disdette-page': return { ...step, preAction: () => navigateForTutorial('disdette') };
+                case 'dashboard': return { ...step, preAction: () => navigateForTutorial('dashboard') };
+                case 'profile': return { ...step, preAction: () => navigateForTutorial('profile') };
+                case 'pricing': return { ...step, preAction: () => navigateForTutorial('scan') };
+                case 'chatbot': return { ...step, preAction: () => navigateForTutorial('scan') };
+                default: return step;
+            }
         });
 
         // Ensure navigation happens before tutorial activation to prevent race conditions
