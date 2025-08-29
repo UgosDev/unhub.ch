@@ -1,5 +1,5 @@
 import React, { useEffect, type FC, type SVGProps } from 'react';
-import { SparklesIcon, BoltIcon, BuildingOffice2Icon, BookOpenIcon, XMarkIcon, CheckCircleIcon, XCircleIcon, DocumentPlusIcon, ClipboardDocumentIcon, UserCircleIcon } from './icons';
+import { SparklesIcon, BoltIcon, BuildingOffice2Icon, BookOpenIcon, XMarkIcon, CheckCircleIcon, XCircleIcon, DocumentPlusIcon, ClipboardDocumentIcon, UserCircleIcon, CameraIcon } from './icons';
 import type { ProcessingMode } from '../services/geminiService';
 import { COST_PER_SCAN_COINS } from '../services/geminiService';
 
@@ -74,6 +74,15 @@ export const ModeInfoModal: React.FC<ModeInfoModalProps> = ({ onClose }) => {
           idealFor: 'Documenti importanti, contratti, rapporti medici.',
           pros: ['Massima qualità di analisi e OCR', 'Estrazione dati più accurata', 'Miglior raddrizzamento immagine'],
           cons: ['Costo più alto', 'Leggermente più lento di Quick Scan']
+        },
+        {
+          id: 'fotografia' as ProcessingMode,
+          title: 'Fotografia',
+          icon: CameraIcon,
+          color: 'text-teal-600 dark:text-teal-400',
+          idealFor: "Foto, immagini, opere d'arte, screenshot.",
+          pros: ['Descrizione semantica dettagliata', 'Categorizzazione del contenuto', 'Abilita la ricerca per immagini ("trova le foto del mare")'],
+          cons: ['Non estrae testo (anche se presente)', 'Costo più elevato, specifico per analisi visuale']
         },
         {
           id: 'scontrino' as ProcessingMode,
@@ -154,7 +163,7 @@ export const ModeInfoModal: React.FC<ModeInfoModalProps> = ({ onClose }) => {
                         <XMarkIcon className="w-6 h-6" />
                     </button>
                 </header>
-                <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-5">
+                <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     {modes.map((mode) => (
                         <ModeCard 
                             key={mode.id}

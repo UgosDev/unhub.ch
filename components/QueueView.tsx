@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { ProcessingTask } from '../services/geminiService';
-import { ClockIcon, BoltIcon, SparklesIcon, BuildingOffice2Icon, BookOpenIcon, DocumentPlusIcon, ClipboardDocumentIcon, UserCircleIcon } from './icons';
+import { ClockIcon, BoltIcon, SparklesIcon, BuildingOffice2Icon, BookOpenIcon, DocumentPlusIcon, ClipboardDocumentIcon, UserCircleIcon, CameraIcon } from './icons';
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface QueueViewProps {
@@ -15,6 +15,7 @@ const modeDisplayInfo = {
     book: { name: 'Deep Scan', Icon: BookOpenIcon, color: 'text-blue-600', borderColor: 'border-blue-500' },
     scontrino: { name: 'Scontrino', Icon: ClipboardDocumentIcon, color: 'text-orange-500', borderColor: 'border-orange-500' },
     identity: { name: 'Doc. Identità', Icon: UserCircleIcon, color: 'text-indigo-600', borderColor: 'border-indigo-500' },
+    fotografia: { name: 'Fotografia', Icon: CameraIcon, color: 'text-teal-600', borderColor: 'border-teal-500' },
     'no-ai': { name: 'Simple Scan', Icon: DocumentPlusIcon, color: 'text-slate-500', borderColor: 'border-slate-500' },
 };
 

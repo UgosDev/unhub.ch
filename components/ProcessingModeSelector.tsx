@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ProcessingMode } from '../services/geminiService';
-import { SparklesIcon, BoltIcon, BuildingOffice2Icon, BookOpenIcon, DocumentPlusIcon, ChevronDownIcon, ClipboardDocumentIcon, UserCircleIcon } from './icons';
+import { SparklesIcon, BoltIcon, BuildingOffice2Icon, BookOpenIcon, DocumentPlusIcon, ChevronDownIcon, ClipboardDocumentIcon, UserCircleIcon, CameraIcon } from './icons';
 import { COST_PER_SCAN_COINS } from '../services/geminiService';
 import * as settingsService from '../services/settingsService';
 
@@ -21,6 +21,14 @@ const allModes = [
       icon: <SparklesIcon className="w-5 h-5" />,
       color: 'text-purple-600 dark:text-purple-400',
       activeClass: 'ring-purple-500 bg-purple-50 dark:bg-purple-900/20',
+    },
+    {
+      id: 'fotografia' as ProcessingMode,
+      title: 'Fotografia',
+      description: `Analisi semantica di immagini. • ${COST_PER_SCAN_COINS.fotografia} ScanCoin/scan`,
+      icon: <CameraIcon className="w-5 h-5" />,
+      color: 'text-teal-600 dark:text-teal-400',
+      activeClass: 'ring-teal-500 bg-teal-50 dark:bg-teal-900/20',
     },
     {
       id: 'scontrino' as ProcessingMode,

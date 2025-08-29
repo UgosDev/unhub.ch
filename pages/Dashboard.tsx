@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import type { ProcessedPageResult, ScanHistoryEntry, ProcessingMode } from '../services/geminiService';
 import { DocumentTextIcon, ShieldCheckIcon, ChevronRightIcon, CoinIcon, BoltIcon, DownloadIcon, CreditCardIcon, CheckCircleIcon, XCircleIcon, SparklesIcon, ArrowUturnLeftIcon } from '../components/icons';
@@ -66,6 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, history, isLoad
         book: 'Deep Scan',
         scontrino: 'Scontrino',
         identity: 'Doc. Identità',
+        fotografia: 'Fotografia',
         'no-ai': 'Simple Scan'
     };
 
@@ -185,7 +185,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, history, isLoad
                     <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                         <thead className="bg-slate-50 dark:bg-slate-700/50 sticky top-0">
                             <tr>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data e Ora</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrizione</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Modalità</th>
                                 <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Variazione (SC)</th>
@@ -203,7 +203,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, history, isLoad
                                     
                                     return (
                                         <tr key={entry.id} data-history-uuid={entry.uuid} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-context-menu">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{new Date(entry.timestamp).toLocaleString('it-CH')}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{(entry.timestamp as any)?.toDate().toLocaleString('it-CH')}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-800 dark:text-slate-200 max-w-xs truncate" title={entry.description}>
                                                  <div className="flex items-center gap-2">
                                                     <TypeIcon type={entry.type} />

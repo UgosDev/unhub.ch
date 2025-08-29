@@ -6,7 +6,7 @@ import { defaultSettings } from './settingsService';
 
 export interface ArchivedChat {
     id?: string; // Firestore uses string IDs
-    timestamp: string;
+    timestamp: firebase.firestore.Timestamp;
     history: ChatMessage[];
 }
 
@@ -350,7 +350,7 @@ export const getArchivedChats = async (userId: string): Promise<ArchivedChat[]> 
         return {
             id: doc.id,
             history: data.history,
-            timestamp: data.timestamp?.toDate().toISOString() || new Date().toISOString()
+            timestamp: data.timestamp
         }
     });
 };

@@ -226,7 +226,6 @@ export const EyeIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWra
 export const FastForwardIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>fast_forward</IconWrapper>);
 export const FileIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>insert_drive_file</IconWrapper>);
 export const FolderIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>folder</IconWrapper>);
-// FIX: Add FolderPlusIcon export
 export const FolderPlusIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>create_new_folder</IconWrapper>);
 export const HandThumbDownIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>thumb_down</IconWrapper>);
 export const HandThumbUpIcon: FC<HTMLAttributes<HTMLSpanElement>> = (props) => (<IconWrapper {...props}>thumb_up</IconWrapper>);

@@ -52,6 +52,20 @@ Lista di funzionalità e miglioramenti futuri, organizzati per categoria.
 
 Cronologia delle note di lavoro per ogni versione rilasciata.
 
+# Note del 11/10/2025 - v9.3.0
+- **Implementazione Modalità Fotografia**: Aggiunta una nuova modalità di scansione "Fotografia" per l'analisi semantica delle immagini.
+- **Analisi AI**: La modalità utilizza il modello `gemini-2.5-flash` con "Thinking Mode" abilitato per descrivere e categorizzare il contenuto visivo delle immagini, senza estrarre testo.
+- **Ricerca Semantica**: I dati generati (descrizioni dettagliate, categorie, tag) potenziano la ricerca semantica in `archivio.ch`, permettendo di trovare immagini con linguaggio naturale.
+- **Costo**: La nuova modalità ha un costo di 50 ScanCoin per immagine.
+- **Integrazione UI**: La modalità "Fotografia" è stata integrata in tutti i componenti dell'interfaccia utente (selettore modalità, modale informativa, storico, filtri).
+- Aggiornata tutta la documentazione e la versione a 9.3.0.
+
+# Note del 10/10/2025 - v9.2.0
+- **Implementazione Rubrica Mittenti**: Aggiunta una nuova funzionalità di rubrica per salvare automaticamente i mittenti dei documenti scansionati.
+- **Estrazione AI**: L'analisi AI ora estrae `mittenteNome` e `mittenteIndirizzo` e li salva in una nuova raccolta `addressBook`.
+- **Integrazione Disdette**: Il wizard di creazione disdette ora include un campo di ricerca con autocompletamento che pesca dalla rubrica, pre-compilando i dati del destinatario.
+- **Salvataggio Automatico**: Anche i destinatari inseriti manualmente nel wizard vengono aggiunti o aggiornati nella rubrica per usi futuri.
+
 # Note del 27/07/2025 - v6.16.0
 - **Superpotenziamento Chatbot "Ugo"**: Implementate quattro nuove funzionalità avanzate per trasformare Ugo in un assistente proattivo:
   1. **Assistenza Proattiva**: All'apertura, Ugo analizza l'area di lavoro e offre suggerimenti (es. segnala documenti non sicuri, saldo basso, ecc.).

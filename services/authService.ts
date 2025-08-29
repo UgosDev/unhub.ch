@@ -70,7 +70,7 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             scansUsed: 0,
             scansTotal: 100,
             totalCostEver: 0,
-            scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0 },
+            scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0, fotografia: 0 },
             scanCoinBalance: 1000,
             addressMismatchCount: 0,
         };
@@ -138,7 +138,7 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             scansUsed: 0,
             scansTotal: 0,
             totalCostEver: 0,
-            scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0 },
+            scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0, fotografia: 0 },
             scanCoinBalance: 0,
             addressMismatchCount: 0,
         };
@@ -185,7 +185,7 @@ export async function register(name: string, email: string, password: string): P
         scansUsed: 0,
         scansTotal: 100,
         totalCostEver: 0,
-        scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0 },
+        scansByModeEver: { quality: 0, speed: 0, business: 0, book: 0, 'no-ai': 0, scontrino: 0, identity: 0, fotografia: 0 },
         scanCoinBalance: 1000,
         addressMismatchCount: 0,
     };

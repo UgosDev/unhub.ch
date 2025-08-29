@@ -1,6 +1,6 @@
 # unhub.ch
 
-**Versione: 9.2.0**
+**Versione: 9.3.0**
 
 Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata su un'architettura "human-in-the-loop" e un'economia interna basata su "ScanCoin".
 
@@ -35,11 +35,11 @@ Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata 
   - **Funzionalità Nascoste (Easter Eggs)**: Include un sistema di ricompense per la gentilezza, gestione dei reclami con rimborsi e inviti a una community per utenti fedeli.
   - **Adattamento Linguistico Avanzato**: Riconosce e risponde nelle lingue e dialetti svizzeri, aggiungendo personalità all'interazione.
 - **Download Sicuro e Flessibile**: Esporta i fascicoli come ZIP o come singoli PDF multi-pagina.
-- **Coda di Lavoro Flessibile e Modalità Multiple**: Aggiungi file a una coda continua e scegli la modalità di scansione per i prossimi caricamenti anche mentre altri file sono in elaborazione. Sono disponibili le modalità "Chroma Scan", "Quick Scan", "Batch Scan", "Deep Scan", "Scontrino" o la modalità gratuita "Simple Scan".
+- **Coda di Lavoro Flessibile e Modalità Multiple**: Aggiungi file a una coda continua e scegli la modalità di scansione per i prossimi caricamenti anche mentre altri file sono in elaborazione. Sono disponibili le modalità "Chroma Scan", "Quick Scan", "Batch Scan", "Deep Scan", "Scontrino", "Fotografia" o la modalità gratuita "Simple Scan".
 
 ### Scansione da Fotocamera Professionale
 - **Rilevamento Bordi e Ritaglio Automatico (OpenCV.js)**: Rileva, ritaglia e raddrizza automaticamente i documenti.
-- **Ritaglio Manuale di Precisione**: Dopo lo scatto, puoi aggiustare manualmente i 4 angoli del documento con l'aiuto di una lente d'ingrandimento.
+- **Ritaglio Manuale di Precisione**: Dopo lo scatto, puoi aggiustare manually i 4 angoli del documento con l'aiuto di una lente d'ingrandimento.
 - **Flash Automatico e Guida all'Allineamento**: La torcia si attiva da sola e una guida visiva aiuta a posizionare lo scatto.
 
 ### Analisi AI con Gemini & Sicurezza

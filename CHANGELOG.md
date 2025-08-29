@@ -4,6 +4,11 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.3.0]
+
+### Aggiunto
+* **Modalità "Fotografia"**: Una nuova modalità di scansione specializzata per l'analisi semantica di immagini. Non estrae testo, ma descrive e categorizza il contenuto visivo, abilitando la ricerca per immagini in `archivio.ch`. Utilizza il modello `gemini-2.5-flash` con "Thinking Mode" e ha un costo di 50 ScanCoin.
+
 ## [9.2.0]
 
 ### Aggiunto

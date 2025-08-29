@@ -32,7 +32,8 @@ export const safetySettings = [
 
 // --- TIPI E INTERFACCE ---
 export type Point = { x: number; y: number };
-export type ProcessingMode = 'quality' | 'speed' | 'business' | 'book' | 'no-ai' | 'scontrino' | 'identity';
+// INTEGRAZIONE: aggiunta 'fotografia'
+export type ProcessingMode = 'quality' | 'speed' | 'business' | 'book' | 'no-ai' | 'scontrino' | 'identity' | 'fotografia';
 
 export interface TokenUsage {
     promptTokenCount: number;
@@ -68,7 +69,7 @@ export interface ProcessedPageResult {
     };
     costInCoins?: number;
     processingMode: ProcessingMode;
-    timestamp: string;
+    timestamp: any;
     mimeType: string;
     extractedImages?: { description: string, imageDataUrl: string }[];
     retryCount?: number;
@@ -112,7 +113,7 @@ export interface QueuedFile {
 
 export interface ScanHistoryEntry {
     id?: string;
-    timestamp: string;
+    timestamp: any;
     description: string;
     amountInCoins: number; // Positivo per accrediti, negativo per addebiti
     status: 'Success' | 'Error' | 'Credited';
@@ -120,7 +121,6 @@ export interface ScanHistoryEntry {
     uuid?: string; // Solo per le scansioni
     processingMode?: ProcessingMode; // Solo per le scansioni
 }
-
 
 export interface UsageHistoryEntry {
     id?: number;
@@ -147,8 +147,8 @@ export interface AddressBookEntry {
     lastUsed: firebase.firestore.Timestamp;
 }
 
-
 // --- COSTANTI DI COSTO PER SCANSIONE IN SCANCOIN ---
+// INTEGRAZIONE: aggiunta 'fotografia'
 export const COST_PER_SCAN_COINS: { [key in ProcessingMode]: number } = {
     quality: 10,
     speed: 2,
@@ -156,6 +156,7 @@ export const COST_PER_SCAN_COINS: { [key in ProcessingMode]: number } = {
     book: 25,
     scontrino: 12,
     identity: 20,
+    fotografia: 50,
     'no-ai': 0,
 };
 
@@ -170,9 +171,9 @@ export const COST_PER_SCAN_CHF: { [key in ProcessingMode]: number } = {
     book: COST_PER_SCAN_COINS.book * COIN_TO_CHF_RATE,
     scontrino: COST_PER_SCAN_COINS.scontrino * COIN_TO_CHF_RATE,
     identity: COST_PER_SCAN_COINS.identity * COIN_TO_CHF_RATE,
+    fotografia: COST_PER_SCAN_COINS.fotografia * COIN_TO_CHF_RATE,
     'no-ai': COST_PER_SCAN_COINS['no-ai'] * COIN_TO_CHF_RATE,
 };
-
 
 // Helper per ordinare gli angoli in senso orario partendo da top-left
 const sortCorners = (corners: Point[]): Point[] => {
@@ -301,7 +302,7 @@ export function createWarpedImageFromCorners(sourceImageUrl: string, normalizedC
             drawPolygon(poly3_points, `rgba(158, 91, 254, ${opacity})`);
             drawPolygon(poly1_points, `rgba(198, 161, 252, ${opacity})`);
 
-            // 2. Text Drawing
+            // 2. Text Drawing (più informativo)
             const fontSize = Math.max(9, finalCanvas.height * 0.012);
             ctx.font = `bold ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
             ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
@@ -381,6 +382,7 @@ export function cropImageWithBoundingBox(sourceImageUrl: string, boundingBox: Po
     });
 }
 
+// --- SCHEMI (ricchi dalla prima) ---
 
 const responseSchema = {
     type: Type.OBJECT,
@@ -395,7 +397,7 @@ const responseSchema = {
         destinatarioNome: { type: Type.STRING, description: "Opzionale. Il nome del destinatario principale del documento. Se non è esplicito, o se è l'utente stesso, lascia vuoto." },
         destinatarioIndirizzo: { type: Type.STRING, description: "Opzionale. L'indirizzo postale completo del destinatario principale. Se l'indirizzo non è esplicito o appartiene all'utente, lascia questo campo vuoto." },
         numeroContratto: { type: Type.STRING, description: "Opzionale. Il numero di contratto o di polizza, se chiaramente identificabile." },
-        qualitaScansione: { type: Type.STRING, description: "Valuta la qualità dell'immagine. 'Parziale' se il documento è visibilmente tagliato. Se non vedi un'immagine, usa 'N/A'.", enum: ["Ottima", "Buona", "Sufficiente", "Bassa", "Parziale", "N/A"] },
+        qualitaScansione: { type: Type.STRING, description: "Valuta la qualità dell'immagine. 'Parziale' se il documento è visibilmente tagliato. Se non vedi un'immagine, usa 'N/A'.", enum: ["Ottima", "Buona", "Sufficiente", "Bassa", "Parziale", "N/A", "ERRORE"] },
         lingua: { type: Type.STRING, description: "La lingua del documento (es. 'Italiano')." },
         documentoCompleto: { type: Type.BOOLEAN, description: "È true se questa pagina è un documento completo, false se è parte di un documento più grande." },
         numeroPaginaStimato: { type: Type.STRING, description: "Se vedi un numero di pagina (es. 'pag. 2/3'), estrailo qui. Altrimenti usa 'N/A'." },
@@ -572,13 +574,31 @@ const identityResponseSchema = {
     required: ["tipoDocumento", "nome", "cognome", "dataNascita", "numeroDocumento", "dataScadenza", "documentCorners", "securityCheck"]
 };
 
+// INTEGRAZIONE: nuovo schema per modalità fotografia
+const fotografiaResponseSchema = {
+    type: Type.OBJECT,
+    properties: {
+        soggetto: { type: Type.STRING, description: "Titolo breve (max 10 parole) dell'immagine." },
+        categoria: { type: Type.STRING, description: "Categoria (Paesaggio, Ritratto, Architettura, Cibo, Documento, Grafico, Arte, Astratto, Natura Morta)." },
+        riassunto: { type: Type.STRING, description: "2-3 frasi su contenuto/emozioni/contesto dell'immagine." },
+        tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5-10 tag pertinenti per ricerca semantica." }
+    },
+    required: ["soggetto", "categoria", "riassunto", "tags"]
+};
+
+// --- PROCESSORS ---
 
 export async function processPage(base64Data: string, mimeType: string, mode: ProcessingMode, extractImages: boolean): Promise<{ analysis: any, securityCheck: any, tokenUsage: TokenUsage }> {
     let systemInstruction: string;
     let schema: object;
 
     switch (mode) {
-        case 'book':
+        case 'fotografia': {
+            systemInstruction = "Sei un AI esperta in analisi di immagini per catalogazione. Ignora eventuale testo. Descrivi SOLO contenuto visivo, colori, forme, emozioni e contesto. Rispondi SOLO in JSON secondo schema.";
+            schema = fotografiaResponseSchema;
+            break;
+        }
+        case 'book': {
             let bookImageInstruction = '';
             if (extractImages) {
                 bookImageInstruction = "Estrai anche una lista di immagini rilevanti (solo loghi, firme o foto chiare), fornendo un bounding box MOLTO preciso.";
@@ -588,7 +608,8 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
             systemInstruction = `Sei un assistente OCR. Estrai l'intero testo da questa pagina e identifica la lingua. Fornisci un titolo e identificativi per raggruppare questa pagina con altre dello stesso documento. Rispondi SOLO in JSON. ${bookImageInstruction}`;
             schema = bookResponseSchema;
             break;
-        case 'scontrino':
+        }
+        case 'scontrino': {
             let receiptImageInstruction = '';
             if (extractImages) {
                 receiptImageInstruction = "Identifica anche il bounding box STRETTO del logo/intestazione principale dello scontrino, se presente.";
@@ -598,14 +619,16 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
             systemInstruction = `Sei un assistente per la contabilità. Estrai tutti i dati da questo scontrino, incluse tutte le voci. Rispondi SOLO in JSON. ${receiptImageInstruction}`;
             schema = scontrinoResponseSchema;
             break;
-        case 'identity':
+        }
+        case 'identity': {
             systemInstruction = `Sei un esperto nell'estrazione di dati da documenti d'identità (carte d'identità, patenti, permessi). Analizza l'immagine e estrai tutti i campi rilevanti. Il numero del documento è il dato più importante per il raggruppamento. Rispondi SOLO con un oggetto JSON valido.`;
             schema = identityResponseSchema;
             break;
+        }
         case 'quality':
         case 'speed':
         case 'business':
-        default:
+        default: {
             let imageInstruction = '';
             if (extractImages) {
                 imageInstruction = "Estrai anche una lista di immagini rilevanti (solo loghi, firme o foto chiare), fornendo un bounding box MOLTO preciso. Ignora elementi decorativi.";
@@ -615,6 +638,7 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
             systemInstruction = `Sei un esperto archivista. Analizza l'immagine e rispondi SOLO con un oggetto JSON valido. ${imageInstruction}`;
             schema = responseSchema;
             break;
+        }
     }
 
     try {
@@ -630,15 +654,27 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
                 responseMimeType: "application/json",
                 responseSchema: schema,
                 safetySettings,
+                ...(mode === 'speed' ? { thinkingConfig: { thinkingBudget: 0 } } : {})
             },
         });
         
         const jsonText = response.text;
         const result = JSON.parse(jsonText);
 
-        let finalResult = { analysis: result, securityCheck: result.securityCheck || { isSafe: true, threatType: 'Nessuna', explanation: 'N/A' }, tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 } };
+        // INTEGRAZIONE: token usage reali se disponibili
+        const tokenUsage: TokenUsage = {
+            promptTokenCount: (response as any).usageMetadata?.promptTokenCount || 0,
+            candidatesTokenCount: (response as any).usageMetadata?.candidatesTokenCount || 0,
+            totalTokenCount: (response as any).usageMetadata?.totalTokenCount || 0
+        };
+
+        let finalResult = { 
+            analysis: result, 
+            securityCheck: result.securityCheck || { isSafe: true, threatType: 'Nessuna', explanation: 'N/A' }, 
+            tokenUsage 
+        };
         
-        // Handle mode-specific transformations
+        // Handle mode-specific transformations (ricchezza della prima + fotografia nuova)
         if (mode === 'book') {
             finalResult.analysis = {
                 ...finalResult.analysis,
@@ -658,7 +694,7 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
                 lingua: 'Italiano',
                 documentoCompleto: true,
                 titoloFascicolo: `Scontrino ${finalResult.analysis.esercente} ${finalResult.analysis.dataDocumento}`,
-                groupingSubjectNormalized: finalResult.analysis.esercente.replace(/\s+/g, ''),
+                groupingSubjectNormalized: String(finalResult.analysis.esercente || '').replace(/\s+/g, ''),
                 groupingIdentifier: finalResult.analysis.dataDocumento,
                 datiEstratti: [
                     { chiave: "Esercente", valore: String(finalResult.analysis.esercente) },
@@ -685,6 +721,25 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
                     .filter(([key]) => !['documentCorners', 'securityCheck'].includes(key))
                     .map(([chiave, valore]) => ({ chiave, valore: String(valore) }))
             };
+        } else if (mode === 'fotografia') {
+            const photo = finalResult.analysis;
+            finalResult.analysis = {
+                categoria: "Fotografia",
+                dataDocumento: new Date().toISOString().split('T')[0],
+                soggetto: photo.soggetto,
+                riassunto: photo.riassunto,
+                qualitaScansione: "N/A",
+                lingua: "N/A",
+                documentoCompleto: true,
+                numeroPaginaStimato: "N/A",
+                titoloFascicolo: photo.soggetto || "Fotografia",
+                groupingSubjectNormalized: (photo.soggetto || 'Fotografia').replace(/\s+/g, ''),
+                groupingIdentifier: `foto-${Date.now()}`,
+                datiEstratti: [],
+                documentCorners: [],
+                securityCheck: { isSafe: true, threatType: "Nessuna", explanation: "Contenuto visivo." },
+                tags: Array.isArray(photo.tags) ? photo.tags : []
+            };
         }
 
         return finalResult;
@@ -704,7 +759,6 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
     }
 }
 
-
 export const analyzeTextForFeedback = async (text: string): Promise<{ isComplaint: boolean; isConstructive: boolean }> => {
     const feedbackSchema = {
         type: Type.OBJECT,
@@ -722,7 +776,8 @@ export const analyzeTextForFeedback = async (text: string): Promise<{ isComplain
             config: {
                 responseMimeType: "application/json",
                 responseSchema: feedbackSchema,
-                systemInstruction: "Sei un esperto nell'analisi del sentiment e del feedback degli utenti. Valuta il testo fornito e rispondi solo con il JSON richiesto."
+                systemInstruction: "Sei un esperto nell'analisi del sentiment e del feedback degli utenti. Valuta il testo fornito e rispondi solo con il JSON richiesto.",
+                thinkingConfig: { thinkingBudget: 0 }
             }
         });
         const responseText = response.text;
@@ -759,7 +814,8 @@ export const analyzeSentimentForGamification = async (userMessages: string[]): P
             config: {
                 responseMimeType: "application/json",
                 responseSchema: sentimentSchema,
-                systemInstruction: "You are a sentiment analysis expert. Respond with 'positive' if the user is clearly friendly, polite, or kind. Use 'neutral' for standard, transactional messages. Use 'negative' only for rude or clearly frustrated messages. Respond ONLY with the requested JSON."
+                systemInstruction: "You are a sentiment analysis expert. Respond with 'positive' if the user is clearly friendly, polite, or kind. Use 'neutral' for standard, transactional messages. Use 'negative' only for rude or clearly frustrated messages. Respond ONLY with the requested JSON.",
+                thinkingConfig: { thinkingBudget: 0 }
             }
         });
         const responseText = response.text;
@@ -771,7 +827,7 @@ export const analyzeSentimentForGamification = async (userMessages: string[]): P
     }
 };
 
-// --- FUNZIONE PER UGO EXPERIENCE ---
+// --- FUNZIONE PER UGO EXPERIENCE (streaming, dalla prima) ---
 
 const ugoExperienceSchema = {
     type: Type.OBJECT,
@@ -819,12 +875,9 @@ export async function startUgoExperienceStream(
 
         for await (const chunk of responseStream) {
             try {
-                // Since we expect a full JSON object in each chunk with streaming JSON, we can parse directly.
                 const parsed = JSON.parse(chunk.text);
                 onUpdate(parsed);
             } catch (e) {
-                // If parsing fails, it might be an incomplete chunk, though less likely with streaming JSON.
-                // We can choose to ignore it or accumulate, but for real-time, ignoring is often better.
                  console.warn("Could not parse JSON chunk from Ugo Experience stream:", chunk.text);
             }
         }
@@ -834,38 +887,42 @@ export async function startUgoExperienceStream(
     }
 }
 
-// --- NUOVE FUNZIONI ---
+// --- NUOVE FUNZIONI / MIGLIORATE ---
 
 /**
- * Suggerisce la modalità di elaborazione basandosi su una rapida analisi del nome del file.
+ * Suggerisce la modalità di elaborazione.
+ * Strategia ibrida: euristiche veloci; se non deterministico → AI (integrazione seconda versione).
  */
 export async function suggestProcessingMode(file: File): Promise<ProcessingMode | null> {
-    const fileName = file.name.toLowerCase();
-    
-    // Simula una latenza di rete per il suggerimento
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const name = (file.name || '').toLowerCase();
+    const type = file.type || '';
 
-    if (fileName.includes('scontrino') || fileName.includes('ricevuta')) {
-        return 'scontrino';
-    }
-    if (fileName.includes('identità') || fileName.includes('patente') || fileName.includes('passaporto')) {
-        return 'identity';
-    }
-    if (fileName.includes('contratto') || fileName.includes('lettera')) {
-        return 'book';
-    }
-     if (file.type === 'application/pdf' && file.size > 1000 * 1000) { // PDF > 1MB
-        return 'business';
-    }
-    if (file.type.startsWith('image/')) {
-        return 'quality';
-    }
+    // Euristiche locali (fast path)
+    if (name.includes('scontrino') || name.includes('ricevuta')) return 'scontrino';
+    if (name.includes('identità') || name.includes('identita') || name.includes('patente') || name.includes('passaporto')) return 'identity';
+    if (name.includes('contratto') || name.includes('lettera')) return 'book';
+    if (type === 'application/pdf' && file.size > 1_000_000) return 'business';
+    if (type.startsWith('image/')) return 'quality';
 
-    return null; // Nessun suggerimento forte
+    // Fallback AI (seconda versione)
+    const systemInstruction = "Analizza il nome del file e il tipo MIME per suggerire la modalità di scansione più appropriata tra 'quality', 'scontrino', 'identity', 'book', 'business', 'fotografia'. Restituisci SOLO la parola chiave esatta.";
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Nome file: "${file.name}", Tipo MIME: "${file.type}"`,
+            config: { systemInstruction, responseMimeType: "text/plain", thinkingConfig: { thinkingBudget: 0 } }
+        });
+        const suggestion = (response.text || '').trim() as ProcessingMode;
+        const allowed: ProcessingMode[] = ['quality','scontrino','identity','book','business','fotografia'];
+        return allowed.includes(suggestion) ? suggestion : null;
+    } catch (error) {
+        console.warn("Mode suggestion (AI) failed:", error);
+        return null;
+    }
 }
 
 /**
- * Esegue un'elaborazione OCR offline utilizzando Tesseract.js.
+ * OCR offline (prima) + tag 'offline' (integrazione seconda).
  */
 export async function processPageOffline(imageDataUrl: string): Promise<Pick<ProcessedPageResult, 'analysis' | 'securityCheck' | 'tokenUsage' | 'costInCoins' | 'processedOffline'>> {
     try {
@@ -879,7 +936,7 @@ export async function processPageOffline(imageDataUrl: string): Promise<Pick<Pro
             analysis: {
                 categoria: "Offline",
                 dataDocumento: new Date().toISOString().split('T')[0],
-                soggetto: "Elaborazione Locale",
+                soggetto: text?.split('\n')[0] || "Elaborazione Locale",
                 riassunto: riassunto,
                 qualitaScansione: "N/A",
                 lingua: "Italiano",
@@ -890,6 +947,7 @@ export async function processPageOffline(imageDataUrl: string): Promise<Pick<Pro
                 groupingIdentifier: `offline-${Date.now()}`,
                 datiEstratti: [{ chiave: "Testo Estratto", valore: text || "Nessun testo rilevato." }],
                 documentCorners: [],
+                tags: ['offline'],
             },
             securityCheck: { isSafe: true, threatType: "Nessuna", explanation: "Analisi di sicurezza non eseguita in modalità offline." },
             tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
@@ -916,7 +974,7 @@ export async function processPageOffline(imageDataUrl: string): Promise<Pick<Pro
 }
 
 /**
- * Analizza del testo grezzo con Gemini per estrarre dati strutturati.
+ * Analizza del testo grezzo con Gemini per estrarre dati strutturati. (prima)
  */
 export async function processTextWithGemini(ocrText: string): Promise<{ analysis: any, securityCheck: any, tokenUsage: TokenUsage }> {
     const systemInstruction = "Sei un esperto archivista. Riceverai del testo grezzo estratto da un documento tramite OCR. Il tuo compito è pulire il testo, capirne il significato e strutturarlo nel JSON richiesto. Poiché non puoi vedere l'immagine, imposta 'qualitaScansione' a 'N/A' e 'documentCorners' a coordinate full-frame ([[0,0], [1,0], [1,1], [0,1]]). Sii il più accurato possibile con i dati che puoi inferire dal testo.";
@@ -930,16 +988,23 @@ export async function processTextWithGemini(ocrText: string): Promise<{ analysis
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
                 safetySettings,
+                thinkingConfig: { thinkingBudget: 0 }
             },
         });
 
         const jsonText = response.text;
         const result = JSON.parse(jsonText);
 
+        const tokenUsage: TokenUsage = {
+            promptTokenCount: (response as any).usageMetadata?.promptTokenCount || 0,
+            candidatesTokenCount: (response as any).usageMetadata?.candidatesTokenCount || 0,
+            totalTokenCount: (response as any).usageMetadata?.totalTokenCount || 0
+        };
+
         return { 
             analysis: result, 
             securityCheck: result.securityCheck || { isSafe: true, threatType: 'Nessuna', explanation: 'N/A' }, 
-            tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 } 
+            tokenUsage
         };
     } catch (error) {
         console.error("Errore durante l'analisi del testo con Gemini:", error);
@@ -957,9 +1022,8 @@ export async function processTextWithGemini(ocrText: string): Promise<{ analysis
     }
 }
 
-
 /**
- * Esegue una ricerca semantica sui documenti forniti utilizzando Gemini.
+ * Ricerca semantica (prima) + fallback testuale (integrazione seconda).
  */
 export async function performSemanticSearch(query: string, docs: ProcessedPageResult[]): Promise<ProcessedPageResult[]> {
     if (docs.length === 0) {
@@ -996,7 +1060,8 @@ export async function performSemanticSearch(query: string, docs: ProcessedPageRe
                 systemInstruction: "Sei un motore di ricerca semantica. Analizza la query dell'utente e la lista di documenti JSON. Restituisci SOLO un oggetto JSON contenente un array di UUID dei documenti che meglio corrispondono alla query, ordinati per pertinenza decrescente. Non includere documenti irrilevanti.",
                 responseMimeType: "application/json",
                 responseSchema: searchSchema,
-                safetySettings
+                safetySettings,
+                thinkingConfig: { thinkingBudget: 0 }
             }
         });
 
@@ -1011,8 +1076,13 @@ export async function performSemanticSearch(query: string, docs: ProcessedPageRe
         return sortedDocs;
 
     } catch (error) {
-        console.error("Errore durante la ricerca semantica con Gemini:", error);
-        throw new Error("L'analisi della ricerca è fallita. Riprova più tardi.");
+        console.error("Errore durante la ricerca semantica con Gemini, fallback su ricerca testuale:", error);
+        const lower = query.toLowerCase();
+        return docs.filter(doc => 
+            (doc.analysis.soggetto || '').toLowerCase().includes(lower) ||
+            (doc.analysis.riassunto || '').toLowerCase().includes(lower) ||
+            (doc.tags || []).some(tag => tag.toLowerCase().includes(lower))
+        );
     }
 }
 
@@ -1056,7 +1126,8 @@ Rispondi SOLO con un oggetto JSON che indica 'bestFolderId' e 'reasoning'. Se ne
             config: {
                 responseMimeType: "application/json",
                 responseSchema: folderSuggestionSchema,
-                safetySettings
+                safetySettings,
+                thinkingConfig: { thinkingBudget: 0 }
             }
         });
         const jsonText = response.text;
@@ -1132,7 +1203,8 @@ Rispondi SOLO con un oggetto JSON valido che rispetti lo schema fornito.`;
                 systemInstruction: "Sei un consulente assicurativo AI esperto. Il tuo compito è analizzare il portafoglio di un utente e fornire spunti utili e chiari.",
                 responseMimeType: "application/json",
                 responseSchema: insightsSchema,
-                safetySettings
+                safetySettings,
+                thinkingConfig: { thinkingBudget: 0 }
             }
         });
         

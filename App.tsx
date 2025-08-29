@@ -282,7 +282,7 @@ const sanitizeImageDataUrl = (imageDataUrl: string): Promise<{ dataUrl: string; 
         image.onload = () => {
             const canvas = document.createElement('canvas');
             // Assicura che il canvas non sia troppo grande per evitare problemi di memoria, mantenendo l'aspect ratio
-            const MAX_DIMENSION = 2048;
+            const MAX_DIMENSION = 1600;
             let { naturalWidth: width, naturalHeight: height } = image;
             if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
                 if (width > height) {
@@ -1764,7 +1764,7 @@ function AuthenticatedApp() {
               documentHash: 'hash-failed-on-sanitize',
               sourceFileName,
               sourceFileId,
-              originalImageDataUrl,
+              originalImageDataUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
               processedImageDataUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
               analysis: {
                   categoria: "ERRORE",
@@ -1799,7 +1799,7 @@ function AuthenticatedApp() {
             const { analysis, securityCheck, tokenUsage, costInCoins, processedOffline } = await processPageOffline(sanitizedData.dataUrl);
             const processedImageDataUrl = await createWarpedImageFromCorners(sanitizedData.dataUrl, [], uuid, timestamp);
             const offlineResult: ProcessedPageResult = {
-                pageNumber: globalPageNum, uuid, documentHash, sourceFileName, sourceFileId, originalImageDataUrl,
+                pageNumber: globalPageNum, uuid, documentHash, sourceFileName, sourceFileId, originalImageDataUrl: sanitizedData.dataUrl,
                 processedImageDataUrl, analysis, securityCheck, tokenUsage, pageInfo, costInCoins,
                 processingMode: mode, timestamp, mimeType, processedOffline
             };
@@ -1830,7 +1830,7 @@ function AuthenticatedApp() {
     } else if (mode === 'no-ai') {
         const processedImageDataUrl = await createWarpedImageFromCorners(sanitizedData.dataUrl, [], uuid, timestamp);
         const newResult: ProcessedPageResult = {
-            pageNumber: globalPageNum, uuid, documentHash, sourceFileName, sourceFileId, originalImageDataUrl,
+            pageNumber: globalPageNum, uuid, documentHash, sourceFileName, sourceFileId, originalImageDataUrl: sanitizedData.dataUrl,
             processedImageDataUrl,
             analysis: {
                 categoria: "Senza Analisi", dataDocumento: new Date().toISOString().split('T')[0],
@@ -1918,7 +1918,7 @@ function AuthenticatedApp() {
         uuid,
         documentHash,
         sourceFileName: sourceFileName,
-        originalImageDataUrl: originalImageDataUrl,
+        originalImageDataUrl: sanitizedData.dataUrl,
         processedImageDataUrl: processedImageDataUrl,
         analysis,
         securityCheck,

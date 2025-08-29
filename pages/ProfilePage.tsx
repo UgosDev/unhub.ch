@@ -584,14 +584,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
 
             // Add to history
             const newHistoryEntry: ScanHistoryEntry = {
-                timestamp: new Date().toISOString(),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 description: `Codice promozionale: ${promoCode}`,
                 amountInCoins: rewardAmount,
                 status: 'Credited',
                 type: 'promo',
             };
             await firestoreService.addScanHistoryEntry(user.uid, newHistoryEntry);
-            setScanHistory(prev => [newHistoryEntry, ...prev].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            setScanHistory(prev => [newHistoryEntry, ...prev].sort((a,b) => (b.timestamp as any).toDate().getTime() - (a.timestamp as any).toDate().getTime()));
             
             setPromoMessage({ type: 'success', text: `Successo! ${rewardAmount} ScanCoin sono stati aggiunti al tuo saldo.` });
             setPromoCode('');
