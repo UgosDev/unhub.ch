@@ -1,6 +1,6 @@
-# scansioni.ch
+# unhub.ch
 
-**Versione: 8.6.1**
+**Versione: 9.2.0**
 
 Un'applicazione web avanzata per estrarre dati strutturati da documenti, basata su un'architettura "human-in-the-loop" e un'economia interna basata su "ScanCoin".
 

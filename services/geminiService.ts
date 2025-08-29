@@ -1,5 +1,7 @@
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import Tesseract from 'tesseract.js';
+// FIX: import firebase to use firebase.firestore.Timestamp type
+import { firebase } from './firebase';
 
 const API_KEY = process.env.API_KEY;
 
@@ -78,6 +80,9 @@ export interface ProcessedPageResult {
     ownerUid?: string;
     ownerName?: string;
     folderId?: string | null;
+    // FIX: Add missing properties for `disdette` feature.
+    status?: string;
+    reminderDate?: string;
 }
 
 export interface DocumentGroup {
@@ -135,11 +140,18 @@ export interface Folder {
     ownerUid: string;
 }
 
+export interface AddressBookEntry {
+    id: string; // Firestore document ID (normalized name)
+    name: string;
+    address: string;
+    lastUsed: firebase.firestore.Timestamp;
+}
+
 
 // --- COSTANTI DI COSTO PER SCANSIONE IN SCANCOIN ---
 export const COST_PER_SCAN_COINS: { [key in ProcessingMode]: number } = {
     quality: 10,
-    speed: 7,
+    speed: 2,
     business: 15,
     book: 25,
     scontrino: 12,
@@ -181,14 +193,15 @@ export function createWarpedImageFromCorners(sourceImageUrl: string, normalizedC
         image.crossOrigin = "Anonymous";
         
         image.onload = () => {
+            const cv = (window as any).cv;
             let intermediateCanvas: HTMLCanvasElement;
             const hasValidCorners = normalizedCorners && normalizedCorners.length === 4;
 
-            if (hasValidCorners) {
+            if (hasValidCorners && cv && typeof cv.imread === 'function') {
                 // --- Warping Logic con OpenCV per maggiore robustezza ---
                 try {
                     const { naturalWidth, naturalHeight } = image;
-                    const srcMat = (window as any).cv.imread(image);
+                    const srcMat = cv.imread(image);
                     const absoluteCorners = normalizedCorners.map(p => ({ x: p.x * naturalWidth, y: p.y * naturalHeight }));
                     
                     const [tl, tr, br, bl] = absoluteCorners;
@@ -204,16 +217,16 @@ export function createWarpedImageFromCorners(sourceImageUrl: string, normalizedC
                     const srcCoords = [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y];
                     const destCoords = [0, 0, destWidth, 0, destWidth, destHeight, 0, destHeight];
                     
-                    const srcTri = (window as any).cv.matFromArray(4, 1, (window as any).cv.CV_32FC2, srcCoords);
-                    const dstTri = (window as any).cv.matFromArray(4, 1, (window as any).cv.CV_32FC2, destCoords);
+                    const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, srcCoords);
+                    const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, destCoords);
                     
-                    const M = (window as any).cv.getPerspectiveTransform(srcTri, dstTri);
-                    const dsize = new (window as any).cv.Size(destWidth, destHeight);
-                    const warpedMat = new (window as any).cv.Mat();
-                    (window as any).cv.warpPerspective(srcMat, warpedMat, M, dsize, (window as any).cv.INTER_LINEAR, (window as any).cv.BORDER_CONSTANT, new (window as any).cv.Scalar());
+                    const M = cv.getPerspectiveTransform(srcTri, dstTri);
+                    const dsize = new cv.Size(destWidth, destHeight);
+                    const warpedMat = new cv.Mat();
+                    cv.warpPerspective(srcMat, warpedMat, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
                     
                     const destCanvas = document.createElement('canvas');
-                    (window as any).cv.imshow(destCanvas, warpedMat);
+                    cv.imshow(destCanvas, warpedMat);
                     intermediateCanvas = destCanvas;
                     
                     srcMat.delete(); warpedMat.delete(); M.delete(); srcTri.delete(); dstTri.delete();
@@ -230,6 +243,9 @@ export function createWarpedImageFromCorners(sourceImageUrl: string, normalizedC
                     intermediateCanvas = canvas;
                 }
             } else {
+                 if (hasValidCorners) {
+                    console.warn("OpenCV not ready for warping, using original image.");
+                }
                 const canvas = document.createElement('canvas');
                 canvas.width = image.naturalWidth;
                 canvas.height = image.naturalHeight;
@@ -371,11 +387,15 @@ const responseSchema = {
     properties: {
         categoria: { type: Type.STRING, description: "Classifica il documento. Categorie possibili: Fattura, Ricevuta, Multa, Assicurazione, RapportoMedico, EstrattoConto, Contratto, Lettera, Volantino, Pubblicità, Altro.", enum: ["Fattura", "Ricevuta", "Multa", "Assicurazione", "RapportoMedico", "EstrattoConto", "Contratto", "Lettera", "Volantino", "Pubblicità", "Altro"] },
         dataDocumento: { type: Type.STRING, description: "La data principale e più rilevante del documento, in formato YYYY-MM-DD. Se impossibile, usa la data odierna." },
+        dataScadenza: { type: Type.STRING, description: "Opzionale. La data di scadenza del documento (es. per fatture, polizze), se chiaramente indicata. Formato YYYY-MM-DD." },
         soggetto: { type: Type.STRING, description: "Il soggetto o mittente principale del documento (es. 'ACME Corp', 'Comune di Milano'). Sii conciso." },
         riassunto: { type: Type.STRING, description: "Un riassunto di una frase che descrive lo scopo del documento." },
+        mittenteNome: { type: Type.STRING, description: "Opzionale. Il nome completo del mittente del documento (chi ha inviato la lettera/fattura)." },
+        mittenteIndirizzo: { type: Type.STRING, description: "Opzionale. L'indirizzo postale completo del mittente del documento." },
         destinatarioNome: { type: Type.STRING, description: "Opzionale. Il nome del destinatario principale del documento. Se non è esplicito, o se è l'utente stesso, lascia vuoto." },
         destinatarioIndirizzo: { type: Type.STRING, description: "Opzionale. L'indirizzo postale completo del destinatario principale. Se l'indirizzo non è esplicito o appartiene all'utente, lascia questo campo vuoto." },
-        qualitaScansione: { type: Type.STRING, description: "Valuta la qualità dell'immagine. 'Parziale' se il documento è visibilmente tagliato.", enum: ["Ottima", "Buona", "Sufficiente", "Bassa", "Parziale"] },
+        numeroContratto: { type: Type.STRING, description: "Opzionale. Il numero di contratto o di polizza, se chiaramente identificabile." },
+        qualitaScansione: { type: Type.STRING, description: "Valuta la qualità dell'immagine. 'Parziale' se il documento è visibilmente tagliato. Se non vedi un'immagine, usa 'N/A'.", enum: ["Ottima", "Buona", "Sufficiente", "Bassa", "Parziale", "N/A"] },
         lingua: { type: Type.STRING, description: "La lingua del documento (es. 'Italiano')." },
         documentoCompleto: { type: Type.BOOLEAN, description: "È true se questa pagina è un documento completo, false se è parte di un documento più grande." },
         numeroPaginaStimato: { type: Type.STRING, description: "Se vedi un numero di pagina (es. 'pag. 2/3'), estrailo qui. Altrimenti usa 'N/A'." },
@@ -392,7 +412,7 @@ const responseSchema = {
             items: { type: Type.OBJECT, properties: { chiave: { type: Type.STRING }, valore: { type: Type.STRING } }, required: ["chiave", "valore"] }
         },
         documentCorners: {
-            type: Type.ARRAY, description: "Array di 4 punti [{x, y}] con le coordinate normalizzate (0.0-1.0) degli angoli del documento. Ordine: tl, tr, br, bl. Se il documento è a schermo intero, usa [[0,0], [1,0], [1,1], [0,1]].",
+            type: Type.ARRAY, description: "Array di 4 punti [{x, y}] con le coordinate normalizzate (0.0-1.0) degli angoli del documento. Ordine: tl, tr, br, bl. Se non vedi un'immagine o il documento è a schermo intero, usa [[0,0], [1,0], [1,1], [0,1]].",
             items: { type: Type.OBJECT, properties: { x: { type: Type.NUMBER }, y: { type: Type.NUMBER } }, required: ["x", "y"] }
         },
         securityCheck: {
@@ -895,6 +915,48 @@ export async function processPageOffline(imageDataUrl: string): Promise<Pick<Pro
     }
 }
 
+/**
+ * Analizza del testo grezzo con Gemini per estrarre dati strutturati.
+ */
+export async function processTextWithGemini(ocrText: string): Promise<{ analysis: any, securityCheck: any, tokenUsage: TokenUsage }> {
+    const systemInstruction = "Sei un esperto archivista. Riceverai del testo grezzo estratto da un documento tramite OCR. Il tuo compito è pulire il testo, capirne il significato e strutturarlo nel JSON richiesto. Poiché non puoi vedere l'immagine, imposta 'qualitaScansione' a 'N/A' e 'documentCorners' a coordinate full-frame ([[0,0], [1,0], [1,1], [0,1]]). Sii il più accurato possibile con i dati che puoi inferire dal testo.";
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: ocrText,
+            config: {
+                systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: responseSchema,
+                safetySettings,
+            },
+        });
+
+        const jsonText = response.text;
+        const result = JSON.parse(jsonText);
+
+        return { 
+            analysis: result, 
+            securityCheck: result.securityCheck || { isSafe: true, threatType: 'Nessuna', explanation: 'N/A' }, 
+            tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 } 
+        };
+    } catch (error) {
+        console.error("Errore durante l'analisi del testo con Gemini:", error);
+        return {
+            analysis: {
+                categoria: "ERRORE",
+                dataDocumento: new Date().toISOString().split('T')[0],
+                soggetto: "Analisi Testo Fallita",
+                riassunto: error instanceof Error ? error.message : "Errore sconosciuto",
+                qualitaScansione: "N/A",
+            },
+            securityCheck: { isSafe: false, threatType: "N/A", explanation: "Analisi AI del testo fallita." },
+            tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
+        };
+    }
+}
+
 
 /**
  * Esegue una ricerca semantica sui documenti forniti utilizzando Gemini.
@@ -1006,5 +1068,80 @@ Rispondi SOLO con un oggetto JSON che indica 'bestFolderId' e 'reasoning'. Se ne
     } catch (error) {
         console.error("Errore durante il suggerimento della cartella:", error);
         return null;
+    }
+}
+
+export async function analyzePoliciesForInsights(
+    docs: ProcessedPageResult[]
+): Promise<{ insights: string[]; upcomingRenewals: { title: string; date: string }[] }> {
+    if (docs.length === 0) {
+        return { insights: [], upcomingRenewals: [] };
+    }
+
+    const documentsForPrompt = docs.map(doc => {
+        const data = doc.analysis.datiEstratti?.reduce((acc: any, item: any) => {
+            acc[item.chiave] = item.valore;
+            return acc;
+        }, {});
+        return {
+            title: doc.analysis.soggetto || 'Polizza senza titolo',
+            summary: doc.analysis.riassunto || '',
+            data: data || {},
+            renewalDate: doc.analysis.dataScadenza || null
+        };
+    });
+
+    const insightsSchema = {
+        type: Type.OBJECT,
+        properties: {
+            insights: {
+                type: Type.ARRAY,
+                description: "Un array di 3-4 suggerimenti o osservazioni concise (massimo 15 parole ciascuno) basati sul portfolio assicurativo complessivo. Evidenzia potenziali lacune di copertura, possibili risparmi o aree di rischio.",
+                items: { type: Type.STRING }
+            },
+            upcomingRenewals: {
+                type: Type.ARRAY,
+                description: "Un array di polizze con una data di scadenza imminente (entro i prossimi 90 giorni). Ordina per data crescente.",
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: "Il titolo o soggetto della polizza." },
+                        date: { type: Type.STRING, description: "La data di scadenza in formato YYYY-MM-DD." }
+                    },
+                    required: ["title", "date"]
+                }
+            }
+        },
+        required: ["insights", "upcomingRenewals"]
+    };
+
+    const prompt = `Analizza il seguente portafoglio di polizze assicurative di un utente. Fornisci un'analisi concisa per aiutarlo a comprendere meglio la sua situazione.
+
+PORTAFOGLIO POLIZZE:
+${JSON.stringify(documentsForPrompt, null, 2)}
+
+La data odierna è: ${new Date().toISOString().split('T')[0]}
+
+Rispondi SOLO con un oggetto JSON valido che rispetti lo schema fornito.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                systemInstruction: "Sei un consulente assicurativo AI esperto. Il tuo compito è analizzare il portafoglio di un utente e fornire spunti utili e chiari.",
+                responseMimeType: "application/json",
+                responseSchema: insightsSchema,
+                safetySettings
+            }
+        });
+        
+        const jsonText = response.text;
+        const result = JSON.parse(jsonText);
+        return result;
+
+    } catch (error) {
+        console.error("Errore durante l'analisi delle polizze con Gemini:", error);
+        throw new Error("L'analisi delle polizze è fallita. Riprova più tardi.");
     }
 }

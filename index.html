@@ -173,6 +173,20 @@
       border-radius: 4px;
     }
 
+    /* --- NUOVO: Cursore lampeggiante per chatbot --- */
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+    .blinking-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 1em;
+      background-color: currentColor;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+      margin-left: 2px;
+    }
+
     /* --- NUOVO: Stile per UnHubPage (Split-Screen) --- */
     .unhub-split-container {
         display: flex;
@@ -284,7 +298,8 @@
     @media (prefers-reduced-motion: reduce){
       .scanner-line,.mouse-scanner-line,.shimmer-effect,.animate-shake,
       .animate-toast-in, .animate-toast-out, .animate-fade-in-up,
-      .unhub-panel, .unhub-panel-content, .unhub-service-link {
+      .unhub-panel, .unhub-panel-content, .unhub-service-link,
+      .blinking-cursor {
         animation:none !important; transition:none !important;
       }
       #unhub-canvas { display: none; }

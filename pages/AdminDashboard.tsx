@@ -341,8 +341,8 @@ ${feedbackSummary}
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         {fb.feedbackValue === 'good' 
-                                            ? <HandThumbUpIcon className="w-5 h-5 text-green-500 mx-auto" title="Positivo" /> 
-                                            : <HandThumbDownIcon className="w-5 h-5 text-red-500 mx-auto" title="Negativo" />}
+                                            ? <span title="Positivo"><HandThumbUpIcon className="w-5 h-5 text-green-500 mx-auto" /></span> 
+                                            : <span title="Negativo"><HandThumbDownIcon className="w-5 h-5 text-red-500 mx-auto" /></span>}
                                     </td>
                                     <td className="px-4 py-3 text-sm max-w-sm">
                                         <p className="truncate" title={fb.context.sourceFileName || fb.context.botResponse}>{fb.context.sourceFileName || `Risposta: "${fb.context.botResponse}"`}</p>

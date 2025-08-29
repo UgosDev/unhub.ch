@@ -141,7 +141,10 @@ export const Chatbot: React.FC<ChatbotProps> = ({ history, isLoading, onClose, o
                         {msg.role === 'model' && <SparklesIcon className="w-6 h-6 text-purple-500 flex-shrink-0 mt-1" />}
                         <div className={`max-w-[85%] p-3 rounded-2xl text-sm break-words ${msg.role === 'user' ? 'bg-purple-600 text-white rounded-br-lg' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-lg'}`}>
                             {renderMarkdown(msg.text)}
-                            {msg.isFeedbackRequest && !msg.context && (
+                            {isLoading && index === history.length - 1 && msg.role === 'model' && (
+                                <span className="blinking-cursor"></span>
+                            )}
+                            {msg.isFeedbackRequest && !msg.context && !isLoading && (
                                 <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600 flex items-center justify-center gap-2">
                                     <button onClick={() => handleFeedback('good')} className="p-2 rounded-full hover:bg-green-100 dark:hover:bg-green-900/50 text-slate-500 hover:text-green-600 transition-colors">
                                         <HandThumbUpIcon className="w-5 h-5" />
@@ -163,7 +166,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({ history, isLoading, onClose, o
                         </div>
                     </div>
                 ))}
-                {isLoading && (
+                {isLoading && history[history.length-1]?.role !== 'model' && (
                      <div className="flex gap-3 items-start justify-start">
                         <SparklesIcon className="w-6 h-6 text-purple-500 flex-shrink-0 mt-1" />
                         <div className="max-w-[85%] p-3 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center">

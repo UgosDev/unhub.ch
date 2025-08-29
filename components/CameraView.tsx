@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useState, useCallback, useLayoutEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import { 
-  XMarkIcon, CheckIcon, TrashIcon,
-  ArrowUturnLeftIcon, RectangleStackIcon, ScansioniChLevelIndicatorIcon,
+  XMarkIcon, CheckIcon,
+  ArrowUturnLeftIcon, ScansioniChLevelIndicatorIcon,
   BoltIcon, BoltSlashIcon, BoltAutoIcon
 } from './icons';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -59,7 +59,8 @@ const orderTLTRBRBL = (corners: {x:number; y:number}[]) => {
 
 const perspectiveTransform = (image: HTMLImageElement, corners: {x:number;y:number}[]): Promise<string> => new Promise((resolve,reject)=>{
   try{
-    if(!cv || !corners || corners.length!==4) return resolve(image.src);
+    const cv = (window as any).cv;
+    if(!cv || typeof cv.imread !== 'function' || !corners || corners.length!==4) return resolve(image.src);
     const srcMat=cv.imread(image);
     const [tl,tr,br,bl]=orderTLTRBRBL(corners);
     const wTop =Math.hypot(tr.x-tl.x,tr.y-tl.y);
@@ -142,7 +143,18 @@ const CropView: React.FC<CropViewProps> = ({ imageDataUrl, initialCorners, onCon
     const next=[...corners]; next[dragging]={ x:((x-ox)/dw)*img.naturalWidth, y:((y-oy)/dh)*img.naturalHeight }; setCorners(next);
   };
   const onUp=(e:React.PointerEvent<HTMLCanvasElement>)=>{ if(dragging!==null){ setDragging(null); e.currentTarget.releasePointerCapture(e.pointerId);} };
-  const confirm=async()=>{ setBusy(true); try{ const img=imageRef.current; const warped=await perspectiveTransform(img,orderTLTRBRBL(corners)); onConfirm(warped); } catch(e){ console.error(e); alert('Errore ritaglio. Uso immagine originale.'); onConfirm(imageDataUrl);} finally{ setBusy(false);} };
+  const confirm=async()=>{ 
+    setBusy(true); 
+    try{ 
+      const img=imageRef.current; 
+      const warped=await perspectiveTransform(img,orderTLTRBRBL(corners)); 
+      onConfirm(warped); 
+    } catch(e){ 
+      console.error(e); 
+      alert('Errore ritaglio. Uso immagine originale.'); 
+      onConfirm(imageDataUrl);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col text-white" role="dialog" aria-modal="true">
@@ -154,7 +166,7 @@ const CropView: React.FC<CropViewProps> = ({ imageDataUrl, initialCorners, onCon
       </main>
       <footer className="p-4 flex justify-between items-center bg-black/50 flex-shrink-0 backdrop-blur-sm">
         <button onClick={onCancel} className="w-24 flex flex-col items-center gap-1 text-red-400 font-semibold">
-          <ArrowUturnLeftIcon className="w-8 h-8"/><span className="text-xs">Rifai Foto</span>
+          <ArrowUturnLeftIcon className="w-8 h-8"/><span className="text-xs">Annulla</span>
         </button>
         <button onClick={confirm} disabled={busy} className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center ring-4 ring-black/30 disabled:bg-slate-400 transition-all active:scale-95" aria-label="Conferma ritaglio">
           {busy ? <LoadingSpinner className="w-10 h-10"/> : <CheckIcon className="w-12 h-12 text-white" />}
@@ -165,30 +177,6 @@ const CropView: React.FC<CropViewProps> = ({ imageDataUrl, initialCorners, onCon
   );
 };
 
-/* ========= GalleryView ========= */
-interface GalleryViewProps { images:string[]; onClose:()=>void; onFinish:()=>void; onDelete:(i:number)=>void; }
-const GalleryView: React.FC<GalleryViewProps> = ({ images, onClose, onFinish, onDelete }) => (
-  <div className="fixed inset-0 bg-slate-900 z-50 flex flex-col text-white" role="dialog" aria-modal="true">
-    <header className="p-4 flex justify-between items-center bg-slate-800/80 backdrop-blur-sm flex-shrink-0">
-      <h2 className="text-lg font-bold">Scansioni ({images.length})</h2>
-      <div className="flex gap-2">
-        <button onClick={onClose} className="px-4 py-2 bg-slate-700 rounded-lg">Indietro</button>
-        <button onClick={onFinish} className="px-4 py-2 bg-purple-600 rounded-lg font-bold">Fine</button>
-      </div>
-    </header>
-    <main className="flex-grow overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-      {images.map((img, i) => (
-        <div key={i} className="relative aspect-[3/4] group">
-          <img src={img} alt={`Scansione ${i+1}`} className="w-full h-full object-cover rounded-lg"/>
-          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-            <button onClick={()=>onDelete(i)} className="p-3 bg-red-600 rounded-full"><TrashIcon className="w-6 h-6 text-white"/></button>
-          </div>
-        </div>
-      ))}
-    </main>
-  </div>
-);
-
 /* ========= Hook utils ========= */
 function usePrevious<T>(v:T){ const r=useRef<T|undefined>(undefined); useEffect(()=>{ r.current=v; }); return r.current; }
 
@@ -197,42 +185,34 @@ interface CameraViewProps { onFinish:(images:string[])=>void; onClose:()=>void; 
 
 export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, processingMode }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const captureCanvasRef = useRef<HTMLCanvasElement>(null);
   const processingCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [isCvReady, setIsCvReady] = useState(false);
-  const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [isProcessingCapture, setIsProcessingCapture] = useState(false);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<{ dataUrl:string; corners:{x:number;y:number}[] }|null>(null);
-
-  const [multiShotEnabled, setMultiShotEnabled] = useState(true);
-  const [captureMode, setCaptureMode] = useState<'auto'|'manual'>('auto');
   const [flashMode, setFlashMode] = useState<'auto'|'on'|'off'>('auto');
-
-  const [captureProgress, setCaptureProgress] = useState(0);
-  const rafRef = useRef<number|null>(null);
-  const startTsRef = useRef<number|null>(null);
+  const captureTimeoutRef = useRef<number|null>(null);
+  const [capturedImages, setCapturedImages] = useState<string[]>([]);
 
   const {
     isVideoReady, error: streamError, isTorchOn, torchSupported, applyTorchState,
-    requiresUserGesture,            // <-- nuovo
-    resumePlayback                  // <-- nuovo
+    requiresUserGesture,
+    resumePlayback
   } = useCameraStream(videoRef);
 
   const { isLevel, sensorStatus, bubblePosition } = useDeviceTilt();
-  const { detectedCorners, isDocumentDetected, feedback, isStable, pause, resume, triggerCooldown, quality } = useDocumentScanner({
-    videoRef, processingCanvasRef, isCvReady,
-  } as any);
+  const { detectedCorners, feedback, quality, isWorkerReady, pause, resume, triggerCooldown } = useDocumentScanner({
+    videoRef, processingCanvasRef, isCvReady
+  });
+  const isAutoCaptureReady = quality > 0.95;
+  const prevIsAutoCaptureReady = usePrevious(isAutoCaptureReady);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const [videoDisplaySize,setVideoDisplaySize]=useState({width:0,height:0});
   const [processingSize,setProcessingSize]=useState({width:0,height:0});
 
-  // UI non bloccata da CV: inizializza solo sul video
-  const isInitializing = !isVideoReady;
-  const isAutoCaptureReady = isDocumentDetected && isStable;
-  const prevIsAutoCaptureReady = usePrevious(isAutoCaptureReady);
+  const isInitializing = !isVideoReady || (isWorkerReady === false);
 
   useEffect(()=>{ if(isAutoCaptureReady && !prevIsAutoCaptureReady){ playLockOn(); navigator.vibrate?.(50);} },[isAutoCaptureReady, prevIsAutoCaptureReady]);
 
@@ -251,42 +231,17 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
 
   useEffect(()=>{
     const canvas=processingCanvasRef.current; if(!canvas) return;
-    const sync=()=>{ const w=(canvas as HTMLCanvasElement).width || (videoRef.current?.videoWidth ?? 0); const h=(canvas as HTMLCanvasElement).height || (videoRef.current?.videoHeight ?? 0); setProcessingSize(p=> (p.width===w && p.height===h)?p:{width:w,height:h}); };
+    const sync=()=>{ const w=(canvas as HTMLCanvasElement).width || 0; const h=(canvas as HTMLCanvasElement).height || 0; setProcessingSize(p=> (p.width===w && p.height===h)?p:{width:w,height:h}); };
     sync(); const ro=new ResizeObserver(sync); ro.observe(canvas); return ()=>ro.disconnect();
   },[processingCanvasRef, videoRef]);
 
-  // rAF progress 1s
-  useEffect(()=>{
-    const DURATION=1000;
-    const cancel=()=>{ if(rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current=null; startTsRef.current=null; setCaptureProgress(0); };
-    if(captureMode==='auto' && isAutoCaptureReady && !isProcessingCapture){
-      const tick=(ts:number)=>{ if(startTsRef.current==null) startTsRef.current=ts;
-        const p=Math.min(1,(ts-startTsRef.current)/DURATION); setCaptureProgress(p);
-        if(p>=1){ setCaptureProgress(0); startTsRef.current=null; handleCapture(); return; }
-        rafRef.current=requestAnimationFrame(tick);
-      };
-      rafRef.current=requestAnimationFrame(tick);
-      return cancel;
-    } else { cancel(); }
-  },[captureMode,isAutoCaptureReady,isProcessingCapture]);
-
-  useEffect(()=>{
-    const onVis=()=>{ try{ __AC?.suspend?.(); }catch{} document.hidden? pause?.(): resume?.(); };
-    document.addEventListener('visibilitychange', onVis);
-    return ()=> document.removeEventListener('visibilitychange', onVis);
-  },[pause, resume]);
-
-  useEffect(()=>{
-    if(!torchSupported || flashMode!=='auto') return;
-    if(typeof quality==='number' && quality<0.25) applyTorchState?.(true);
-    else if(typeof quality==='number' && quality>0.35) applyTorchState?.(false);
-  },[quality, torchSupported, flashMode, applyTorchState]);
-
   const handleCapture = useCallback(async ()=>{
-    if(!videoRef.current || !canvasRef.current || !detectedCorners) return;
-    setIsProcessingCapture(true); playShutter();
+    if(!videoRef.current || !captureCanvasRef.current || isProcessingCapture) return;
+    
+    setIsProcessingCapture(true);
+    playShutter();
 
-    const video=videoRef.current, canvas=canvasRef.current;
+    const video=videoRef.current, canvas=captureCanvasRef.current;
     canvas.width=video.videoWidth; canvas.height=video.videoHeight;
     const ctx=canvas.getContext('2d'); if(!ctx){ setIsProcessingCapture(false); return; }
     ctx.drawImage(video,0,0);
@@ -298,42 +253,74 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
     const procH=processingCanvasRef.current?.height || video.videoHeight;
     const sx=video.videoWidth/procW, sy=video.videoHeight/procH;
 
-    const absCorners=orderTLTRBRBL(detectedCorners.map(p=>({x:p.x*sx, y:p.y*sy})));
+    const absCorners = detectedCorners ? orderTLTRBRBL(detectedCorners.map(p=>({x:p.x*sx, y:p.y*sy}))) : [
+        { x: 0, y: 0 }, { x: video.videoWidth, y: 0 }, { x: video.videoWidth, y: video.videoHeight }, { x: 0, y: video.videoHeight }
+    ];
+
     setImageToCrop({ dataUrl:imageDataUrl, corners: absCorners });
 
     triggerCooldown?.();
-    if(!multiShotEnabled){ onFinish([imageDataUrl]); }
-    window.setTimeout(()=> setIsProcessingCapture(false), 600);
-  },[detectedCorners, multiShotEnabled, onFinish, triggerCooldown]);
+    window.setTimeout(()=> setIsProcessingCapture(false), 300);
+  },[isProcessingCapture, detectedCorners, triggerCooldown, processingCanvasRef]);
 
-  const userFeedback = useMemo(()=>{
-    if(isAutoCaptureReady) return 'Stai fermo...';
-    if(isDocumentDetected) return 'Tieni fermo per scattare...';
-    return feedback || 'Cerca un documento...';
-  },[isDocumentDetected,isAutoCaptureReady,feedback]);
+  // Hysteresis for auto-capture
+  useEffect(() => {
+      const CAPTURE_HYSTERESIS_MS = 300;
+      if (isProcessingCapture) {
+          if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current);
+          return;
+      }
+
+      if (quality >= 0.95) {
+          if (!captureTimeoutRef.current) {
+              captureTimeoutRef.current = window.setTimeout(() => {
+                  handleCapture();
+                  captureTimeoutRef.current = null;
+              }, CAPTURE_HYSTERESIS_MS);
+          }
+      } else {
+          if (captureTimeoutRef.current) {
+              clearTimeout(captureTimeoutRef.current);
+              captureTimeoutRef.current = null;
+          }
+      }
+      return () => { if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current); };
+  }, [quality, isProcessingCapture, handleCapture]);
+
+
+  useEffect(()=>{
+    if(!torchSupported || flashMode!=='auto') return;
+    if(typeof quality==='number' && quality < 0.4 && quality > 0) applyTorchState?.(true);
+    else if(typeof quality==='number' && quality > 0.6) applyTorchState?.(false);
+  },[quality, torchSupported, flashMode, applyTorchState]);
+  
+  const handleConfirmCrop = (warpedDataUrl: string) => {
+    setCapturedImages(prev => [...prev, warpedDataUrl]);
+    setImageToCrop(null); // Closes CropView
+    resume?.(); // Resumes scanning worker
+  };
+  
+  const handleDeleteImage = (indexToDelete: number) => {
+    setCapturedImages(prev => prev.filter((_, index) => index !== indexToDelete));
+  };
+
+  const handleUndoLastCapture = () => {
+      setCapturedImages(prev => prev.slice(0, -1));
+  };
+
 
   /* ==== Modali ==== */
-  if (isGalleryOpen){ pause?.(); return (
-    <GalleryView
-      images={capturedImages}
-      onClose={()=>{ setIsGalleryOpen(false); resume?.(); }}
-      onFinish={()=> onFinish(capturedImages)}
-      onDelete={(i)=> setCapturedImages(prev=> prev.filter((_,idx)=> idx!==i))}
-    />
-  );}
-
   if (imageToCrop){ pause?.(); return (
     <CropView
       imageDataUrl={imageToCrop.dataUrl}
       initialCorners={imageToCrop.corners}
-      onConfirm={(warped)=>{ setCapturedImages(p=>[...p,warped]); setImageToCrop(null); resume?.(); if(!multiShotEnabled) onFinish([warped]); }}
+      onConfirm={handleConfirmCrop}
       onCancel={()=>{ setImageToCrop(null); resume?.(); }}
     />
   );}
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col text-white select-none">
-      {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
         <div className="flex items-center gap-3">
           <ScansioniChLevelIndicatorIcon 
@@ -371,14 +358,7 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
           style={{ transform:'scale(1.02)' }}
         />
         <canvas ref={processingCanvasRef} className="hidden"/>
-        <canvas ref={canvasRef} className="hidden"/>
-
-        {/* Badge CV in caricamento (non blocca la preview) */}
-        {!isCvReady && isVideoReady && (
-          <div className="absolute top-4 right-4 px-3 py-1 text-xs bg-black/60 text-white rounded">
-            Carico modulo CV…
-          </div>
-        )}
+        <canvas ref={captureCanvasRef} className="hidden"/>
 
         {isCvReady && videoDisplaySize.width>0 && (
           <DynamicMeshOverlay
@@ -389,7 +369,6 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
           />
         )}
 
-        {/* Overlay “tap to start” per autoplay bloccato */}
         {requiresUserGesture && (
           <button
             onClick={resumePlayback}
@@ -399,49 +378,73 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
           </button>
         )}
 
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 rounded-full font-bold text-sm border border-white/30 backdrop-blur-sm" aria-live="polite">
-          {userFeedback}
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-64">
+             <div className="text-center px-4 py-2 bg-black/60 rounded-full font-bold text-sm border border-white/30 backdrop-blur-sm mb-3" aria-live="polite">
+                {feedback}
+            </div>
+             {quality > 0 && (
+                 <div className="h-2.5 bg-white/20 rounded-full w-full">
+                    <div className="h-2.5 bg-gradient-to-r from-green-300 to-green-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${Math.min(100, quality * 100)}%` }}/>
+                </div>
+            )}
         </div>
       </main>
+      
+      {/* Thumbnail Gallery */}
+       {capturedImages.length > 0 && (
+            <div className="absolute bottom-28 left-0 right-0 z-20 flex justify-center">
+                <div className="p-2 bg-black/50 rounded-full backdrop-blur-sm shadow-lg">
+                    <div className="flex gap-2 max-w-[80vw] overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                        {capturedImages.map((imgSrc, index) => (
+                            <div key={index} className="relative flex-shrink-0">
+                                <img src={imgSrc} alt={`Pagina ${index + 1}`} className="w-14 h-20 object-cover rounded-md border-2 border-white/50" />
+                                <span className="absolute bottom-1 left-1 text-xs font-bold text-white bg-black/50 px-1 rounded">{index + 1}</span>
+                                <button onClick={() => handleDeleteImage(index)} className="absolute -top-1 -right-1 p-0.5 bg-red-600 text-white rounded-full shadow-md">
+                                    <XMarkIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        )}
 
       {/* Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 z-20 p-6 flex items-end justify-between bg-gradient-to-t from-black/60 to-transparent">
-        <div className="w-24 flex flex-col items-center gap-2">
-          <button onClick={()=> setMultiShotEnabled(!multiShotEnabled)} className="p-3 bg-black/40 rounded-full backdrop-blur-sm">
-            {multiShotEnabled ? <RectangleStackIcon className="w-6 h-6"/> : <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">1</div>}
-          </button>
-          <span className="text-xs font-semibold">{multiShotEnabled ? 'Multi-pagina' : 'Pagina singola'}</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-2">
-          {captureMode==='auto' && captureProgress>0 && <CircularProgressIndicator progress={captureProgress} />}
-          <button
-            onClick={handleCapture}
-            disabled={isProcessingCapture || (captureMode==='auto' && !isAutoCaptureReady)}
-            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 ring-4 ring-black/30 disabled:opacity-50 ${isAutoCaptureReady ? 'bg-green-500':'bg-white'}`}
-            aria-label="Scatta foto"
-          >
-            <div className={`w-[68px] h-[68px] rounded-full border-4 ${isAutoCaptureReady ? 'border-green-800/50':'border-black'}`}/>
-          </button>
-          <div className="flex items-center gap-3 bg-black/40 p-1 rounded-full backdrop-blur-sm">
-            <button onClick={()=>setCaptureMode('manual')} className={`px-4 py-1.5 text-xs font-bold rounded-full ${captureMode==='manual'?'bg-white text-black':'text-white'}`}>Manuale</button>
-            <button onClick={()=>setCaptureMode('auto')} className={`px-4 py-1.5 text-xs font-bold rounded-full ${captureMode==='auto'?'bg-white text-black':'text-white'}`}>Auto</button>
-          </div>
-        </div>
-
-        <button onClick={()=> capturedImages.length>0? setIsGalleryOpen(true):null} disabled={capturedImages.length===0} className="w-24 flex flex-col items-center gap-2 disabled:opacity-50">
-          <div className="relative">
-            {capturedImages.length>0 ? (
-              <img src={capturedImages[capturedImages.length-1]} className="w-14 h-14 object-cover rounded-lg border-2 border-white" alt="Ultima scansione"/>
-            ) : <div className="w-14 h-14 bg-black/40 rounded-lg border-2 border-white/50"/>}
-            {capturedImages.length>0 && (
-              <span className="absolute -top-2 -right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold border-2 border-black">
-                {capturedImages.length}
-              </span>
-            )}
-          </div>
-          <span className="text-xs font-semibold">Galleria</span>
-        </button>
+      <footer className="absolute bottom-0 left-0 right-0 z-20 p-6 flex items-end justify-center bg-gradient-to-t from-black/60 to-transparent">
+          {capturedImages.length > 0 ? (
+            <div className="w-full flex justify-between items-end">
+                <button onClick={handleUndoLastCapture} className="w-24 flex flex-col items-center gap-1 text-yellow-400 font-semibold">
+                    <ArrowUturnLeftIcon className="w-8 h-8" />
+                    <span className="text-xs">Annulla Ultima</span>
+                </button>
+                 <div className="flex flex-col items-center gap-2">
+                    <button onClick={handleCapture} disabled={isProcessingCapture} className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 ring-4 ring-black/30 disabled:opacity-50 ${isAutoCaptureReady ? 'bg-green-500':'bg-white'}`} aria-label="Scatta foto">
+                        <div className={`w-[68px] h-[68px] rounded-full border-4 ${isAutoCaptureReady ? 'border-green-800/50':'border-black'}`}/>
+                    </button>
+                    <div className="text-xs font-bold text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
+                        {isAutoCaptureReady ? 'Pronto allo scatto' : 'Automatico'}
+                    </div>
+                </div>
+                <button onClick={() => onFinish(capturedImages)} className="w-24 flex flex-col items-center gap-1 text-green-400 font-semibold">
+                    <CheckIcon className="w-8 h-8"/>
+                    <span className="text-xs">Fine ({capturedImages.length})</span>
+                </button>
+            </div>
+        ) : (
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={handleCapture}
+                disabled={isProcessingCapture}
+                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 ring-4 ring-black/30 disabled:opacity-50 ${isAutoCaptureReady ? 'bg-green-500':'bg-white'}`}
+                aria-label="Scatta foto"
+              >
+                <div className={`w-[68px] h-[68px] rounded-full border-4 ${isAutoCaptureReady ? 'border-green-800/50':'border-black'}`}/>
+              </button>
+               <div className="text-xs font-bold text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
+                    {isAutoCaptureReady ? 'Pronto allo scatto' : 'Automatico'}
+                </div>
+            </div>
+        )}
       </footer>
 
       {(isInitializing || streamError) && (
@@ -460,20 +463,6 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
           )}
         </div>
       )}
-    </div>
-  );
-};
-
-/* ========= Progress ========= */
-const CircularProgressIndicator: React.FC<{ progress:number }> = ({ progress }) => {
-  const radius=54, circumference=2*Math.PI*radius, offset=circumference-(progress*circumference);
-  return (
-    <div className="relative w-28 h-28 flex items-center justify-center">
-      <svg className="absolute w-full h-full transform -rotate-90" viewBox="0 0 120 120">
-        <circle className="text-black/30" strokeWidth="8" stroke="currentColor" fill="transparent" r={radius} cx="60" cy="60"/>
-        <circle className="text-green-400 transition-all duration-100" strokeWidth="8" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" stroke="currentColor" fill="transparent" r={radius} cx="60" cy="60"/>
-      </svg>
-      <div className="relative px-4 py-2 bg-black/60 rounded-full font-bold text-white text-sm border border-white/30 backdrop-blur-sm">Stai fermo...</div>
     </div>
   );
 };

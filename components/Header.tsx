@@ -44,8 +44,22 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { user } = useAuth();
     
-    const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'default';
+    const brandKey = currentPage === 'profile'
+        ? 'unhub' as BrandKey
+        : ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) 
+        ? currentPage as BrandKey 
+        : 'default';
     const { Logo, Wordmark, colorClass } = brandAssets[brandKey];
+    
+    // Define logo colors for CSS variables
+    const logoColors = {
+        purple: { '--logo-light-fill': '#c6a1fc', '--logo-dark-fill': '#9e5bfe' },
+        red: { '--logo-light-fill': '#fc7d6e', '--logo-dark-fill': '#fe3f27' },
+        cyan: { '--logo-light-fill': '#c0fbfc', '--logo-dark-fill': '#61f5fe' },
+        green: { '--logo-light-fill': '#86efac', '--logo-dark-fill': '#15803d' },
+    };
+    
+    const brandStyleVars = (logoColors[colorClass] || logoColors.purple) as React.CSSProperties;
     
     useEffect(() => {
         fetch('./metadata.json')
@@ -72,7 +86,10 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
     };
 
   return (
-    <header className="bg-white/80 dark:bg-slate-900/80 shadow-md backdrop-blur-sm sticky top-0 z-30">
+    <header 
+        className="bg-white/80 dark:bg-slate-900/80 shadow-md backdrop-blur-sm sticky top-0 z-30"
+        style={brandStyleVars}
+    >
        <style>{`
         :root {
           --color-purple-100: #f3e8ff; --color-purple-700: #7e22ce; --color-purple-500-20: rgba(168, 85, 247, 0.2); --color-purple-300: #d8b4fe;

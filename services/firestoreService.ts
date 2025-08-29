@@ -1,5 +1,5 @@
 import { db, firebase } from './firebase';
-import type { ProcessedPageResult, ScanHistoryEntry, Folder } from './geminiService';
+import type { ProcessedPageResult, ScanHistoryEntry, Folder, AddressBookEntry } from './geminiService';
 import type { ChatMessage } from '../components/Chatbot';
 import type { User, Subscription } from './authService';
 import { defaultSettings } from './settingsService';
@@ -118,7 +118,11 @@ export const createUserProfile = async (userId: string, name: string, email: str
     await userDocRef.set({ 
         name, 
         email,
-        address: '',
+        addressStreet: '',
+        addressZip: '',
+        addressCity: '',
+        addressCountry: 'Svizzera',
+        addressModificationCount: 0,
         addressConfirmed: false,
         householdMembers: [],
         subscription: defaultSubscription,
@@ -138,6 +142,11 @@ export const updateUserProfile = async (userId: string, updates: Partial<Omit<Us
     await userDocRef.update(updates);
 };
 
+export const deleteUserProfile = async (userId: string): Promise<void> => {
+    const userDocRef = db.collection("users").doc(userId);
+    await userDocRef.delete();
+};
+
 export const updateUserProcessingStatus = async (userId: string, isProcessing: boolean, heartbeat: string | null): Promise<void> => {
     const userDocRef = db.collection("users").doc(userId);
     await userDocRef.update({
@@ -148,7 +157,7 @@ export const updateUserProcessingStatus = async (userId: string, isProcessing: b
 
 
 // --- Helper to delete all documents in a collection ---
-const deleteCollection = async (userId: string, collectionName: string) => {
+export const deleteCollection = async (userId: string, collectionName: string) => {
     try {
         const collectionRef = db.collection(`users/${userId}/${collectionName}`);
         const snapshot = await collectionRef.get();
@@ -250,6 +259,12 @@ export const deleteArchivedDoc = async (userId: string, uuid: string): Promise<v
 export const addDisdettaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {
     const docRef = db.collection(`users/${userId}/disdette`).doc(doc.uuid);
     await docRef.set(doc);
+};
+
+// FIX: Add missing `updateDisdettaDoc` function.
+export const updateDisdettaDoc = async (userId: string, doc: ProcessedPageResult): Promise<void> => {
+    const docRef = db.collection(`users/${userId}/disdette`).doc(doc.uuid);
+    await docRef.set(doc, { merge: true });
 };
 
 
@@ -450,4 +465,28 @@ export const batchAddWorkspaceAndHistory = async (userId: string, results: Proce
     });
 
     await batch.commit();
+};
+
+// FIX: Add missing Address Book functions
+export const onAddressBookUpdate = (userId: string, callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => {
+    const addressBookCollection = db.collection(`users/${userId}/addressBook`).orderBy("lastUsed", "desc");
+    return addressBookCollection.onSnapshot(
+        (snapshot) => callback(snapshot),
+        (error) => console.error("Error listening to address book:", error)
+    );
+};
+
+export const addOrUpdateAddressBookEntry = async (userId: string, entry: Omit<AddressBookEntry, 'id' | 'lastUsed'>): Promise<void> => {
+    // entryId is the normalized name. This avoids duplicates.
+    const normalizedName = entry.name.toLowerCase().replace(/\s+/g, '-');
+    const entryDocRef = db.collection(`users/${userId}/addressBook`).doc(normalizedName);
+    await entryDocRef.set({
+        ...entry,
+        lastUsed: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+};
+
+export const deleteAddressBookEntry = async (userId: string, entryId: string): Promise<void> => {
+    const entryDocRef = db.collection(`users/${userId}/addressBook`).doc(entryId);
+    await entryDocRef.delete();
 };

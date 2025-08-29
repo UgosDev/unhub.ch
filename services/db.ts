@@ -1,8 +1,8 @@
-import { auth, firebase } from './firebase';
-import type { Folder, ScanHistoryEntry, ProcessedPageResult, QueuedFile } from './geminiService';
+import { auth, firebase, db } from './firebase';
+import type { Folder, ScanHistoryEntry, ProcessedPageResult, QueuedFile, AddressBookEntry } from './geminiService';
 import type { ChatMessage } from '../components/Chatbot';
 import * as firestoreService from './firestoreService';
-import type { User } from './authService';
+import type { User, Consultant } from './authService';
 export type { ArchivedChat, AccessLogEntry } from './firestoreService';
 
 // --- User Management ---
@@ -112,13 +112,14 @@ export const onChatHistoryUpdate = (callback: (snapshot: firebase.firestore.Docu
 export const onArchivedChatsUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onArchivedChatsUpdate(getUserId(), callback);
 export const onAccessLogsUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onAccessLogsUpdate(getUserId(), callback);
 export const onFoldersUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onFoldersUpdate(getUserId(), callback);
-
+export const onAddressBookUpdate = (callback: (snapshot: firebase.firestore.QuerySnapshot) => void): (() => void) => firestoreService.onAddressBookUpdate(getUserId(), callback);
 
 // --- WRITERS / DELETERS ---
 export const addOrUpdateWorkspaceDoc = (result: ProcessedPageResult): Promise<void> => firestoreService.addOrUpdateWorkspaceDoc(getUserId(), result);
 export const updateArchivedDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updateArchivedDoc(getUserId(), doc);
 export const deleteArchivedDoc = (uuid: string): Promise<void> => firestoreService.deleteArchivedDoc(getUserId(), uuid);
 export const addDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.addDisdettaDoc(getUserId(), doc);
+export const updateDisdettaDoc = (doc: ProcessedPageResult): Promise<void> => firestoreService.updateDisdettaDoc(getUserId(), doc);
 export const deleteWorkspaceDoc = (resultUuid: string): Promise<void> => firestoreService.deleteWorkspaceDoc(getUserId(), resultUuid);
 export const clearWorkspace = (): Promise<void> => firestoreService.clearWorkspace(getUserId());
 export const moveDocsToModule = (docUuids: string[], toModule: 'archivio' | 'polizze' | 'disdette', options?: { isPrivate?: boolean, folderId?: string | null }): Promise<void> => firestoreService.moveDocsToModule(getUserId(), docUuids, toModule, options);
@@ -135,6 +136,45 @@ export const addAccessLogEntry = (entryData: Omit<firestoreService.AccessLogEntr
 export const addFolder = (folderData: Omit<Folder, 'id'>): Promise<string> => firestoreService.addFolder(getUserId(), folderData);
 export const updateFolder = (folderId: string, updates: Partial<Folder>): Promise<void> => firestoreService.updateFolder(getUserId(), folderId, updates);
 export const deleteFolder = (folderId: string): Promise<void> => firestoreService.deleteFolder(getUserId(), folderId);
+export const deleteCollection = (userId: string, collectionName: string): Promise<void> => firestoreService.deleteCollection(userId, collectionName);
+export const deleteUserProfile = (userId: string): Promise<void> => firestoreService.deleteUserProfile(userId);
+export const addOrUpdateAddressBookEntry = (entry: Omit<AddressBookEntry, 'id' | 'lastUsed'>): Promise<void> => firestoreService.addOrUpdateAddressBookEntry(getUserId(), entry);
+export const deleteAddressBookEntry = (entryId: string): Promise<void> => firestoreService.deleteAddressBookEntry(getUserId(), entryId);
+
+// --- Consultant Management ---
+// FIX: Rename 'data' variable to 'consultants' to avoid potential obscure naming conflicts.
+export const onConsultantsUpdate = (callback: (consultants: Consultant[]) => void): (() => void) => {
+    const userId = getUserId();
+    const collectionRef = db.collection(`users/${userId}/consultants`);
+    return collectionRef.onSnapshot(snapshot => {
+        const consultants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Consultant);
+        callback(consultants);
+    }, error => console.error("Error listening to consultants:", error));
+};
+
+export const inviteConsultant = async (name: string, email: string): Promise<void> => {
+    const userId = getUserId();
+    const collectionRef = db.collection(`users/${userId}/consultants`);
+    await collectionRef.add({
+        name,
+        email,
+        status: 'verified',
+        sharedDocUuids: [],
+    });
+};
+
+export const updateConsultantPermissions = async (consultantId: string, sharedDocUuids: string[]): Promise<void> => {
+    const userId = getUserId();
+    const docRef = db.collection(`users/${userId}/consultants`).doc(consultantId);
+    await docRef.update({ sharedDocUuids });
+};
+
+export const revokeConsultantAccess = async (consultantId: string): Promise<void> => {
+    const userId = getUserId();
+    const docRef = db.collection(`users/${userId}/consultants`).doc(consultantId);
+    await docRef.delete();
+};
+
 
 // --- BATCH WRITERS ---
 export const batchAddWorkspaceAndHistory = (results: ProcessedPageResult[], historyEntries: ScanHistoryEntry[]): Promise<void> => firestoreService.batchAddWorkspaceAndHistory(getUserId(), results, historyEntries);

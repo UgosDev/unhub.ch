@@ -22,11 +22,24 @@ export interface PasskeyCredential {
     createdAt: string; // ISO timestamp
 }
 
+// NUOVO: Interfaccia per la gestione dei consulenti
+export interface Consultant {
+    id: string;
+    email: string;
+    name: string;
+    status: 'verified';
+    sharedDocUuids: string[];
+}
+
 export interface User {
     uid: string;
     name: string;
     email: string;
-    address?: string;
+    addressStreet?: string;
+    addressZip?: string;
+    addressCity?: string;
+    addressCountry?: string;
+    addressModificationCount?: number;
     addressConfirmed?: boolean;
     householdMembers?: string[];
     subscription: Subscription;
@@ -72,7 +85,11 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             appData = { 
                 name, 
                 email, 
-                address: '',
+                addressStreet: '',
+                addressZip: '',
+                addressCity: '',
+                addressCountry: 'Svizzera',
+                addressModificationCount: 0,
                 addressConfirmed: false,
                 householdMembers: [],
                 subscription: defaultSubscription,
@@ -95,7 +112,11 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || appData.name, // Prende il nome più aggiornato da Firebase Auth
             email: firebaseUser.email!,
-            address: appData.address || '',
+            addressStreet: appData.addressStreet || '',
+            addressZip: appData.addressZip || '',
+            addressCity: appData.addressCity || '',
+            addressCountry: appData.addressCountry || 'Svizzera',
+            addressModificationCount: appData.addressModificationCount || 0,
             addressConfirmed: appData.addressConfirmed || false,
             householdMembers: appData.householdMembers || [],
             subscription: mergedSubscription,
@@ -125,7 +146,11 @@ export const getAppUser = async (firebaseUser: FirebaseUser): Promise<User> => {
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || "Utente",
             email: firebaseUser.email!,
-            address: '',
+            addressStreet: '',
+            addressZip: '',
+            addressCity: '',
+            addressCountry: 'Svizzera',
+            addressModificationCount: 0,
             addressConfirmed: false,
             householdMembers: [],
             subscription: temporarySubscription,

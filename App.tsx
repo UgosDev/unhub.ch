@@ -1,5 +1,9 @@
 
 
+
+
+
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -7,6 +11,7 @@ import { GoogleGenAI } from "@google/genai";
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
 import jsPDF from 'jspdf';
+import Tesseract from 'tesseract.js';
 
 import * as db from './services/db';
 import * as firestoreService from './services/firestoreService';
@@ -18,14 +23,14 @@ import { generateGroupPdf, type DisdettaData } from './services/pdfService';
 import { getBrandKey, type BrandKey } from './services/brandingService';
 
 import { useAuth } from './contexts/AuthContext';
-import type { User } from './services/authService';
+import type { User, Consultant } from './services/authService';
 import { usePWA } from './contexts/PWAContext';
 import { useTheme } from './contexts/ThemeContext';
 
 import { CameraView } from './components/CameraView';
 import { EmailImportView } from './components/EmailImportView'; // Importa la nuova vista
-import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, COIN_TO_CHF_RATE, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings } from './services/geminiService';
-import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage, QueuedFile, ScanHistoryEntry, Folder } from './services/geminiService';
+import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, COIN_TO_CHF_RATE, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings, processTextWithGemini } from './services/geminiService';
+import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage, QueuedFile, ScanHistoryEntry, Folder, AddressBookEntry } from './services/geminiService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Workspace } from './components/Workspace';
@@ -122,7 +127,7 @@ RULES & CAPABILITIES:
   - **Offline Fallback Mode**: A setting in the Profile page. When enabled, it processes documents locally (for free) if the internet is lost.
   - **PWA**: The app can be installed on desktop and mobile for a faster, offline-first experience.
   - **archivio.ch**: A secure, permanent archive for all documents. It can be shared with family members. It supports a hierarchical folder system for organization.
-  - **disdette.ch**: A module to create and manage contract cancellation letters, simplifying the process.
+  - **disdette.ch**: A module to create and manage contract cancellation letters, simplifying the process. It uses an intelligent address book that auto-populates from scans.
 
 - **Available JSON Actions**:
   - \\\`findAndMerge\\\`: Finds and merges documents based on a content query.
@@ -142,7 +147,7 @@ RULES & CAPABILITIES:
   - For suggesting user replies: \\\`[QUICK_REPLY:Reply 1|Reply 2|...]\\\`
 - The available actions are: 'highlight_mode_selector', 'highlight_unsafe_docs', 'open_camera', 'open_email_import', 'start_demo', and navigation actions.
 - **Navigation actions can now target specific sections**: Use the format \\\`navigate_to_[page]_section_[section_id]\\\`.
-- Available pages and sections: 'navigate_to_profile_section_security', 'navigate_to_profile_section_preferences', 'navigate_to_profile_section_chatbot'. Generic navigations like 'navigate_to_dashboard' or 'navigate_to_pricing', 'navigate_to_privacy' still work.
+- Available pages and sections: 'navigate_to_profile_section_security', 'navigate_to_profile_section_preferences', 'navigate_to_profile_section_chatbot', 'navigate_to_profile_section_address'. Generic navigations like 'navigate_to_dashboard' or 'navigate_to_pricing', 'navigate_to_privacy' still work.
 - Only include ONE of each command type ([ACTION] or [QUICK_REPLY]) per text response, at the very end.
 - **Language and Dialect**: You must have a perfect command of Italian, German, and French. If the user writes in a Swiss-Italian dialect (e.g., Ticinese), try to respond in that dialect, being slightly apologetic about your proficiency. For example: "Provo a risponderti in ticinese, scusami se non è perfetto!".
 - **Never make up features.** If you don't know, say you're an AI specialized in the app's features.
@@ -528,9 +533,11 @@ function AuthenticatedApp() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [polizzeDocs, setPolizzeDocs] = useState<ProcessedPageResult[]>([]);
   const [disdetteDocs, setDisdetteDocs] = useState<ProcessedPageResult[]>([]);
+  const [addressBook, setAddressBook] = useState<AddressBookEntry[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
   const [allUserFeedback, setAllUserFeedback] = useState<firestoreService.UserFeedback[]>([]);
   const [allUsersData, setAllUsersData] = useState<User[] | null>(null);
+  const [consultants, setConsultants] = useState<Consultant[]>([]);
 
 
   // Refs for initial data loading check
@@ -538,8 +545,10 @@ function AuthenticatedApp() {
   const historyLoaded = useRef(false);
   const chatLoaded = useRef(false);
   const archivedLoaded = useRef(false);
+  const addressBookLoaded = useRef(false);
   const accessLogsLoaded = useRef(false);
   const feedbackLoaded = useRef(false);
+  const consultantsLoaded = useRef(false);
 
   const [error, setError] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
@@ -567,6 +576,8 @@ function AuthenticatedApp() {
   const [reauthPassword, setReauthPassword] = useState('');
   const [reauthError, setReauthError] = useState<string | null>(null);
   const [isReauthenticating, setIsReauthenticating] = useState(false);
+  // FIX: Add missing state for ProfilePage
+  const [isExporting, setIsExporting] = useState(false);
   
   const handleUpdateSettings = useCallback((newSettings: Partial<AppSettings>) => {
       const updatedSettings = { ...appSettings, ...newSettings };
@@ -875,6 +886,8 @@ function AuthenticatedApp() {
             archivio: 'archivio',
             polizze: 'polizze',
             disdette: 'disdette',
+            // 'unhub' is for the unauthenticated landing, so it defaults to 'scan' for logged-in users.
+            unhub: 'scan',
             default: 'scan'
         };
         setCurrentPage(pageMap[brandKey] || 'scan');
@@ -900,11 +913,14 @@ function AuthenticatedApp() {
         historyLoaded.current = false;
         chatLoaded.current = false;
         archivedLoaded.current = false;
+        addressBookLoaded.current = false;
         accessLogsLoaded.current = false;
         feedbackLoaded.current = false;
+        consultantsLoaded.current = false;
+
 
         const checkAllLoaded = () => {
-            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && accessLogsLoaded.current && feedbackLoaded.current) {
+            if (resultsLoaded.current && historyLoaded.current && chatLoaded.current && archivedLoaded.current && accessLogsLoaded.current && feedbackLoaded.current && consultantsLoaded.current && addressBookLoaded.current) {
                 setIsInitialLoading(false);
             }
         };
@@ -1004,6 +1020,21 @@ function AuthenticatedApp() {
             if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
             setDisdetteDocs(snapshot.docs.map(doc => doc.data() as ProcessedPageResult));
         });
+        const unsubAddressBook = db.onAddressBookUpdate(snapshot => {
+            if (!snapshot.metadata.hasPendingWrites) triggerSyncIndicator();
+            setAddressBook(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as AddressBookEntry));
+            if (!addressBookLoaded.current) {
+                addressBookLoaded.current = true;
+                checkAllLoaded();
+            }
+        });
+        const unsubConsultants = db.onConsultantsUpdate(data => {
+            if (!consultantsLoaded.current) { // No sync indicator for this one
+                consultantsLoaded.current = true;
+                checkAllLoaded();
+            }
+            setConsultants(data);
+        });
 
 
         return () => {
@@ -1017,6 +1048,8 @@ function AuthenticatedApp() {
             unsubFolders();
             unsubPolizze();
             unsubDisdette();
+            unsubAddressBook();
+            unsubConsultants();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
@@ -1234,7 +1267,7 @@ function AuthenticatedApp() {
 
             // Global context menu
             const isInsideInteractiveElement = target.closest('button, a, input, [role="button"], [data-context-menu-group-id], [data-history-uuid]');
-            if (!isInsideInteractiveElement && ['scan', 'dashboard', 'profile', 'guide'].includes(currentPage)) {
+            if (!isInsideInteractiveElement) {
                  e.preventDefault();
                  setGlobalMenu({
                     isOpen: true,
@@ -1780,21 +1813,25 @@ function AuthenticatedApp() {
             return;
         }
 
-      if (mode === 'no-ai') {
-        const processedImageDataUrl = await createWarpedImageFromCorners(
-            sanitizedData.dataUrl,
-            [],
-            uuid,
-            timestamp
-        );
+    let analysis: any, securityCheck: any, tokenUsage: TokenUsage;
+    let dataForAI: string, mimeTypeForAI: string;
 
+    if (mode === 'speed' && !isOffline) {
+        // --- NUOVO FLUSSO QUICK SCAN: TESSERACT + GEMINI TEXT ---
+        const worker = await Tesseract.createWorker('ita');
+        const { data: { text: ocrText } } = await worker.recognize(sanitizedData.dataUrl);
+        await worker.terminate();
+        
+        const geminiResult = await processTextWithGemini(ocrText);
+        analysis = geminiResult.analysis;
+        securityCheck = geminiResult.securityCheck;
+        tokenUsage = geminiResult.tokenUsage;
+        
+    } else if (mode === 'no-ai') {
+        const processedImageDataUrl = await createWarpedImageFromCorners(sanitizedData.dataUrl, [], uuid, timestamp);
         const newResult: ProcessedPageResult = {
-            pageNumber: globalPageNum,
-            uuid,
-            documentHash,
-            sourceFileName: sourceFileName,
-            originalImageDataUrl: originalImageDataUrl,
-            processedImageDataUrl: processedImageDataUrl,
+            pageNumber: globalPageNum, uuid, documentHash, sourceFileName, sourceFileId, originalImageDataUrl,
+            processedImageDataUrl,
             analysis: {
                 categoria: "Senza Analisi", dataDocumento: new Date().toISOString().split('T')[0],
                 soggetto: sourceFileName.split('.')[0], riassunto: "Immagine acquisita senza analisi AI.",
@@ -1807,29 +1844,29 @@ function AuthenticatedApp() {
             },
             securityCheck: { isSafe: true, threatType: "Nessuna", explanation: "Analisi AI non eseguita." },
             tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
-            pageInfo,
-            sourceFileId,
-            costInCoins: COST_PER_SCAN_COINS[mode],
-            processingMode: mode,
-            timestamp,
-            mimeType,
+            pageInfo, costInCoins: COST_PER_SCAN_COINS[mode], processingMode: mode, timestamp, mimeType,
         };
         await addResultToStateAndBatch(newResult, resultsBatch, historyBatch);
         return;
-    }
-      
-      let dataForAI = sanitizedData.dataUrl;
-      let mimeTypeForAI = sanitizedData.mimeType;
-      
-      try {
-        dataForAI = await preProcessImageForAI(sanitizedData.dataUrl);
-        mimeTypeForAI = 'image/jpeg';
-      } catch (e) {
-        console.warn("La pre-elaborazione dell'immagine è fallita, uso l'immagine sanitizzata per l'analisi AI.", e);
-      }
 
-      const base64Data = dataForAI.split(',')[1];
-      const { analysis, securityCheck, tokenUsage } = await processPage(base64Data, mimeTypeForAI, mode, extractImages);
+    } else {
+        // --- FLUSSO STANDARD (QUALITY, BUSINESS, BOOK, ETC.) ---
+        dataForAI = sanitizedData.dataUrl;
+        mimeTypeForAI = sanitizedData.mimeType;
+        
+        try {
+            dataForAI = await preProcessImageForAI(sanitizedData.dataUrl);
+            mimeTypeForAI = 'image/jpeg';
+        } catch (e) {
+            console.warn("La pre-elaborazione dell'immagine è fallita, uso l'immagine sanitizzata per l'analisi AI.", e);
+        }
+
+        const base64Data = dataForAI.split(',')[1];
+        const geminiResult = await processPage(base64Data, mimeTypeForAI, mode, extractImages);
+        analysis = geminiResult.analysis;
+        securityCheck = geminiResult.securityCheck;
+        tokenUsage = geminiResult.tokenUsage;
+    }
       
       let potentialDuplicate: { pageNumber: number, sourceFileName: string, originalImageDataUrl: string } | undefined = undefined;
       const validExistingResults = results.filter(r => r.analysis.categoria !== 'DuplicatoConfermato');
@@ -1855,7 +1892,7 @@ function AuthenticatedApp() {
 
         // --- Image Extraction Logic ---
         let extractedImages: ProcessedPageResult['extractedImages'] = [];
-        if (extractImages) {
+        if (extractImages && mode !== 'speed') { // Image extraction not possible in speed mode
             if (analysis.immaginiEstratte && analysis.immaginiEstratte.length > 0) {
                 const cropPromises = analysis.immaginiEstratte.map(async (img: any) => {
                     if (!img.boundingBox || img.boundingBox.length !== 4) return null; // Safety check
@@ -1898,6 +1935,16 @@ function AuthenticatedApp() {
       };
       
       await addResultToStateAndBatch(newResult, resultsBatch, historyBatch);
+      
+      // Add sender to address book if found
+      if (newResult.analysis.mittenteNome && newResult.analysis.mittenteIndirizzo) {
+          if (!isDemoMode && user) {
+              await db.addOrUpdateAddressBookEntry({
+                  name: newResult.analysis.mittenteNome,
+                  address: newResult.analysis.mittenteIndirizzo,
+              });
+          }
+      }
   };
 
   const processImageFile = async (file: File, globalPageNum: number, mode: ProcessingMode, extractImages: boolean, resultsBatch: ProcessedPageResult[], historyBatch: ScanHistoryEntry[], sourceFileId?: string) => {
@@ -2135,63 +2182,82 @@ function AuthenticatedApp() {
     
   }, [isDemoMode]);
 
-  const handleCreateDisdetta = useCallback(async (data: DisdettaData) => {
-    if (!user) {
-        setError("Devi essere loggato per creare una disdetta.");
-        return;
-    }
+    const handleCreateDisdetta = useCallback(async (data: DisdettaData, status: 'Bozza' | 'Generata', reminderDate?: string) => {
+        if (!user) {
+            setError("Devi essere loggato per creare una disdetta.");
+            return;
+        }
 
-    const uuid = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+        const uuid = crypto.randomUUID();
+        const timestamp = new Date().toISOString();
 
-    const newDisdetta: ProcessedPageResult = {
-        pageNumber: Date.now(), // Unique enough for this purpose
-        uuid,
-        documentHash: `disdetta-generated-${uuid}`,
-        sourceFileName: `Disdetta - ${data.contractDescription}.pdf`,
-        originalImageDataUrl: '', // N/A for generated docs
-        processedImageDataUrl: '', // N/A for generated docs
-        analysis: {
-            categoria: "Disdetta",
-            dataDocumento: data.effectiveDate,
-            soggetto: `Disdetta: ${data.contractDescription}`,
-            riassunto: `Lettera di disdetta per il contratto n. ${data.contractNumber || 'N/A'} con ${data.recipientName}.`,
-            qualitaScansione: "N/A",
-            lingua: "Italiano",
-            documentoCompleto: true,
-            numeroPaginaStimato: '1/1',
-            titoloFascicolo: `Disdetta ${data.contractDescription}`,
-            groupingSubjectNormalized: 'Disdetta',
-            groupingIdentifier: uuid,
-            datiEstratti: [
-                { chiave: "Mittente", valore: user.name },
-                { chiave: "Indirizzo Mittente", valore: data.userAddress },
-                { chiave: "Destinatario", valore: data.recipientName },
-                { chiave: "Indirizzo Destinatario", valore: data.recipientAddress },
-                { chiave: "Oggetto Contratto", valore: data.contractDescription },
-                { chiave: "Numero Contratto", valore: data.contractNumber },
-                { chiave: "Data Disdetta", valore: data.effectiveDate },
-            ],
-            documentCorners: [],
-        },
-        securityCheck: { isSafe: true, threatType: "Nessuna", explanation: "Documento generato dall'applicazione." },
-        tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
-        pageInfo: { currentPage: 1, totalPages: 1 },
-        costInCoins: 0,
-        processingMode: 'no-ai' as ProcessingMode,
-        timestamp,
-        mimeType: 'application/pdf',
-        ownerUid: user.uid,
-        ownerName: user.name,
-    };
+        const newDisdetta: ProcessedPageResult = {
+            pageNumber: Date.now(),
+            uuid,
+            documentHash: `disdetta-generated-${uuid}`,
+            sourceFileName: `Disdetta - ${data.contractDescription}.pdf`,
+            originalImageDataUrl: '',
+            processedImageDataUrl: '',
+            analysis: {
+                categoria: "Disdetta",
+                dataDocumento: data.effectiveDate,
+                soggetto: `Disdetta: ${data.contractDescription}`,
+                riassunto: `Lettera di disdetta per il contratto n. ${data.contractNumber || 'N/A'} con ${data.recipientName}.`,
+                qualitaScansione: "N/A",
+                lingua: "Italiano",
+                documentoCompleto: true,
+                numeroPaginaStimato: '1/1',
+                titoloFascicolo: `Disdetta ${data.contractDescription}`,
+                groupingSubjectNormalized: 'Disdetta',
+                groupingIdentifier: uuid,
+                datiEstratti: [
+                    { chiave: "Mittente", valore: user.name },
+                    { chiave: "Indirizzo Mittente", valore: data.userAddress },
+                    { chiave: "Destinatario", valore: data.recipientName },
+                    { chiave: "Indirizzo Destinatario", valore: data.recipientAddress },
+                    { chiave: "Oggetto Contratto", valore: data.contractDescription },
+                    { chiave: "Numero Contratto", valore: data.contractNumber },
+                    { chiave: "Data Disdetta", valore: data.effectiveDate },
+                ],
+                documentCorners: [],
+            },
+            securityCheck: { isSafe: true, threatType: "Nessuna", explanation: "Documento generato dall'applicazione." },
+            tokenUsage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
+            pageInfo: { currentPage: 1, totalPages: 1 },
+            costInCoins: 0,
+            processingMode: 'no-ai' as ProcessingMode,
+            timestamp,
+            mimeType: 'application/pdf',
+            ownerUid: user.uid,
+            ownerName: user.name,
+            status: status,
+            reminderDate: reminderDate || undefined,
+        };
 
-    try {
-        await db.addDisdettaDoc(newDisdetta);
-    } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : String(e);
-        setError(`Errore durante il salvataggio della disdetta: ${errorMessage}`);
-    }
-  }, [user]);
+        try {
+            await db.addDisdettaDoc(newDisdetta);
+            await db.addOrUpdateAddressBookEntry({
+                name: data.recipientName,
+                address: data.recipientAddress
+            });
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            setError(`Errore durante il salvataggio della disdetta: ${errorMessage}`);
+        }
+    }, [user]);
+
+    const handleUpdateDisdetta = useCallback(async (doc: ProcessedPageResult) => {
+        if (!user) {
+            setError("Devi essere loggato per aggiornare una disdetta.");
+            return;
+        }
+        try {
+            await db.updateDisdettaDoc(doc);
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            setError(`Errore durante l'aggiornamento della disdetta: ${errorMessage}`);
+        }
+    }, [user]);
 
 
   const handleSendAll = async () => {
@@ -2543,11 +2609,6 @@ function AuthenticatedApp() {
     }
   };
 
-    const handleAskUgo = useCallback((query: string) => {
-        setIsChatOpen(true);
-        // We could pre-fill the input or send a message directly. For now, just open.
-    }, []);
-    
     // --- CHATBOT LOGIC ---
 
     const parseBotResponse = (text: string) => {
@@ -2621,47 +2682,6 @@ function AuthenticatedApp() {
         setCurrentTutorialStep(newStepIndex);
     };
 
-    const handleBotTextMessage = useCallback((text: string) => {
-        const { text: cleanText, action, quickReplies, richContent } = parseBotResponse(text);
-        
-        setChatHistory(prev => [...prev, {
-            role: 'model',
-            text: cleanText,
-            quickReplies: quickReplies.length > 0 ? quickReplies : undefined,
-            richContent
-        }]);
-
-        if (action) {
-            if (action.startsWith('navigate_to_')) {
-                const parts = action.split('navigate_to_')[1].split('_section_');
-                const page = parts[0];
-                const sectionId = parts.length > 1 ? parts[1] : null;
-
-                if (['profile', 'dashboard', 'pricing', 'guide', 'terms', 'privacy'].includes(page)) {
-                    setIsChatOpen(false);
-                    setTimeout(() => {
-                        navigate(page);
-                        if (sectionId) {
-                            setScrollToSection(sectionId);
-                        }
-                        setIsChatOpen(true);
-                    }, 500);
-                }
-            } else if (action === 'start_demo') {
-                if (results.length === 0) {
-                     setResults(getDemoData(), true);
-                     setIsDemoMode(true);
-                }
-            } else if (action === 'open_camera') { setIsCameraOpen(true);
-            } else if (action === 'open_email_import') { setIsEmailImportOpen(true);
-            } else if (action === 'trigger_install') { triggerInstall();
-            } else {
-                setHighlightedElement(action);
-                setTimeout(() => setHighlightedElement(null), 3000);
-            }
-        }
-    }, [navigate, results.length, setResults, setIsDemoMode, triggerInstall]);
-    
     const findGroupsByQuery = useCallback((query: string, category?: string): DocumentGroup[] => {
         const lowerQuery = query.toLowerCase();
         return documentGroups.filter(g => {
@@ -2733,7 +2753,7 @@ function AuthenticatedApp() {
                 }
                 const { name, color, parentId } = actionData.params;
                 try {
-                    await handleAddFolder({ name, color, parentId: parentId || null, description: 'Creata da Ugo' });
+                    await handleAddFolder({ name, color: color || '#64748b', parentId: parentId || null, description: 'Creata da Ugo' });
                     confirmationMessage = `Ok, ho creato la cartella "${name}".`;
                     navigate('archivio');
                 } catch(e) {
@@ -2814,6 +2834,49 @@ function AuthenticatedApp() {
         setChatHistory(prev => [...prev, { role: 'model', text: confirmationMessage }]);
     }, [findGroupsByQuery, handleMergeGroups, appSettings.ugoArchivioEnabled, appSettings.ugoDisdetteEnabled, navigate, isInstallable, isInstalled, triggerInstall, handleUpdateSettings, handleStartTutorial, handleAddFolder, folders, user]);
 
+    const finalizeBotMessage = useCallback((text: string) => {
+        const { text: cleanText, action, quickReplies, richContent } = parseBotResponse(text);
+
+        setChatHistory(prev => {
+            const newHistory = [...prev];
+            const lastMsg = newHistory[newHistory.length - 1];
+            if (lastMsg && lastMsg.role === 'model') {
+                lastMsg.text = cleanText;
+                lastMsg.quickReplies = quickReplies.length > 0 ? quickReplies : undefined;
+                lastMsg.richContent = richContent;
+            }
+            return newHistory;
+        });
+
+        if (action) {
+            if (action.startsWith('navigate_to_')) {
+                const parts = action.split('navigate_to_')[1].split('_section_');
+                const page = parts[0];
+                const sectionId = parts.length > 1 ? parts[1] : null;
+
+                if (['profile', 'dashboard', 'pricing', 'guide', 'terms', 'privacy'].includes(page)) {
+                    setIsChatOpen(false);
+                    setTimeout(() => {
+                        navigate(page);
+                        if (sectionId) { setScrollToSection(sectionId); }
+                    }, 500);
+                }
+            } else if (action === 'start_demo') {
+                if (results.length === 0) {
+                     setResults(getDemoData(), true);
+                     setIsDemoMode(true);
+                }
+            } else if (action === 'open_camera') { setIsCameraOpen(true);
+            } else if (action === 'open_email_import') { setIsEmailImportOpen(true);
+            } else if (action === 'trigger_install') { triggerInstall();
+            } else {
+                setHighlightedElement(action);
+                setTimeout(() => setHighlightedElement(null), 3000);
+            }
+        }
+    }, [navigate, results.length, setResults, setIsDemoMode, triggerInstall]);
+    
+    // FIX: Moved `processUgoMessage` before `handleAskUgo` to fix a 'used before declaration' error.
     const processUgoMessage = useCallback(async (message: string) => {
         if (!chatRef.current || !user) return;
     
@@ -2823,9 +2886,7 @@ function AuthenticatedApp() {
             const implicitFeedbackRefundGiven = sessionStorage.getItem('implicit_feedback_refund_given_v1');
             if (!implicitFeedbackRefundGiven) {
                 const { isComplaint } = await analyzeTextForFeedback(message);
-                if (isComplaint) {
-                    complaintDetected = true;
-                }
+                if (isComplaint) { complaintDetected = true; }
             }
         }
         // --- End Implicit Feedback Detection ---
@@ -2842,6 +2903,7 @@ function AuthenticatedApp() {
         }
         
         setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { role: 'model', text: '' }]);
     
         // --- Context Injection (if enabled) ---
         let messageForApi = message;
@@ -2853,95 +2915,100 @@ function AuthenticatedApp() {
         }
         
         try {
-            const response = await chatRef.current.sendMessage({ message: messageForApi });
-            const responseText = response.text;
-            try {
-                // BUG FIX: Clean the response string before parsing
-                const cleanedResponse = responseText.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
-                const jsonData = JSON.parse(cleanedResponse);
-                if (jsonData.action && jsonData.params) {
-                    handleBotFunctionCall(jsonData);
-                } else {
-                     handleBotTextMessage(responseText);
+            const responseStream = await chatRef.current.sendMessageStream({ message: messageForApi });
+            let fullResponseText = '';
+            let isPotentialJson = false;
+            let firstChunkProcessed = false;
+
+            for await (const chunk of responseStream) {
+                const chunkText = chunk.text;
+                if (!firstChunkProcessed) {
+                    if (chunkText.trim().startsWith('{') || chunkText.trim().startsWith('[')) {
+                        isPotentialJson = true;
+                    }
+                    firstChunkProcessed = true;
                 }
-            } catch (e) {
-                // If it's not valid JSON, treat it as a normal text message
-                handleBotTextMessage(responseText);
+                fullResponseText += chunkText;
+                setChatHistory(prev => {
+                    const newHistory = [...prev];
+                    const lastMsg = newHistory[newHistory.length - 1];
+                    if (lastMsg && lastMsg.role === 'model') {
+                        lastMsg.text = fullResponseText;
+                    }
+                    return newHistory;
+                });
             }
+
+            if (isPotentialJson) {
+                try {
+                    const cleanedResponse = fullResponseText.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
+                    const jsonData = JSON.parse(cleanedResponse);
+                    if (jsonData.action && jsonData.params) {
+                        setChatHistory(prev => prev.slice(0, -1));
+                        handleBotFunctionCall(jsonData);
+                    } else {
+                        finalizeBotMessage(fullResponseText);
+                    }
+                } catch (e) {
+                    finalizeBotMessage(fullResponseText);
+                }
+            } else {
+                finalizeBotMessage(fullResponseText);
+            }
+
         } catch (e) {
-            console.error("Errore dall'API Gemini:", e);
+            console.error("Errore dall'API Gemini Stream:", e);
             const errorMessage = e instanceof Error ? e.message : String(e);
-            setChatHistory(prev => [...prev, { role: 'model', text: `Oops, qualcosa è andato storto. (${errorMessage})` }]);
+            setChatHistory(prev => {
+                const newHistory = [...prev.slice(0, -1)];
+                newHistory.push({ role: 'model', text: `Oops, qualcosa è andato storto. (${errorMessage})` });
+                return newHistory;
+            });
         } finally {
             setIsChatLoading(false);
         }
         
-        // --- Implicit Feedback Response ---
         if (complaintDetected) {
             sessionStorage.setItem('implicit_feedback_refund_given_v1', 'true');
-            const refundAmount = COST_PER_SCAN_COINS.quality * 2; // Refund for 2 quality scans
-
-            // Log feedback to firestore
-            await firestoreService.addUserFeedback(user.uid, {
-                type: 'chat',
-                feedbackValue: 'bad',
-                context: {
-                    userMessage: message,
-                    botResponse: 'Feedback rilevato automaticamente.',
-                }
-            });
-            
-            // Update user balance
+            const refundAmount = COST_PER_SCAN_COINS.quality * 2;
+            await firestoreService.addUserFeedback(user.uid, { type: 'chat', feedbackValue: 'bad', context: { userMessage: message, botResponse: 'Feedback rilevato automaticamente.' } });
             updateUser(prev => prev ? ({ ...prev, subscription: { ...prev.subscription, scanCoinBalance: prev.subscription.scanCoinBalance + refundAmount }}) : null);
-
-            // Add history entry
-            const newHistoryEntry: ScanHistoryEntry = {
-                timestamp: new Date().toISOString(),
-                description: "Rimborso per inconveniente",
-                amountInCoins: refundAmount,
-                status: 'Credited',
-                type: 'refund',
-            };
+            const newHistoryEntry: ScanHistoryEntry = { timestamp: new Date().toISOString(), description: "Rimborso per inconveniente", amountInCoins: refundAmount, status: 'Credited', type: 'refund' };
             await db.addScanHistoryEntry(newHistoryEntry);
-            
-            // Add message to chat after a small delay to feel more natural
-            setTimeout(() => {
-                setChatHistory(prev => [...prev, { role: 'model', text: `Ho notato un po' di frustrazione nel tuo ultimo messaggio. Mi dispiace per l'inconveniente. Per scusarmi, ti ho accreditato ${refundAmount} ScanCoin. Il tuo feedback è stato registrato per aiutarci a migliorare.`}]);
-            }, 1000);
+            setTimeout(() => { setChatHistory(prev => [...prev, { role: 'model', text: `Ho notato un po' di frustrazione nel tuo ultimo messaggio. Mi dispiace per l'inconveniente. Per scusarmi, ti ho accreditato ${refundAmount} ScanCoin. Il tuo feedback è stato registrato per aiutarci a migliorare.`}]); }, 1000);
         }
-        // --- End Implicit Feedback Response ---
 
-        // --- GAMIFICATION LOGIC ---
         const kindlyRewardGiven = sessionStorage.getItem('kindly_reward_given_v1');
         if (userMessageCountRef.current === 3 && !kindlyRewardGiven && !isDemoMode) {
-            const userMessages = chatHistory
-                .filter(m => m.role === 'user')
-                .map(m => m.text);
-            
+            const userMessages = chatHistory.filter(m => m.role === 'user').map(m => m.text);
             const { sentiment } = await analyzeSentimentForGamification(userMessages);
-
             if (sentiment === 'positive') {
                 sessionStorage.setItem('kindly_reward_given_v1', 'true');
                 const rewardAmount = 50;
                 updateUser(prev => prev ? ({ ...prev, subscription: { ...prev.subscription, scanCoinBalance: prev.subscription.scanCoinBalance + rewardAmount }}) : null);
-                
-                const newHistoryEntry: ScanHistoryEntry = {
-                    timestamp: new Date().toISOString(),
-                    description: "Premio per la gentilezza",
-                    amountInCoins: rewardAmount,
-                    status: 'Credited',
-                    type: 'reward',
-                };
+                const newHistoryEntry: ScanHistoryEntry = { timestamp: new Date().toISOString(), description: "Premio per la gentilezza", amountInCoins: rewardAmount, status: 'Credited', type: 'reward' };
                 await db.addScanHistoryEntry(newHistoryEntry);
-
-                // Add reward message to chat after a small delay
-                setTimeout(() => {
-                    setChatHistory(prev => [...prev, { role: 'model', text: `Ho notato che sei sempre molto cordiale! Per ringraziarti, ti ho accreditato ${rewardAmount} ScanCoin bonus. È un piacere aiutarti! 😊`}]);
-                }, 1000);
+                setTimeout(() => { setChatHistory(prev => [...prev, { role: 'model', text: `Ho notato che sei sempre molto cordiale! Per ringraziarti, ti ho accreditato ${rewardAmount} ScanCoin bonus. È un piacere aiutarti! 😊`}]); }, 1000);
             }
         }
-    }, [user, isDemoMode, chatHistory, updateUser, documentGroups, appSettings, handleBotFunctionCall, handleBotTextMessage]);
+    }, [user, isDemoMode, chatHistory, updateUser, documentGroups, appSettings, handleBotFunctionCall, finalizeBotMessage]);
 
+    const handleAskUgo = useCallback((query: string) => {
+        setIsChatOpen(true);
+        if (isChatLoading) return; // Prevent new messages while AI is thinking
+
+        const lastMessage = chatHistory[chatHistory.length - 1];
+        if (lastMessage?.role === 'user' && lastMessage?.text === query) {
+            return; // Don't re-send the exact same message
+        }
+        
+        const newUserMessage: ChatMessage = { role: 'user', text: query };
+        setChatHistory(prev => [...prev, newUserMessage]);
+        processUgoMessage(query);
+    }, [isChatLoading, chatHistory, processUgoMessage, setChatHistory]);
+    
+    // --- CHATBOT LOGIC ---
+    
     const handleSendMessage = useCallback(async (message: string) => {
         if (message === 'Sì, attiva e continua') {
             settingsUpdateSourceRef.current = 'chat'; // Imposta la fonte dell'aggiornamento
@@ -3009,8 +3076,8 @@ function AuthenticatedApp() {
     }, [chatHistory, handleUpdateSettings, processUgoMessage, isDemoMode, user]);
 
     const handleFeedbackResponse = useCallback(async (feedback: 'good' | 'bad') => {
-        const lastUserMessage = [...chatHistory].reverse().find(m => m.role === 'user')?.text;
-        const lastBotResponse = [...chatHistory].reverse().find(m => m.role === 'model' && !m.isFeedbackRequest)?.text;
+        const lastUserMessage = [...chatHistory].reverse().find(m => m.role === 'user')?.text || '';
+        const lastBotResponse = [...chatHistory].reverse().find(m => m.role === 'model' && !m.isFeedbackRequest)?.text || '';
     
         const contextForFeedback = {
             feedback,
@@ -3235,6 +3302,81 @@ function AuthenticatedApp() {
 
     }, [documentGroups, appSettings.ugoContextAwarenessEnabled, ugoSystemInstruction]);
     
+    // --- Data Management Functions ---
+
+    const handleExportAllData = useCallback(async () => {
+        if (!user) return;
+        setIsExporting(true);
+        setError(null);
+        try {
+            const zip = new JSZip();
+            
+            // Get all user-specific data
+            const userProfile = await firestoreService.getUserProfile(user.uid);
+            const allWorkspaceDocs = await db.getAllWorkspaceDocs();
+            const allScanHistory = await db.getAllScanHistory();
+            const allArchivedChats = await db.getArchivedChats();
+            
+            zip.file("profile_and_settings.json", JSON.stringify(userProfile, null, 2));
+            zip.file("data/workspace.json", JSON.stringify(allWorkspaceDocs, null, 2));
+            zip.file("data/archivio.json", JSON.stringify(archivedDocs, null, 2));
+            zip.file("data/polizze.json", JSON.stringify(polizzeDocs, null, 2));
+            zip.file("data/disdette.json", JSON.stringify(disdetteDocs, null, 2));
+            zip.file("data/scan_history.json", JSON.stringify(allScanHistory, null, 2));
+            zip.file("data/folders.json", JSON.stringify(folders, null, 2));
+            zip.file("data/chat_archive.json", JSON.stringify(allArchivedChats, null, 2));
+
+            const content = await zip.generateAsync({ type: "blob" });
+            saveAs(content, `scansioni_ch_export_${user.uid}_${new Date().toISOString().slice(0,10)}.zip`);
+        } catch (e) {
+            setError("Errore durante l'esportazione dei dati: " + (e instanceof Error ? e.message : String(e)));
+        } finally {
+            setIsExporting(false);
+        }
+    }, [user, archivedDocs, polizzeDocs, disdetteDocs, folders]);
+
+    const handleDeleteAccountData = useCallback(async (downloadFirst: boolean) => {
+        if (!user) return;
+        
+        if (downloadFirst) {
+            await handleExportAllData();
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            if (!confirm("Il download del tuo archivio dati è stato avviato. Sei sicuro di voler procedere con l'eliminazione definitiva di tutti i dati dal server? L'azione è irreversibile.")) {
+                return;
+            }
+        } else {
+            if (!confirm("ATTENZIONE: Stai per eliminare PERMANENTEMENTE tutti i tuoi dati. Questa azione è irreversibile e i dati non potranno essere recuperati. Sei assolutamente sicuro?")) {
+                return;
+            }
+        }
+        
+        try {
+            const userId = user.uid;
+            // Delete all subcollections first
+            await Promise.all([
+                db.deleteCollection(userId, 'workspace'),
+                db.deleteCollection(userId, 'archivio'),
+                db.deleteCollection(userId, 'polizze'),
+                db.deleteCollection(userId, 'disdette'),
+                db.deleteCollection(userId, 'scanHistory'),
+                db.deleteCollection(userId, 'chat'),
+                db.deleteCollection(userId, 'archivedChats'),
+                db.deleteCollection(userId, 'accessLogs'),
+                db.deleteCollection(userId, 'folders'),
+                db.deleteCollection(userId, 'stats'),
+            ]);
+
+            // Delete user profile document
+            await db.deleteUserProfile(userId);
+
+            alert("Tutti i tuoi dati sono stati eliminati con successo. Verrai disconnesso.");
+            logout();
+
+        } catch (e) {
+             setError("Errore durante l'eliminazione dei dati: " + (e instanceof Error ? e.message : String(e)) + ". Contatta il supporto per assistenza.");
+        }
+    }, [user, handleExportAllData, logout]);
+
     // --- Funzioni di gestione per Archivio ---
     const handleUpdateArchivedDocument = useCallback(async (uuid: string, updates: Partial<ProcessedPageResult>) => {
         const docToUpdate = archivedDocs.find(d => d.uuid === uuid);
@@ -3400,6 +3542,11 @@ function AuthenticatedApp() {
         });
     }, [appSettings.defaultProcessingMode]);
 
+    const navigateToProfileSection = (sectionId: string) => {
+        navigate('profile');
+        setScrollToSection(sectionId);
+    };
+
 
     const renderPage = () => {
         const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan';
@@ -3416,12 +3563,17 @@ function AuthenticatedApp() {
                             onDeleteFolder={handleDeleteFolder}
                         />;
             case 'polizze':
-                return <Polizze polizzeDocs={polizzeDocs} />;
+                return <Polizze 
+                            polizzeDocs={polizzeDocs} 
+                            archivedDocs={archivedDocs}
+                            consultants={consultants}
+                        />;
             case 'disdette':
                 return <Disdette
                             disdetteDocs={disdetteDocs}
                             user={user!}
                             onCreateDisdetta={handleCreateDisdetta}
+                            onUpdateDisdetta={handleUpdateDisdetta}
                             isWizardOpen={isDisdettaWizardOpen}
                             onWizardOpen={() => setIsDisdettaWizardOpen(true)}
                             onWizardClose={() => {
@@ -3429,6 +3581,9 @@ function AuthenticatedApp() {
                                 setInitialDisdettaData(null);
                             }}
                             initialData={initialDisdettaData}
+                            onNavigateToSection={navigateToProfileSection}
+                            onAskUgo={handleAskUgo}
+                            addressBook={addressBook}
                         />;
             case 'dashboard':
                 return <Dashboard user={user!} onNavigate={navigate} history={scanHistory} isLoadingHistory={isLoadingHistory} />;
@@ -3540,6 +3695,9 @@ function AuthenticatedApp() {
                     scrollToSection={scrollToSection}
                     onScrolledToSection={() => setScrollToSection(null)}
                     accessLogs={accessLogs}
+                    isExporting={isExporting}
+                    onExportAllData={handleExportAllData}
+                    onDeleteAccountData={handleDeleteAccountData}
                 />;
             case 'pricing':
                 return <PricingPage onNavigateToRegister={() => {}} onNavigateBack={() => navigate('scan')} onNavigate={navigate} isInsideApp={true} brandKey={brandKey} />;
@@ -3641,7 +3799,11 @@ function AuthenticatedApp() {
         }
     }
     
-    const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan';
+    const brandKey = currentPage === 'profile'
+        ? 'unhub' as BrandKey
+        : ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage)
+        ? currentPage as BrandKey
+        : 'scan';
 
     const targetGroup = useMemo(() => documentGroups.find(g => g.id === circularMenu.groupId), [documentGroups, circularMenu.groupId]);
 
@@ -3880,7 +4042,7 @@ function UnauthenticatedApp() {
         }
     });
     const [showCookieBanner, setShowCookieBanner] = useState(false);
-    const [appLastUpdated, setAppLastUpdated] = useState<string>(''); // Aggiunto per coerenza con AuthenticatedApp
+    const [appLastUpdated, setAppLastUpdated] = useState<string>('');
     
     useEffect(() => {
         fetch('./metadata.json')
@@ -3897,13 +4059,9 @@ function UnauthenticatedApp() {
         const urlParams = new URLSearchParams(window.location.search);
         const joinFamilyId = urlParams.get('joinFamily');
         if (joinFamilyId) {
-            // This is handled in AuthenticatedApp, but for an unauthenticated user,
-            // we can store it and handle after login, or just navigate to register.
-            // For now, let's just navigate to register.
             setPage('register');
         }
 
-        // A small delay to avoid banner flash on load
         const timer = setTimeout(() => {
             try {
                 if (!localStorage.getItem('cookies_accepted_v1')) {
@@ -3922,103 +4080,80 @@ function UnauthenticatedApp() {
             setShowCookieBanner(false);
         } catch (e) {
             console.warn('Could not save cookie acceptance to localStorage.', e);
+            setShowCookieBanner(false);
         }
-    };
-
-    const grantAccess = () => {
-        try {
-            sessionStorage.setItem('accessGranted_v1', 'true');
-        } catch (e) {
-            console.error("Impossibile salvare il permesso di accesso:", e);
-        }
-        setIsAccessGranted(true);
-    };
-
-    const handleBrandChange = (newBrand: BrandKey) => {
-        setBrandKey(newBrand);
     };
     
-    const navigate = (page: string) => setPage(page);
+    const handleBrandChange = (newBrand: BrandKey) => {
+        setBrandKey(newBrand);
+        const url = new URL(window.location.href);
+        url.searchParams.set('brand', newBrand);
+        window.history.pushState({}, '', url);
+    };
 
-    const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-        <>
-            {children}
-            {showCookieBanner && <CookieBanner onAccept={handleAcceptCookies} onNavigateToPrivacy={() => navigate('privacy')} brandKey={brandKey} />}
-        </>
-    );
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.get('brand') && window.location.pathname === '/') {
+            setPage('unhub');
+        }
+    }, []);
 
-    if (page === 'unhub') {
-        return <PageWrapper><UnHubPage /></PageWrapper>;
-    }
-
-    if (!isAccessGranted) {
-        return <PageWrapper><WaitlistPage onAccessGranted={grantAccess} brandKey={brandKey} appLastUpdated={appLastUpdated} onNavigate={navigate} onBrandChange={handleBrandChange} /></PageWrapper>;
+    if (!isAccessGranted && brandKey !== 'scan' && brandKey !== 'default') {
+        return (
+            <WaitlistPage 
+                onAccessGranted={() => {
+                    try { sessionStorage.setItem('accessGranted_v1', 'true'); } catch {}
+                    setIsAccessGranted(true);
+                }}
+                brandKey={brandKey}
+                appLastUpdated={appLastUpdated}
+                onNavigate={setPage}
+                onBrandChange={handleBrandChange}
+            />
+        );
     }
     
     if (isAwaiting2fa) {
-        return <PageWrapper><LoginPage onNavigateToRegister={() => navigate('register')} onNavigate={navigate} brandKey={brandKey} /></PageWrapper>;
+        return <LoginPage onNavigateToRegister={() => setPage('register')} onNavigate={setPage} brandKey={brandKey} />;
     }
-
+    
     switch (page) {
         case 'login':
-            return <PageWrapper><LoginPage onNavigateToRegister={() => navigate('register')} onNavigate={navigate} brandKey={brandKey} /></PageWrapper>;
+            return <LoginPage onNavigateToRegister={() => setPage('register')} onNavigate={setPage} brandKey={brandKey} />;
         case 'register':
-            return <PageWrapper><RegisterPage 
-                        onNavigateToLogin={() => navigate('login')} 
-                        onNavigateToTerms={() => navigate('terms')}
-                        onNavigateToPrivacy={() => navigate('privacy')}
-                        onNavigate={navigate} 
-                        brandKey={brandKey}
-                    /></PageWrapper>;
+            return <RegisterPage onNavigateToLogin={() => setPage('login')} onNavigateToTerms={() => setPage('terms')} onNavigateToPrivacy={() => setPage('privacy')} onNavigate={setPage} brandKey={brandKey} />;
         case 'pricing':
-            return <PageWrapper><PricingPage onNavigateToRegister={() => navigate('register')} onNavigateBack={() => navigate('landing')} onNavigate={navigate} isInsideApp={false} brandKey={brandKey} /></PageWrapper>;
+            return <PricingPage onNavigateToRegister={() => setPage('register')} onNavigateBack={() => setPage('landing')} onNavigate={setPage} isInsideApp={false} brandKey={brandKey} />;
         case 'changelog':
-             return <PageWrapper><ChangelogPage onNavigateBack={() => navigate('landing')} onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} /></PageWrapper>;
+            return <ChangelogPage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
         case 'terms':
-            return <PageWrapper><TermsOfServicePage onNavigateBack={() => navigate('landing')} onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} /></PageWrapper>;
+            return <TermsOfServicePage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
         case 'privacy':
-            return <PageWrapper><PrivacyPolicyPage onNavigateBack={() => navigate('landing')} onNavigate={navigate} isStandalonePage={true} brandKey={brandKey} /></PageWrapper>;
+            return <PrivacyPolicyPage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
+        case 'unhub':
+            return <UnHubPage />;
         case 'landing':
         default:
-            return <PageWrapper><LandingPage onNavigate={navigate as any} brandKey={brandKey} /></PageWrapper>;
+            return <LandingPage onNavigate={setPage} brandKey={brandKey} />;
     }
 }
 
-
 function App() {
-  const { user, isLoading, isAuthenticating } = useAuth();
-
-  useEffect(() => {
-    // Gestione invito famiglia per utenti già autenticati
-    if (user) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const joinFamilyId = urlParams.get('joinFamily');
-        if (joinFamilyId && joinFamilyId !== user.familyId) {
-            if (confirm(`Sei stato invitato a unirti a una nuova famiglia. Accettando, condividerai il tuo archivio con loro. Procedere?`)) {
-                firestoreService.updateUserProfile(user.uid, { familyId: joinFamilyId })
-                    .then(() => {
-                        // Rimuovi il parametro dall'URL per evitare che si riattivi al refresh
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    });
-            }
-        }
-    }
-  }, [user]);
+  const { user, isLoading, isAwaiting2fa } = useAuth();
   
-  if (isLoading || isAuthenticating) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="flex flex-col items-center gap-4">
-            <LoadingSpinner className="w-16 h-16" />
-            <span className="text-slate-500 dark:text-slate-400 font-semibold">
-                {isAuthenticating ? 'Accesso in corso...' : 'Caricamento...'}
-            </span>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }
 
-  return user ? <AuthenticatedApp /> : <UnauthenticatedApp />;
+  if (user || isAwaiting2fa) {
+      return <AuthenticatedApp />;
+  }
+
+  return <UnauthenticatedApp />;
 }
 
 export default App;
