@@ -198,7 +198,7 @@ export class DocumentScannerEngine {
     
         const horizontals = [];
         const verticals = [];
-        const minLength = Math.min(width, height) * 0.2; // Aumentata la soglia di lunghezza minima
+        const minLength = Math.min(width, height) * 0.2; // Increased min length threshold
     
         for (let i = 0; i < linesMat.rows; i++) {
             const [x1, y1, x2, y2] = linesMat.data32S.slice(i * 4, i * 4 + 4);
@@ -208,7 +208,7 @@ export class DocumentScannerEngine {
             const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
             const absAngle = Math.abs(angle);
     
-            // Tolleranza più ampia per gli angoli
+            // Wider tolerance for angles
             if (absAngle < 45 || absAngle > 135) {
                 horizontals.push([x1, y1, x2, y2]);
             } else {
@@ -232,6 +232,7 @@ export class DocumentScannerEngine {
     
         const corners = [{x: tl.x, y: tl.y}, {x: tr.x, y: tr.y}, {x: br.x, y: br.y}, {x: bl.x, y: bl.y}];
         
+        // Sanity check: corners should not be wildly outside the frame
         for (const corner of corners) {
             if (corner.x < -width * 0.2 || corner.x > width * 1.2 || corner.y < -height * 0.2 || corner.y > height * 1.2) {
                 return null;
@@ -276,7 +277,7 @@ export class DocumentScannerEngine {
       cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
       const meanB = cv.mean(gray)[0] | 0;
 
-      // === NUOVA PIPELINE CANNY/HOUGH ===
+      // === NEW ROBUST HOUGH LINE TRANSFORM PIPELINE ===
       cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
       cv.adaptiveThreshold(blur, dilated, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 8);
       cv.Canny(dilated, canny, 100, 200, 3);
@@ -287,7 +288,7 @@ export class DocumentScannerEngine {
       
       bestPts = this.findBestQuadFromLines(lines, cw, ch);
       lines.delete();
-      // === FINE NUOVA PIPELINE ===
+      // === END NEW PIPELINE ===
 
       const maxArea = bestPts ? polyArea(bestPts) : 0;
 
@@ -352,7 +353,6 @@ export class DocumentScannerEngine {
         // Condizioni per AI fallback (non aggressivo)
         const shouldFallback =
           elapsedFail >= FALLBACK_FAIL_MS &&
-          meanB < LOW_LIGHT_THRESH &&
           sinceLastFallback >= FALLBACK_COOLDOWN_MS;
 
         if (shouldFallback) {

@@ -4,13 +4,48 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.3.0]
+
+### Aggiunto
+* **Modalità "Fotografia"**: Una nuova modalità di scansione specializzata per l'analisi semantica di immagini. Non estrae testo, ma descrive e categorizza il contenuto visivo, abilitando la ricerca per immagini in `archivio.ch`. Utilizza il modello `gemini-2.5-flash` con "Thinking Mode" e ha un costo di 50 ScanCoin.
+
+## [9.2.0]
+
+### Aggiunto
+* **[Piattaforma] Rubrica Mittenti**: L'applicazione ora estrae e salva automaticamente i dati dei mittenti (`mittenteNome`, `mittenteIndirizzo`) in una rubrica personale per ogni utente.
+* **[Disdette] Autocompletamento Destinatario**: Il wizard di creazione delle disdette ora include un campo di ricerca intelligente che suggerisce i contatti dalla rubrica, pre-compilando nome e indirizzo.
+* **[Disdette] Salvataggio Automatico in Rubrica**: Ogni nuovo destinatario inserito manualmente nel wizard viene aggiunto o aggiornato automaticamente nella rubrica, rendendola auto-apprendente.
+
+## [9.1.0]
+
+### Aggiunto
+* **[Disdette] Gestione dello Stato**: Il modulo `disdette.ch` è stato potenziato per diventare uno strumento di tracciamento completo.
+* **[Disdette] Stati della Disdetta**: Introdotto un sistema di stati (`Bozza`, `Generata`, `Inviata`, `Confermata`) per ogni disdetta, che permette di seguirne il ciclo di vita.
+* **[Disdette] Salvataggio Bozze**: È ora possibile salvare le disdette come bozze per completarle in un secondo momento.
+* **[Disdette] Promemoria**: Aggiunta la possibilità di impostare una data di promemoria nel wizard di creazione.
+* **[Disdette] UI Riorganizzata**: La pagina ora raggruppa le disdette per stato, offrendo una visione chiara delle azioni da compiere.
+
 ## [9.0.0]
 
-### Rimosso
-* **Tutto**: L'applicazione è stata drasticamente semplificata per funzionare esclusivamente come pagina di attesa (waitlist) e hub di navigazione per i servizi futuri.
+### Aggiunto
+* **[Archivio] Riprogettazione Completa in Dashboard**: La pagina Archivio è stata trasformata in un centro di controllo interattivo per i documenti.
+* **[Archivio] Widget Intelligenti**: Introdotta una dashboard con widget per "Accesso Rapido" (documenti recenti), "In Scadenza" (l'AI rileva le scadenze) e "Da Organizzare".
+* **[Archivio] Viste Multiple**: Aggiunto un selettore per visualizzare i documenti in modalità **Griglia**, **Calendario** (basato sulla data del documento) e **Timeline** (cronologia verticale).
+* **[Archivio] Suggerimenti AI per Archiviazione**: Il widget "Da Organizzare" include un pulsante che utilizza Gemini per suggerire la cartella più appropriata per un documento.
 
-### Modificato
-* **Architettura Semplificata**: Rimossa tutta la logica di autenticazione, scansione, gestione documenti e l'assistente AI Ugo. L'app ora consiste solo nelle pagine Waitlist e UnHub.
+### Migliorato
+* **[AI] Rilevamento Scadenze**: Potenziata l'analisi AI in `geminiService` per identificare e estrarre specificamente le date di scadenza dai documenti.
+* **[Archivio] Interfaccia Utente**: L'intera pagina è stata resa più moderna, funzionale e tecnologica, offrendo molteplici modi per esplorare e gestire i propri file.
+
+---
+
+## [8.9.0]
+
+### Aggiunto
+* **[Fotocamera] Scansione Multi-Pagina**: La fotocamera ora supporta l'acquisizione di più pagine in un'unica sessione. È possibile aggiungere, visualizzare in anteprima ed eliminare singole pagine prima di finalizzare la scansione.
+
+### Migliorato
+* **[Fotocamera] Interfaccia Utente**: L'interfaccia della fotocamera è stata potenziata con una galleria di anteprime per le pagine scansionate e controlli dedicati ("Annulla Ultima", "Fine") per gestire le sessioni di scansione multi-pagina in modo intuitivo.
 
 ## [8.8.0]
 
@@ -337,554 +372,351 @@ Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e
 ---
 
 ## [6.33.0]
-
 ### Aggiunto
-* **Menu contestuale globale** (tasto destro su aree vuote).
-* **Menu storico**: scorciatoia per trovare fascicoli **correlati**.
+* **Menu contestuale globale**: (tasto destro su aree vuote) per un accesso rapido alle azioni più comuni come il cambio tema o l'avvio della fotocamera.
+* **Menu contestuale per Storico**: (tasto destro su una riga dello storico) per trovare il fascicolo correlato nell'area di lavoro o segnalare un problema a Ugo.
 
 ---
 
 ## [6.32.0]
-
 ### Aggiunto
-* **Menu Contestuale Circolare** su fascicolo per accesso rapido ad **azioni principali**.
+* **Menu Contestuale Circolare**: Implementato un nuovo menu radiale (tasto destro) sui fascicoli per un accesso rapido a tutte le azioni principali (seleziona, espandi, invia, scarica ZIP/PDF, dividi).
 
 ---
 
 ## [6.31.0]
-
 ### Migliorato
-* **Ugo controlla impostazioni**: può modificare **tema/modalità** via testo.
-* **Feedback conversazionale**: Ugo risponde a 👍/👎 con toni **naturali**.
+* **Chatbot Interattivo**: Potenziato Ugo per permettergli di eseguire azioni sull'interfaccia (es. cambiare tema) e rispondere ai feedback degli utenti (pollice su/giù).
 
 ---
 
 ## [6.30.0]
-
-### Migliorato
-* **Install PWA**: pulsante sempre **visibile** nel Profilo con indicazione supporto.
-* **Messaggi Ugo**: spiega l’installazione quando il browser **non è compatibile**.
+### Corretto
+* **Installazione PWA**: Migliorata la logica del pulsante "Installa App" nel profilo, che ora fornisce aiuto se l'installazione non è immediatamente disponibile. Ugo è ora più intelligente nel gestire questa richiesta.
 
 ---
 
 ## [6.28.0]
-
 ### Aggiunto
-* **PWA**: installabile su desktop e mobile, con **supporto offline**.
+* **Progressive Web App (PWA)**: L'applicazione è ora installabile su desktop e mobile per un'esperienza nativa e un accesso più rapido.
+* **Supporto Offline**: Grazie al service worker, l'app si avvia e funziona anche senza connessione internet (con dati precedentemente caricati).
 
 ---
 
 ## [6.27.0]
-
-### Migliorato
-* **Prezzi**: riprogettata la pagina, enfasi sui pacchetti a **ricarica singola**; abbonamenti come **valore aggiunto**.
+### Modificato
+* **Pagina Prezzi Riprogettata**: La pagina dei prezzi è stata ridisegnata per dare priorità ai pacchetti di ricarica singola, presentando gli abbonamenti come un'opzione per un valore aggiunto.
 
 ---
 
 ## [6.26.0]
-
 ### Aggiunto
-* **Abbonamenti**: piani **mensili/annuali** + **Founders Edition** a tempo limitato.
+* **Modello a Abbonamenti**: Introdotta una nuova pagina prezzi con piani di abbonamento mensili/annuali e un'offerta speciale "Founders Edition".
 
 ---
 
 ## [6.25.0]
-
 ### Aggiunto
-* **Ugo Easter Egg**: gestione reclami con **rimborsi**, inviti a community, **dialetti svizzeri**.
+* **Funzionalità Nascoste Ugo**: Implementati "easter eggs" per il chatbot: gestione proattiva dei reclami con rimborsi, inviti a una community per utenti fedeli e supporto per i dialetti svizzeri.
 
 ---
 
 ## [6.24.0]
-
 ### Aggiunto
-* **Tema**: selettore **Chiaro/Scuro/Sistema**.
-
+* **Selettore Tema**: Implementato un selettore di tema completo (Chiaro/Scuro/Sistema) nella pagina Profilo per personalizzare l'aspetto dell'app.
 ### Corretto
-* **Tema scuro**: risolti bug di applicazione.
+* Risolti bug critici che impedivano al selettore di tema di funzionare correttamente.
 
 ---
 
 ## [6.23.0]
-
 ### Aggiunto
-* **Vista griglia** per risultati **compatti**.
-* **Tagging** per organizzare e **cercare** fascicoli.
+* **Miglioramenti UI/UX**: Introdotta una vista a griglia opzionale per i risultati, un sistema di tagging per i fascicoli e un selettore di tema (prima implementazione).
 
 ---
 
 ## [6.22.0]
-
 ### Aggiunto
-* **Import Google Drive**: acquisizione diretta dal **cloud**.
+* **Importazione da Google Drive**: Integrato Google Picker per importare file direttamente da Google Drive.
 
 ---
 
 ## [6.21.0]
-
 ### Migliorato
-* **Pre-elaborazione immagini (CLAHE)**: qualità e accuratezza **migliorate** per l’analisi AI.
+* **Qualità Analisi AI**: Aggiunta una fase di pre-elaborazione delle immagini (miglioramento del contrasto) tramite OpenCV.js per aumentare l'accuratezza dell'OCR.
 
 ---
 
 ## [6.20.0]
-
 ### Migliorato
-* **Barra azioni**: ora **contestuale**, appare solo con selezione fascicoli.
+* **Interfaccia Utente**: Riprogettata la barra delle azioni per essere contestuale: appare solo quando uno o più fascicoli sono selezionati, semplificando l'UI.
 
 ---
 
 ## [6.19.2]
-
 ### Aggiunto
-* **Documenti legali**: **download PDF** di Termini e Privacy.
+* **Download Documenti Legali**: Aggiunta la possibilità di scaricare i Termini di Servizio e la Privacy Policy in formato PDF.
 
 ---
 
 ## [6.19.1]
-
-### Aggiunto
-* **Footer globale** su tutte le pagine.
+### Migliorato
+* **Layout Globale**: Aggiunto un footer consistente in tutta l'applicazione per un aspetto più professionale.
 
 ---
 
 ## [6.19.0]
-
 ### Aggiunto
-* **Framework privacy**: accettazione **obbligatoria** dei termini e **Centro Privacy** nel profilo.
+* **Framework Privacy e Consenso**: Introdotta l'accettazione dei Termini e della Privacy alla registrazione e un nuovo "Centro Privacy" nel profilo.
 
 ---
 
 ## [6.18.0]
-
 ### Aggiunto
-* **Metadati avanzati**: **UUID/timestamp** come **watermark** e nei file esportati (PDF, ZIP).
+* **Metadati Avanzati**: Potenziati i file esportati (immagini, PDF, ZIP) con metadati visibili (watermark con ID/timestamp) e invisibili per garantire tracciabilità e autenticità.
 
 ---
 
 ## [6.17.1]
-
 ### Migliorato
-* **Layout iniziale**: struttura a **tre colonne** su schermi grandi.
+* **Layout Iniziale**: Riprogettata la schermata di avvio con una struttura a tre colonne per un flusso di lavoro più chiaro su schermi grandi.
 
 ---
 
 ## [6.17.0]
-
 ### Aggiunto
-* **Import via email temporanea**: invia documenti a un **indirizzo dedicato**.
+* **Importazione via Email**: Implementata l'interfaccia per importare documenti inviandoli a un indirizzo email temporaneo.
 
 ---
 
 ## [6.16.2]
-
 ### Migliorato
-* **Dropzone**: feedback visivo **coerente** nel box di caricamento.
+* **UI Caricamento File**: Perfezionato il design del componente di upload per una maggiore coerenza visiva.
 
 ---
 
 ## [6.16.1]
-
 ### Migliorato
-* **Ugo**: riapertura **automatica** dopo navigazione.
-
+* **Flusso Chatbot**: Ugo ora gestisce meglio la navigazione tra le pagine, riaprendo la chat automaticamente.
 ### Corretto
-* **Cronologia chat**: non si **resetta** ad ogni apertura.
+* Risolto un bug che causava il reset della cronologia della chat ad ogni apertura.
 
 ---
 
 ## [6.16.0]
-
 ### Aggiunto
-* **Ugo potenziato**: assistenza **proattiva**, esecuzione **azioni**, **memoria** a lungo termine e **multimodale**.
+* **Superpotenziamento Chatbot "Ugo"**: Ugo è ora proattivo, può eseguire azioni, ha una memoria a lungo termine e può usare risposte multimodali (immagini).
 
 ---
 
 ## [6.15.3]
-
 ### Migliorato
-* **Ugo UX**: saluti **contestuali**, **risposte rapide** suggerite, **feedback granulare**.
+* **Potenziamento Chatbot "Ugo"**: Aggiunti saluti contestuali, risposte rapide e feedback con pollice su/giù. La cronologia ora persiste durante la sessione.
 
 ---
 
 ## [6.15.2]
-
 ### Aggiunto
-* **Easter Egg**: Ugo può premiare con **ScanCoin bonus**.
+* **Gamification "Utenti Gentili"**: Ugo può ora premiare gli utenti cordiali con ScanCoin bonus.
 
 ---
 
 ## [6.15.1]
-
-### Migliorato
-* **Demo**: esempi di **estrazione immagini** inclusi.
+### Corretto
+* **Modalità Demo**: La demo ora include un esempio di estrazione di immagini, rendendo la funzionalità visibile.
 
 ---
 
 ## [6.15.0]
-
 ### Aggiunto
-* **Estrazione immagini**: loghi/firme prelevati durante l’analisi.
+* **Estrazione Immagini Opzionale**: Implementata la capacità di estrarre loghi, firme e foto dai documenti con un costo aggiuntivo.
 
 ---
 
 ## [6.14.0]
-
-### Migliorato
-* **Schermata ritaglio**: lente d’ingrandimento per **precisione assoluta**.
+### Aggiunto
+* **Ritaglio Manuale di Precisione**: Dopo lo scatto con la fotocamera, è ora possibile aggiustare manualmente i bordi del documento con l'aiuto di una lente d'ingrandimento.
 
 ---
 
 ## [6.13.0]
-
 ### Migliorato
-* **Coda lavoro**: **persistente** e riprende dopo ricarica.
-
-### Aggiunto
-* **Filtri sicurezza Gemini**: blocco contenuti **dannosi**.
+* **Robusteza e Sicurezza**: Implementata la persistenza della coda di lavoro in IndexedDB e attivati i filtri di sicurezza di Gemini per prevenire contenuti dannosi.
 
 ---
 
 ## [6.12.0]
-
 ### Migliorato
-* **Rilevamento documenti**: più **sensibile**, riconosce **scontrini** e formati piccoli.
+* **Rilevamento Documenti Piccoli**: Migliorata la sensibilità del rilevamento bordi in fotocamera per riconoscere anche scontrini e documenti di piccole dimensioni.
 
 ---
 
 ## [6.11.0]
-
 ### Aggiunto
-* **Modalità “Scontrino”**: estrazione **dettagliata** delle voci.
+* **Modalità Scontrino**: Nuova modalità specializzata per estrarre dati strutturati (voci, prezzi, totale) da scontrini e ricevute.
 
 ---
 
 ## [6.10.0]
-
 ### Aggiunto
-* **Export PDF multi-pagina** per ogni fascicolo.
-* **Retry intelligente** su scansioni **fallite** o di **bassa qualità**.
+* **Esportazione PDF per Fascicolo**: Ogni fascicolo può ora essere scaricato come un singolo file PDF multi-pagina.
+* **Tentativi di Rianalisi**: Aggiunta la possibilità di riprovare fino a 3 volte una scansione fallita o di bassa qualità.
 
 ---
 
 ## [6.9.9]
-
 ### Corretto
-* **Scroll mobile**: non riporta più la vista in **cima**.
+* Risolto un bug di scorrimento su dispositivi mobili nella pagina di scansione.
 
 ---
 
 ## [6.9.8]
-
 ### Aggiunto
-* **Preferenze modalità**: configurazione da **Profilo**.
-
+* **Modalità Primarie Configurabili**: È ora possibile scegliere nel profilo quali due modalità di scansione visualizzare per un accesso rapido.
 ### Migliorato
-* **Naming modalità**: nomi più **commerciali** e descrittivi.
+* **Nomi Modalità**: Rinominato le modalità di scansione con nomi più commerciali.
 
 ---
 
 ## [6.9.7]
-
 ### Aggiunto
-* **ZIP protetti** da **password**.
-* **Cookie banner** + integrazione **Microsoft Clarity**.
+* **Download ZIP Protetto da Password**.
+* **Cookie Banner e Integrazione Clarity**.
+### Migliorato
+* Il logo nell'header ora è un link navigabile alla home.
+* La pagina prezzi mostra stime del numero di scansioni per pacchetto.
 
 ---
 
 ## [6.9.6]
-
+### Aggiunto
+* **Indicatori Visivi per Modalità**: Aggiunto un bordo colorato ai risultati per identificare a colpo d'occhio la modalità usata.
 ### Migliorato
-* **Flash**: **auto** riabilitato + **indicatore** stato.
-* **Indicatori colore**: mostrano la **modalità** nei risultati e in coda.
+* **Flash Automatico**: Riabilitato il flash automatico in fotocamera.
+* **Flusso di Lavoro**: Il selettore di modalità è ora sempre attivo.
 
 ---
 
 ## [6.9.5]
-
 ### Aggiunto
-* **“Simple Scan” (No-AI)**: digitalizzazione **senza analisi dati**.
-
----
-
-## [6.9.4]
-
-### Aggiunto
-* **“Deep Scan”**: estrazione **completa** del testo da documenti lunghi.
+* **Modalità "Simple Scan"**: Nuova modalità gratuita (0 ScanCoin) per la digitalizzazione senza analisi AI.
 
 ---
 
 ## [6.9.3]
-
 ### Migliorato
-* **Storico transazioni**: spostato in **Dashboard** e **scaricabile in PDF**.
+* **Dashboard**: Spostato lo storico delle sessioni dal Profilo alla Dashboard per una migliore centralizzazione.
+### Aggiunto
+* **Report PDF**: È ora possibile scaricare lo storico delle transazioni in formato PDF.
+
+---
+
+## [6.9.4]
+### Aggiunto
+* **Modalità "Deep Scan"**: Nuova modalità di elaborazione specializzata per l'estrazione completa del testo da documenti densi come libri o contratti.
 
 ---
 
 ## [6.5.0]
-
 ### Aggiunto
-* **Modale comparativa**: confronto **dettagliato** di tutte le modalità di scansione.
+* **Scheda Info per Modalità**: Introdotta una modale di confronto dettagliata per tutte le modalità di scansione.
 
 ---
 
 ## [6.4.0]
-
 ### Migliorato
-* **Virtualizzazione risultati**: performance migliori con molte voci.
-
+* **Performance Liste Lunghe**: Implementata la virtualizzazione completa dei risultati per gestire un gran numero di documenti senza rallentamenti.
 ### Aggiunto
-* **Banner di benvenuto**: guida iniziale in workspace **vuoto**.
+* **Banner di Benvenuto**: Aggiunto un banner per guidare i nuovi utenti nell'area di lavoro vuota.
 
 ---
 
 ## [6.3.0]
-
 ### Migliorato
-* **Statistiche**: costi e totale scansioni si **aggiornano in tempo reale**.
+* **Aggiornamento Statistiche**: Le statistiche totali (costo, scansioni) si aggiornano ora in tempo reale dopo ogni scansione, non solo a fine sessione.
 
 ---
 
 ## [6.2.0]
-
 ### Corretto
-* **Prompt Gemini**: fix a un problema **critico** che causava fallimenti.
-
-### Migliorato
-* **Cambio modalità on-the-fly**: possibile anche durante **elaborazione**.
+* **Prompt Gemini**: Risolto un problema critico nel prompt AI che causava fallimenti nell'analisi.
+* **Usabilità**: Rimosso il blocco dal selettore di modalità durante l'elaborazione.
 
 ---
 
 ## [6.1.0]
-
 ### Aggiunto
-* **Ricerca fascicoli** + **scorciatoie tastiera** per azioni principali.
-
+* **Ricerca e Scorciatoie**: Introdotta la ricerca per fascicoli e scorciatoie da tastiera.
 ### Migliorato
-* **Refactor fotocamera**: estrazione in **custom hook** per manutenibilità.
+* **Refactoring Fotocamera**: Suddivisa la logica della fotocamera in custom hook per una migliore manutenibilità.
 
 ---
 
 ## [6.0.1]
-
 ### Corretto
-* **Fotocamera**: fix a bug su **scatto** e **flash**.
+* Risolti bug critici che impedivano il corretto funzionamento della fotocamera e dello scatto automatico.
 
 ---
 
 ## [6.0.0]
-
 ### Aggiunto
-* **Scansione da fotocamera** stabile con **OpenCV** (rilevamento bordi + ritaglio automatico).
-
-### Modificato
-* **Major 6.0.0**: promossa la feature a **principale e matura**.
+* **Rilevamento Bordi con OpenCV**: Reintrodotta e stabilizzata la scansione da fotocamera con rilevamento bordi in tempo reale e correzione prospettica automatica.
 
 ---
 
 ## [5.7.1]
-
 ### Corretto
-* **Overlay fotocamera**: risolti problemi di **layout** e **disallineamento**.
+* **UI Fotocamera**: Ripristinato il layout precedente della fotocamera e risolti i problemi di allineamento dell'overlay video.
 
 ---
 
 ## [5.7.0]
-
 ### Aggiunto
-* **OpenCV.js (prima implementazione)**: **rilevamento bordi** e **ritaglio automatico**.
+* Implementato il rilevamento dei bordi e il ritaglio automatico tramite OpenCV.js.
+* Lo scatto viene automaticamente ritagliato e corretto nella prospettiva.
+* La modalità "Scatto Rapido" è stata potenziata per scattare solo quando un documento è rilevato e il dispositivo è in piano.
 
 ---
 
 ## [5.6.0]
-
 ### Aggiunto
-* **“Scatto Rapido”**: scatta **automaticamente** quando il dispositivo è in **piano**.
+* Implementata la "Modalità Scatto Rapido" nella fotocamera.
+* Aggiunto un interruttore per attivarla e la logica per scattare automaticamente quando il dispositivo è in piano.
 
 ---
 
 ## [5.5.0]
-
 ### Aggiunto
-* **Feedback per scansione**: pollice su/giù su ogni **singola pagina**.
+* Implementata la funzionalità di feedback per le singole scansioni. L'utente può ora indicare se l'analisi di una pagina è buona o cattiva.
+* Aggiunto un campo opzionale `feedback` all'interfaccia `ProcessedPageResult`.
 
 ---
 
 ## [5.4.0]
-
 ### Migliorato
-* **Chat**: cronologia **persistente** durante la navigazione nella sessione.
+* La chat è stata resa persistente, mantenendo la cronologia durante la navigazione. Lo stato è stato spostato in `App.tsx`.
 
 ---
 
 ## [5.3.0]
-
 ### Migliorato
-* **Naming modalità**: più **commerciale**.
-
-### Aggiunto
-* **Costo stimato in CHF**: visibile per ogni **modalità**.
+* Eseguito il rebranding delle modalità di elaborazione con nomi più commerciali.
+* Aggiunto il costo per scansione di fianco alla descrizione di ogni modalità per massima trasparenza.
+* Aggiornata tutta l'interfaccia per riflettere i nuovi nomi.
 
 ---
 
 ## [5.2.0]
-
 ### Aggiunto
-* **Indicatori**: **modalità**, **timestamp** e **watermark** sulle immagini.
-* **Riprova Scansione**: rielaborazione di **singole pagine**.
+* Aggiunti indicatori di modalità e timestamp a ogni pagina scansionata.
+* Implementata una filigrana (watermark) sulle immagini elaborate.
+* Introdotta la funzione "Riprova Scansione".
+### Migliorato
+* Migliorata la gestione degli errori.
 
 ---
 
-## [5.0.1]
-
-### Corretto
-* **Accesso fotocamera**: gestione migliore quando la **posteriore non è disponibile** (fallback **frontale**; evita “Requested device not found”).
-
----
-
-## [5.0.0]
-
-### Modificato
-* **Duplicati “Human-in-the-loop” (correzione critica)**: non blocca più i file; li segna come **“Potenziali Duplicati”** con analisi di **somiglianza interna** (non AI). L’utente **conferma/nega** con nuovi pulsanti → meno falsi positivi, più affidabilità.
-* **Raggruppamento deterministico**: rafforzata la logica su **ID file sorgente** come metodo **primario**; l’AI resta **solo di supporto** per la coerenza titoli.
-
----
-
-## [4.0.0]
-
-### Corretto
-* **Raggruppamento deterministico (correzione critica)**: ogni pagina estratta da un file riceve **`sourceFileId` univoco** → le pagine **tornano sempre insieme**. Fix definitivo ai fascicoli che mostravano un solo file/contatore errato. L’AI è **fallback** per foto singole.
-
----
-
-## [3.9.0]
-
+## [5.1.0]
 ### Aggiunto
-* **Gestione duplicati interattiva**:
-
-  * **Avviso chiaro** con **nome file originale** coincidente.
-  * **Confronto visivo**: modale **fianco a fianco** tra scansione e documento originale.
-  * **Override manuale**: pulsante **“Non è un duplicato”** per forzare nuova analisi **ignorando** il rilevamento.
-
-### Corretto
-* **Raggruppamento AI definitivo**: istruzioni **algoritmiche**; l’AI trova un **titolo “master”** per il fascicolo e deriva **chiavi** da quello. Fix per **raggruppamento impreciso** e **conteggio pagine**.
-
----
-
-## [3.8.0]
-
-### Corretto
-* **Raggruppamento AI & conteggio**: prompt più **algoritmico** → fix ai fascicoli con un solo file/contatore errato.
-* **Spinner coda**: sostituito con **SVG** fluido (arco in rotazione).
-* **Pulsanti invio**: struttura interna riprogettata; fix **disallineamenti** e **testi** inattesi; aggiunti **divisori verticali**.
-* **Sovrapposizione UI**: più spazio in fondo alla lista per non coprire l’ultimo fascicolo con la **barra sticky**.
-
-### Modificato
-* **Loghi partner**: nuovi **SVG wordmark** di `archivio.ch` e `polizze.ch` nei pulsanti e in home.
-
----
-
-## [3.7.0]
-
-### Aggiunto
-* **Dividi fascicolo**: pulsante **“Dividi”** su multipagina per separare documenti uniti per errore.
-* **Riprova raggruppamento intelligente**: pulsante **“Riprova”** che unisce fascicoli selezionati in base al **criterio più comune**.
-* **Invio flessibile**: pulsanti per **tutte le destinazioni** su ogni fascicolo; quella suggerita dall’AI è **evidenziata**.
-* **Invia tutti**: smistamento **massivo** dei fascicoli **sicuri** con **doppia conferma**.
-
-### Modificato
-* **Stile pulsanti invio**: sfondo **neutro** per far risaltare i **loghi**.
-* **Raggruppamento AI**: istruzioni più **rigide** e **algoritmiche** (migliora conteggio pagine).
-* **Icona “Riprova”**: da **Sparkles** a **ArrowsPath** più intuitiva.
-
-### Corretto
-* **Spinner coda**: sostituzione con SVG più **fluido**.
-* **Sovrapposizione UI**: extra **spazio** in fondo alla lista.
-
----
-
-## [3.6.0]
-
-### Aggiunto
-* **Roadmap in `README.md`**: note per **sviluppi futuri** (es. possibile re-introduzione/monetizzazione “Scatto Rapido”).
-
----
-
-## [3.5.1]
-
-### Corretto
-* **Layout header**: fix **sovrapposizione** tra testo benvenuto e logo.
-* **Interfaccia fotocamera**: rollback a versione **stabile** e **mobile-friendly**; guida all’allineamento **affidabile**.
-
----
-
-## [3.5.0]
-
-### Modificato
-* **Fotocamera mobile-first**: controlli **grandi**, spaziati, **intuitivi** in stile app nativa.
-* **Guida all’allineamento**: logica sensori **riscritta** (permessi gestiti, feedback chiaro).
-
----
-
-## [3.4.0]
-
-### Aggiunto
-* **Storico utilizzo & costi**: sezione nel profilo con **token** (in/out), **costo stimato** e **pagine** elaborate.
-* **Salvataggio storico**: su **“Pulisci Sessione”**, lo storico corrente viene **archiviato** prima di svuotare l’area di lavoro.
-* **Coda visiva**: pannello sinistro mostra **in tempo reale** i file in **attesa** e in **analisi**.
-
-### Modificato
-* **Cancellazione account**: rimuove anche **tutto lo storico**.
-* **Processo di analisi**: aggiornamento **stato coda** per maggiore **trasparenza**.
-
----
-
-## [3.3.0]
-
-### Aggiunto
-* **Raggruppamento intelligente**: AI raggruppa automaticamente pagine in **fascicoli** usando il **nome file** suggerito.
-* **Invio contestuale**: pulsanti specifici per **destinazioni** (`polizze.ch`, `archivio.ch`).
-* **Download per fascicolo**: export **ZIP** del solo fascicolo.
-
-### Modificato
-* **UI risultati**: da lista piatta a **fascicoli espandibili**.
-* **Invio**: gestione di **interi fascicoli** per mantenerli uniti.
-
----
-
-## [3.2.0]
-
-### Aggiunto
-* **Comunicazione inter-app**: `BroadcastChannel` per inviare documenti ad altre app dell’ecosistema **senza server**.
-* **Pulsanti invio multipli**: scorciatoie per **varie destinazioni**.
-
-### Rimosso
-* **Archivio locale**: eliminati pagina e **IndexedDB** interni; l’app è un **hub** e delega lo storage.
-
-### Modificato
-* **Flusso semplificato**: dopo invio **riuscito**, i documenti vengono **rimossi** dalla sessione.
-
----
-
-## [3.1.0]
-
-### Aggiunto
-* **Login USSO**: nuovo metodo di accesso.
-* **Icona personalizzata**: per il login USSO.
-
-### Modificato
-* **Pagina login**: mostra **entrambe** le opzioni (email/password e USSO) **separate** visivamente.
-
----
-
-## [3.0.0]
-
-### Aggiunto
-* **Autenticazione completa**: login, registrazione e **profilo**; accesso **obbligatorio** per usare l’app.
-* **Persistenza sessione**: via **`localStorage`**.
-* **Pagina profilo**: info utente, **logout** e cancellazione **account/dati**.
-
-### Modificato
-* **Ingresso**: la landing ora indirizza a **login/registrazione**.
-* **Header dinamico**: link al profilo e **logout** per utenti autenticati.
-* **Reset allo logout**: l’app si **resetta** completamente per pulizia dati.
+* Introduzione di un conteggio scansioni e costo lato client.
+* Differenziazione dei costi per modalità.

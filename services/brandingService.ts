@@ -4,6 +4,7 @@ import {
     ArchivioChLogoIcon, ArchivioChWordmarkIcon,
     PolizzeChLogoIcon, PolizzeChWordmarkIcon,
     DisdetteChLogoIcon, DisdetteChWordmarkIcon,
+    UnHubChWordmarkIcon,
     SparklesIcon, CameraIcon, ShieldCheckIcon, DocumentDuplicateIcon, ChatBubbleLeftRightIcon, MagnifyingGlassIcon, UsersIcon
 } from '../components/icons';
 
@@ -58,6 +59,14 @@ export const brandAssets = {
             { icon: React.createElement(ChatBubbleLeftRightIcon, { className: "w-8 h-8"}), title: "Promemoria Scadenze", description: "Non perdere mai più una scadenza. Ti avvisiamo noi quando è il momento di agire." }
         ],
     },
+    unhub: {
+        Logo: ScansioniChLogoIcon,
+        Wordmark: UnHubChWordmarkIcon,
+        colorClass: 'purple' as const,
+        heroTitle: React.createElement(React.Fragment, null, "UnHub.ch"),
+        heroSubtitle: 'Tutti i tuoi servizi in un unico posto. Semplice, sicuro, svizzero.',
+        features: scansioniFeatures,
+    },
     default: {
         Logo: ScansioniChLogoIcon,
         Wordmark: ScansioniChWordmarkIcon,
@@ -94,5 +103,5 @@ export const colorStyles: Record<BrandColor, Record<string, string>> = {
     purple: { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-600', hoverBg: 'hover:bg-purple-700', shadow: 'hover:shadow-purple-500/30', ring: 'focus:ring-purple-500', border: 'focus:border-purple-500', darkText: 'dark:text-purple-400', hoverText: 'hover:text-purple-600 dark:hover:text-purple-400' },
     red: { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-600', hoverBg: 'hover:bg-red-700', shadow: 'hover:shadow-red-500/30', ring: 'focus:ring-red-500', border: 'focus:border-red-500', darkText: 'dark:text-red-400', hoverText: 'hover:text-red-600 dark:hover:text-red-400' },
     cyan: { text: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-600', hoverBg: 'hover:bg-cyan-700', shadow: 'hover:shadow-cyan-500/30', ring: 'focus:ring-cyan-500', border: 'focus:border-cyan-500', darkText: 'dark:text-cyan-400', hoverText: 'hover:text-cyan-600 dark:hover:text-cyan-400' },
-    green: { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-600', hoverBg: 'hover:bg-green-700', shadow: 'hover:shadow-green-500/30', ring: 'focus:ring-green-500', border: 'focus:border-green-500', darkText: 'dark:text-green-400', hoverText: 'hover:text-green-600 dark:hover:text-green-400' }
+    green: { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-600', hoverBg: 'hover:bg-green-700', shadow: 'hover:shadow-green-500/30', ring: 'focus:ring-green-500', border: 'focus:border-green-500', darkText: 'dark:text-green-400', hoverText: 'hover:text-green-600 dark:hover:text-green-400' },
 };
