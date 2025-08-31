@@ -21,19 +21,11 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
-    const [isDonationBannerVisible, setIsDonationBannerVisible] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
     const [hasLiked, setHasLiked] = useState(false);
 
     const { Logo, Wordmark, colorClass } = brandAssets[brandKey];
     const brandColors = colorStyles[colorClass] || colorStyles.purple;
-
-    useEffect(() => {
-        if (sessionStorage.getItem('donationBannerDismissed') !== 'true') {
-            const timer = setTimeout(() => setIsDonationBannerVisible(true), 2500);
-            return () => clearTimeout(timer);
-        }
-    }, []);
 
     useEffect(() => {
         const unsubscribe = db.onWaitlistLikesUpdate(setLikeCount);
@@ -67,15 +59,6 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
                 localStorage.removeItem('waitlist_liked_v1');
             } catch (e) {}
         });
-    };
-
-    const handleDismissDonationBanner = () => {
-        setIsDonationBannerVisible(false);
-        try {
-            sessionStorage.setItem('donationBannerDismissed', 'true');
-        } catch (e) {
-            console.warn("Could not access sessionStorage to dismiss banner.", e);
-        }
     };
     
     const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,10 +242,31 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
                         {error && <p className="mt-4 text-red-400">{error}</p>}
                     </>
                 ) : (
-                    <div className="animate-fade-in text-center flex flex-col items-center">
+                    <div className="animate-fade-in text-center flex flex-col items-center w-full max-w-2xl">
                         <CheckCircleIcon className="w-20 h-20 text-green-400 mb-4" />
                         <h2 className="text-3xl font-bold">Registrazione Completata!</h2>
-                        <p className="mt-4 max-w-md text-lg text-slate-300">{message}</p>
+                        <p className="mt-4 text-lg text-slate-300">{message}</p>
+                        <div className="mt-12 w-full p-8 bg-slate-800/50 rounded-2xl border border-white/20 backdrop-blur-sm">
+                            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                                <div className={`p-3 rounded-full ${brandColors.bg} bg-opacity-30 text-white flex-shrink-0 ring-4 ring-white/10`}>
+                                    <RocketLaunchIcon className="w-10 h-10" />
+                                </div>
+                                <div className="flex-grow">
+                                    <h3 className="text-xl font-bold text-white">Aiutaci a lanciare prima!</h3>
+                                    <p className="mt-1 text-slate-300">
+                                        {serviceName}.ch è un progetto indipendente, reso possibile dal supporto della community su Swiss-Nest.ch. Ogni contributo accelera lo sviluppo e ci permette di creare strumenti migliori per te.
+                                    </p>
+                                </div>
+                                <a 
+                                    href={donationLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className={`mt-4 md:mt-0 flex-shrink-0 px-6 py-3 font-bold rounded-full text-white transition-transform transform hover:scale-105 shadow-lg ${brandColors.bg} ${brandColors.hoverBg} ${brandColors.shadow}`}
+                                >
+                                    Scopri come supportarci
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 )}
                 
@@ -290,26 +294,6 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
                     </a>
                 </div>
             </main>
-
-            {isDonationBannerVisible && serviceName && (
-                <div className="fixed bottom-4 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-2xl bg-white/10 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/20 z-20 flex items-start sm:items-center gap-4 animate-fade-in-up">
-                    <div className={`p-2 rounded-full ${brandColors.bg} bg-opacity-20 text-white flex-shrink-0`}>
-                        <RocketLaunchIcon className="w-6 h-6" />
-                    </div>
-                    <div className="flex-grow">
-                        <h4 className="font-bold text-white">Sostieni la nostra visione!</h4>
-                        <p className="text-sm text-slate-200 mt-1">
-                            Ogni contributo ci aiuta a lanciare {serviceName}.ch più velocemente. I sostenitori ricevono aggiornamenti esclusivi.
-                        </p>
-                        <a href={donationLink} target="_blank" rel="noopener noreferrer" className={`mt-2 inline-block text-sm font-bold ${brandColors.text} ${brandColors.hoverText} hover:underline`}>
-                            Scopri di più su Swiss-Nest.ch &rarr;
-                        </a>
-                    </div>
-                    <button onClick={handleDismissDonationBanner} className="p-1.5 text-slate-300 hover:text-white hover:bg-white/20 rounded-full flex-shrink-0 absolute top-2 right-2 sm:static">
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
-                </div>
-            )}
 
             {appLastUpdated && (
                 <footer className="absolute bottom-4 text-center text-xs text-slate-500 z-10">

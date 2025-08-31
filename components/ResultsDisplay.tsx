@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, forwardRef, useRef, useMemo } from 'react';
 import type { ProcessedPageResult, DocumentGroup } from '../services/geminiService';
+import { CATEGORIES } from '../services/geminiService'; // Importa la costante
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
 import { 
@@ -13,9 +14,6 @@ import {
 } from './icons';
 import { DuplicateComparisonModal } from './DuplicateComparisonModal';
 import { LoadingSpinner } from './LoadingSpinner';
-
-const CATEGORIES = ["Fattura", "Ricevuta", "Multa", "Assicurazione", "RapportoMedico", "EstrattoConto", "Contratto", "Lettera", "Volantino", "Pubblicità", "Altro"];
-
 
 const ResultItem: React.FC<{
     item: ProcessedPageResult;
@@ -239,7 +237,20 @@ const ResultItem: React.FC<{
                     )}
                 </div>
             </div>
-             {isEditing && (
+            {item.metadata && Object.keys(item.metadata).length > 0 && !isEditing && (
+                <div className="p-3 border-t border-slate-200 dark:border-slate-700">
+                    <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Metadati File</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+                        {Object.entries(item.metadata).map(([key, value]) => (
+                            <div key={key} className="flex">
+                                <span className="font-semibold w-28 flex-shrink-0 truncate" title={key}>{key}:</span>
+                                <span className="truncate" title={String(value)}>{String(value) || '-'}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {isEditing && (
                 <div className="p-4 border-t border-slate-200 dark:border-slate-700">
                      <p className="text-xs font-medium text-slate-500 mb-2">Dati Estratti</p>
                      <div className="space-y-2 max-h-40 overflow-y-auto pr-2">

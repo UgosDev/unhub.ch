@@ -123,7 +123,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesSelected, onO
   };
   
   const currentStyle = modeStyles[processingMode] || modeStyles['no-ai']!;
-  const isDriveButtonDisabled = !isDriveConfigured || !isGapiReady || isFetchingFromDrive;
+  const isDriveButtonDisabled = true; // Temporaneamente disabilitato // !isDriveConfigured || !isGapiReady || isFetchingFromDrive;
 
   return (
     <div className="w-full flex flex-col items-center justify-center p-4 text-center bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
@@ -151,7 +151,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesSelected, onO
         <span className="flex-shrink mx-4">OPPURE</span>
         <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
       </div>
-       <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
+       <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
                 onClick={onOpenCamera}
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors"
@@ -159,17 +159,10 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesSelected, onO
                 <CameraIcon className="w-6 h-6" />
                 <span>Fotocamera</span>
             </button>
-             <button
-                onClick={onOpenEmailImport}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 transition-colors"
-            >
-                <DocumentPlusIcon className="w-6 h-6" /> 
-                <span>Email</span>
-            </button>
             <button
                 onClick={handleDriveImport}
                 disabled={isDriveButtonDisabled}
-                title={!isDriveConfigured ? "Funzionalità Google Drive non configurata dall'amministratore." : "Importa da Google Drive"}
+                title="L'importazione da Google Drive è momentaneamente disabilitata."
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
             >
                 {isFetchingFromDrive ? <LoadingSpinner className="w-6 h-6" /> : <GoogleIcon className="w-6 h-6" />}

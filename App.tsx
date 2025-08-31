@@ -1,5 +1,3 @@
-
-
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
@@ -25,7 +23,7 @@ import { useTheme } from './contexts/ThemeContext';
 
 import { CameraView } from './components/CameraView';
 import { EmailImportView } from './components/EmailImportView'; // Importa la nuova vista
-import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, COIN_TO_CHF_RATE, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings, processTextWithGemini } from './services/geminiService';
+import { processPage, createWarpedImageFromCorners, cropImageWithBoundingBox, COST_PER_SCAN_COINS, COST_PER_EXTRACTED_IMAGE_COINS, COIN_TO_CHF_RATE, analyzeTextForFeedback, analyzeSentimentForGamification, suggestProcessingMode, processPageOffline, safetySettings, processTextWithGemini, sanitizeImageDataUrl } from './services/geminiService';
 import type { ProcessedPageResult, PageInfo, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage, QueuedFile, ScanHistoryEntry, Folder, AddressBookEntry } from './services/geminiService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -141,7 +139,7 @@ RULES & CAPABILITIES:
 - **Available UI Commands (for text responses)**:
   - For navigation/UI actions: \\\`[ACTION:action_name]\\\`
   - For suggesting user replies: \\\`[QUICK_REPLY:Reply 1|Reply 2|...]\\\`
-- The available actions are: 'highlight_mode_selector', 'highlight_unsafe_docs', 'open_camera', 'open_email_import', 'start_demo', and navigation actions.
+- The available actions are: 'highlight_mode_selector', 'highlight_unsafe_docs', 'open_camera', 'start_demo', and navigation actions.
 - **Navigation actions can now target specific sections**: Use the format \\\`navigate_to_[page]_section_[section_id]\\\`.
 - Available pages and sections: 'navigate_to_profile_section_security', 'navigate_to_profile_section_preferences', 'navigate_to_profile_section_chatbot', 'navigate_to_profile_section_address'. Generic navigations like 'navigate_to_dashboard' or 'navigate_to_pricing', 'navigate_to_privacy' still work.
 - Only include ONE of each command type ([ACTION] or [QUICK_REPLY]) per text response, at the very end.
@@ -269,46 +267,6 @@ const preProcessImageForAI = (imageDataUrl: string): Promise<string> => {
         image.src = imageDataUrl;
     });
 };
-
-// Funzione di sanitizzazione per standardizzare le immagini prima di qualsiasi elaborazione
-const sanitizeImageDataUrl = (imageDataUrl: string): Promise<{ dataUrl: string; mimeType: string }> => {
-    return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.crossOrigin = "Anonymous";
-        image.onload = () => {
-            const canvas = document.createElement('canvas');
-            // Assicura che il canvas non sia troppo grande per evitare problemi di memoria, mantenendo l'aspect ratio
-            const MAX_DIMENSION = 1600;
-            let { naturalWidth: width, naturalHeight: height } = image;
-            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-                if (width > height) {
-                    height = Math.round(height * (MAX_DIMENSION / width));
-                    width = MAX_DIMENSION;
-                } else {
-                    width = Math.round(width * (MAX_DIMENSION / height));
-                    height = MAX_DIMENSION;
-                }
-            }
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                return reject(new Error("Impossibile ottenere il contesto 2D per la sanitizzazione."));
-            }
-            ctx.drawImage(image, 0, 0, width, height);
-            // Converte sempre in JPEG per consistenza e per gestire formati come PNG con canali alfa
-            const sanitizedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-            resolve({ dataUrl: sanitizedDataUrl, mimeType: 'image/jpeg' });
-        };
-        image.onerror = (event, source, lineno, colno, error) => {
-            const err = error || new Error(typeof event === 'string' ? event : `Failed to load image for sanitizing.`);
-            console.error("Sanitizzazione dell'immagine fallita:", err);
-            reject(err);
-        };
-        image.src = imageDataUrl;
-    });
-};
-
 
 // Custom hook to get previous value
 function usePrevious<T>(value: T) {
@@ -3832,7 +3790,6 @@ function AuthenticatedApp() {
         { label: 'Tema di Sistema', icon: <ComputerDesktopIcon className="w-5 h-5"/>, handler: () => handleUpdateSettings({ theme: 'system'}) },
         { type: 'separator' },
         { label: 'Avvia Scansione Fotocamera', icon: <CameraIcon className="w-5 h-5"/>, handler: () => setIsCameraOpen(true) },
-        { label: 'Importa da Email', icon: <EnvelopeIcon className="w-5 h-5"/>, handler: () => setIsEmailImportOpen(true) },
         { type: 'separator' },
         { label: 'Vai alla Dashboard', icon: <Squares2X2Icon className="w-5 h-5"/>, handler: () => navigate('dashboard') },
         { label: 'Vai al Profilo', icon: <UserCircleIcon className="w-5 h-5"/>, handler: () => navigate('profile') },
@@ -4050,7 +4007,18 @@ function AuthenticatedApp() {
 
 function UnauthenticatedApp() {
     const { isAwaiting2fa } = useAuth();
-    const [page, setPage] = useState('landing');
+    
+    const [page, setPage] = useState(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('joinFamily')) {
+            return 'register';
+        }
+        if (!urlParams.get('brand') && window.location.pathname === '/') {
+            return 'unhub';
+        }
+        return 'landing';
+    });
+    
     const [brandKey, setBrandKey] = useState<BrandKey>(getBrandKey());
     
     const [isAccessGranted, setIsAccessGranted] = useState(() => {
@@ -4075,12 +4043,6 @@ function UnauthenticatedApp() {
     }, []);
 
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const joinFamilyId = urlParams.get('joinFamily');
-        if (joinFamilyId) {
-            setPage('register');
-        }
-
         const timer = setTimeout(() => {
             try {
                 if (!localStorage.getItem('cookies_accepted_v1')) {
@@ -4110,14 +4072,11 @@ function UnauthenticatedApp() {
         window.history.pushState({}, '', url);
     };
 
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (!urlParams.get('brand') && window.location.pathname === '/') {
-            setPage('unhub');
-        }
-    }, []);
-
-    if (!isAccessGranted && brandKey !== 'scan' && brandKey !== 'default') {
+    if (page === 'unhub') {
+        return <UnHubPage />;
+    }
+    
+    if (!isAccessGranted) {
         return (
             <WaitlistPage 
                 onAccessGranted={() => {
@@ -4136,43 +4095,53 @@ function UnauthenticatedApp() {
         return <LoginPage onNavigateToRegister={() => setPage('register')} onNavigate={setPage} brandKey={brandKey} />;
     }
     
+    let content;
     switch (page) {
         case 'login':
-            return <LoginPage onNavigateToRegister={() => setPage('register')} onNavigate={setPage} brandKey={brandKey} />;
+            content = <LoginPage onNavigateToRegister={() => setPage('register')} onNavigate={setPage} brandKey={brandKey} />;
+            break;
         case 'register':
-            return <RegisterPage onNavigateToLogin={() => setPage('login')} onNavigateToTerms={() => setPage('terms')} onNavigateToPrivacy={() => setPage('privacy')} onNavigate={setPage} brandKey={brandKey} />;
+            content = <RegisterPage onNavigateToLogin={() => setPage('login')} onNavigateToTerms={() => setPage('terms')} onNavigateToPrivacy={() => setPage('privacy')} onNavigate={setPage} brandKey={brandKey} />;
+            break;
         case 'pricing':
-            return <PricingPage onNavigateToRegister={() => setPage('register')} onNavigateBack={() => setPage('landing')} onNavigate={setPage} isInsideApp={false} brandKey={brandKey} />;
+            content = <PricingPage onNavigateToRegister={() => setPage('register')} onNavigateBack={() => setPage('landing')} onNavigate={setPage} isInsideApp={false} brandKey={brandKey} />;
+            break;
         case 'changelog':
-            return <ChangelogPage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
+            content = <ChangelogPage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
+            break;
         case 'terms':
-            return <TermsOfServicePage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
+            content = <TermsOfServicePage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
+            break;
         case 'privacy':
-            return <PrivacyPolicyPage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
-        case 'unhub':
-            return <UnHubPage />;
+            content = <PrivacyPolicyPage onNavigateBack={() => setPage('landing')} onNavigate={setPage} isStandalonePage={true} brandKey={brandKey} />;
+            break;
         case 'landing':
         default:
-            return <LandingPage onNavigate={setPage} brandKey={brandKey} />;
+            content = <LandingPage onNavigate={setPage} brandKey={brandKey} />;
+            break;
     }
+
+    return (
+        <>
+            {content}
+            {showCookieBanner && <CookieBanner onAccept={handleAcceptCookies} onNavigateToPrivacy={() => setPage('privacy')} brandKey={brandKey} />}
+        </>
+    );
 }
 
+// FIX: Add the main App component that handles auth state and renders the correct view. Provide a default export to fix the import error in index.tsx.
 function App() {
-  const { user, isLoading, isAwaiting2fa } = useAuth();
+  const { user, isLoading } = useAuth();
   
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <LoadingSpinner />
+        <LoadingSpinner className="w-16 h-16" />
       </div>
     );
   }
-
-  if (user || isAwaiting2fa) {
-      return <AuthenticatedApp />;
-  }
-
-  return <UnauthenticatedApp />;
+  
+  return user ? <AuthenticatedApp /> : <UnauthenticatedApp />;
 }
 
 export default App;

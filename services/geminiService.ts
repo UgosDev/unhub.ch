@@ -84,6 +84,7 @@ export interface ProcessedPageResult {
     // FIX: Add missing properties for `disdette` feature.
     status?: string;
     reminderDate?: string;
+    metadata?: Record<string, any>;
 }
 
 export interface DocumentGroup {
@@ -174,6 +175,10 @@ export const COST_PER_SCAN_CHF: { [key in ProcessingMode]: number } = {
     fotografia: COST_PER_SCAN_COINS.fotografia * COIN_TO_CHF_RATE,
     'no-ai': COST_PER_SCAN_COINS['no-ai'] * COIN_TO_CHF_RATE,
 };
+
+// Costante riutilizzabile per le categorie di documenti
+export const CATEGORIES = ["Fattura", "Ricevuta", "Multa", "Assicurazione", "RapportoMedico", "EstrattoConto", "Contratto", "Lettera", "Volantino", "Pubblicità", "Altro"];
+
 
 // Helper per ordinare gli angoli in senso orario partendo da top-left
 const sortCorners = (corners: Point[]): Point[] => {
@@ -324,7 +329,7 @@ export function createWarpedImageFromCorners(sourceImageUrl: string, normalizedC
             ctx.fillText(textLine1, textX, textY - lineHeight);
             ctx.fillText(textLine2, textX, textY);
 
-            resolve(finalCanvas.toDataURL('image/jpeg', 0.95));
+            resolve(finalCanvas.toDataURL('image/jpeg', 0.90));
         };
 
         image.onerror = () => reject(new Error("Impossibile caricare l'immagine sorgente per la filigrana."));
@@ -375,7 +380,7 @@ export function cropImageWithBoundingBox(sourceImageUrl: string, boundingBox: Po
                 cropHeight // destination height
             );
             
-            resolve(canvas.toDataURL('image/png'));
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
         };
         image.onerror = () => reject(new Error("Failed to load source image for cropping."));
         image.src = sourceImageUrl;
@@ -387,7 +392,7 @@ export function cropImageWithBoundingBox(sourceImageUrl: string, boundingBox: Po
 const responseSchema = {
     type: Type.OBJECT,
     properties: {
-        categoria: { type: Type.STRING, description: "Classifica il documento. Categorie possibili: Fattura, Ricevuta, Multa, Assicurazione, RapportoMedico, EstrattoConto, Contratto, Lettera, Volantino, Pubblicità, Altro.", enum: ["Fattura", "Ricevuta", "Multa", "Assicurazione", "RapportoMedico", "EstrattoConto", "Contratto", "Lettera", "Volantino", "Pubblicità", "Altro"] },
+        categoria: { type: Type.STRING, description: "Classifica il documento. Categorie possibili: Fattura, Ricevuta, Multa, Assicurazione, RapportoMedico, EstrattoConto, Contratto, Lettera, Volantino, Pubblicità, Altro.", enum: CATEGORIES },
         dataDocumento: { type: Type.STRING, description: "La data principale e più rilevante del documento, in formato YYYY-MM-DD. Se impossibile, usa la data odierna." },
         dataScadenza: { type: Type.STRING, description: "Opzionale. La data di scadenza del documento (es. per fatture, polizze), se chiaramente indicata. Formato YYYY-MM-DD." },
         soggetto: { type: Type.STRING, description: "Il soggetto o mittente principale del documento (es. 'ACME Corp', 'Comune di Milano'). Sii conciso." },
@@ -588,7 +593,7 @@ const fotografiaResponseSchema = {
 
 // --- PROCESSORS ---
 
-export async function processPage(base64Data: string, mimeType: string, mode: ProcessingMode, extractImages: boolean): Promise<{ analysis: any, securityCheck: any, tokenUsage: TokenUsage }> {
+export async function processPage(base64Data: string, mimeType: string, mode: ProcessingMode, extractImages: boolean, metadata?: Record<string, any>): Promise<{ analysis: any, securityCheck: any, tokenUsage: TokenUsage }> {
     let systemInstruction: string;
     let schema: object;
 
@@ -635,20 +640,29 @@ export async function processPage(base64Data: string, mimeType: string, mode: Pr
             } else {
                 imageInstruction = "NON estrarre alcuna immagine o logo. Lascia i campi 'immaginiEstratte' e 'logoBoundingBox' vuoti.";
             }
-            systemInstruction = `Sei un esperto archivista. Analizza l'immagine e rispondi SOLO con un oggetto JSON valido. ${imageInstruction}`;
+            systemInstruction = `Sei un esperto archivista. Analizza l'immagine e i metadati forniti per rispondere SOLO con un oggetto JSON valido. I metadati (come data di creazione o autore) possono fornire un contesto cruciale. ${imageInstruction}`;
             schema = responseSchema;
             break;
         }
     }
 
     try {
+        const contents: any = {
+            parts: [
+                { inlineData: { mimeType, data: base64Data } }
+            ]
+        };
+
+        if (metadata && Object.keys(metadata).length > 0) {
+            const metadataText = Object.entries(metadata)
+                .map(([key, value]) => `- ${key}: ${value}`)
+                .join('\n');
+            contents.parts.push({ text: `\n\n--- METADATI FILE ORIGINALE ---\nNella tua analisi, considera anche i seguenti metadati del file per un contesto aggiuntivo:\n${metadataText}` });
+        }
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: {
-                parts: [
-                    { inlineData: { mimeType, data: base64Data } }
-                ]
-            },
+            contents,
             config: {
                 systemInstruction,
                 responseMimeType: "application/json",
@@ -869,8 +883,6 @@ export const processPageOffline = async (imageDataUrl: string): Promise<{
             titoloFascicolo: "Offline Document",
             groupingSubjectNormalized: 'Offline',
             groupingIdentifier: `offline-${Date.now()}`,
-            documentoCompleto: true,
-            numeroPaginaStimato: '1/1',
             datiEstratti: [{ chiave: "Testo Rilevato (OCR)", valore: text }],
             documentCorners: [],
         };
@@ -1080,4 +1092,43 @@ ${JSON.stringify(policiesSummary, null, 2)}
         console.error("AI policy analysis failed:", error);
         throw error;
     }
+};
+
+// Funzione di sanitizzazione per standardizzare le immagini prima di qualsiasi elaborazione
+export const sanitizeImageDataUrl = (imageDataUrl: string): Promise<{ dataUrl: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.crossOrigin = "Anonymous";
+        image.onload = () => {
+            const canvas = document.createElement('canvas');
+            // Assicura che il canvas non sia troppo grande per evitare problemi di memoria, mantenendo l'aspect ratio
+            const MAX_DIMENSION = 1600;
+            let { naturalWidth: width, naturalHeight: height } = image;
+            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                if (width > height) {
+                    height = Math.round(height * (MAX_DIMENSION / width));
+                    width = MAX_DIMENSION;
+                } else {
+                    width = Math.round(width * (MAX_DIMENSION / height));
+                    height = MAX_DIMENSION;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return reject(new Error("Impossibile ottenere il contesto 2D per la sanitizzazione."));
+            }
+            ctx.drawImage(image, 0, 0, width, height);
+            // Converte sempre in JPEG per consistenza e per gestire formati come PNG con canali alfa
+            const sanitizedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            resolve({ dataUrl: sanitizedDataUrl, mimeType: 'image/jpeg' });
+        };
+        image.onerror = (event, source, lineno, colno, error) => {
+            const err = error || new Error(typeof event === 'string' ? event : `Failed to load image for sanitizing.`);
+            console.error("Sanitizzazione dell'immagine fallita:", err);
+            reject(err);
+        };
+        image.src = imageDataUrl;
+    });
 };

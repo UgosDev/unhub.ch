@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import type { ProcessedPageResult, DocumentGroup, ProcessingTask, ProcessingMode, TokenUsage } from '../services/geminiService';
@@ -151,7 +152,7 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
                  <style>{`@keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in { animation: fade-in 0.5s ease-out; }`}</style>
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Rivedi e Conferma</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Hai selezionato {pendingFiles.length} file. Scegli una modalità e avvia l'elaborazione.</p>
+                    <p className="text-slate-500 dark:text-slate-400">Hai selezionato ${pendingFiles.length} file. Scegli una modalità e avvia l'elaborazione.</p>
                 </div>
                 
                 <div className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-4 max-h-60 overflow-y-auto">
@@ -205,7 +206,7 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
                         Annulla
                     </button>
                     <button id="tutorial-start-processing" onClick={onConfirmProcessing} className="px-8 py-3 text-lg font-bold bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-transform transform hover:scale-105 shadow-lg">
-                        Avvia Elaborazione ({pendingFiles.length} file)
+                        Avvia Elaborazione (${pendingFiles.length} file)
                     </button>
                 </div>
             </div>
@@ -246,6 +247,8 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
         );
     }
 
+    const currentTask = props.processingQueue[0];
+
     // Layout classico a 2 colonne quando ci sono risultati o è in corso l'elaborazione
     return (
         <>
@@ -284,19 +287,11 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
                      
                      {isProcessing && currentTaskProgress && (
                         <ProcessingView
+                            taskName={currentTask?.name || 'Inizializzazione...'}
+                            mode={currentTask?.mode || 'quality'}
                             progress={currentTaskProgress}
                             elapsedTime={props.elapsedTime}
-                            totalScans={props.totalScans}
-                            costInCoins={props.costInCoins}
-                            phrases={[
-                              'Analisi semantica in corso...',
-                              'Ottimizzazione immagine...',
-                              'Rilevamento angoli documento...',
-                              'Estrazione dati chiave...',
-                              'Verifica di sicurezza...',
-                              'Normalizzazione dati...',
-                              'Raggruppamento intelligente...'
-                            ]}
+                            totalScansInSession={props.totalScans}
                             isPaused={props.isPaused}
                             onPause={props.onPauseProcessing}
                             onResume={props.onResumeProcessing}

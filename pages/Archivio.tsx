@@ -1,11 +1,11 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { ProcessedPageResult, Folder } from '../services/geminiService';
+import { CATEGORIES } from '../services/geminiService';
 import { performSemanticSearch } from '../services/geminiService';
 import { 
     ArchivioChLogoIcon, ArchivioChWordmarkIcon, DocumentTextIcon, LockClosedIcon, 
     MagnifyingGlassIcon, FolderIcon, FolderPlusIcon, PencilIcon, ChevronRightIcon,
-    Bars3Icon, XMarkIcon, EyeIcon, TrashIcon
+    Bars3Icon, XMarkIcon, EyeIcon, TrashIcon, PlusCircleIcon
 } from '../components/icons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -74,7 +74,7 @@ const FolderEditModal: React.FC<{
                                         <button
                                             key={c}
                                             onClick={() => setColor(c)}
-                                            className={`w-8 h-8 rounded-full transition-transform transform hover:scale-110 ${color === c ? 'ring-2 ring-offset-2 dark:ring-offset-slate-800 ring-red-500' : ''}`}
+                                            className={`w-8 h-8 rounded-full transition-transform transform hover:scale-110 ${color === c ? 'ring-2 ring-offset-2 dark:ring-offset-slate-800 ring-purple-500' : ''}`}
                                             style={{ backgroundColor: c }}
                                             aria-label={`Seleziona colore ${c}`}
                                         />
@@ -86,7 +86,8 @@ const FolderEditModal: React.FC<{
                             <button onClick={() => setIsDeleting(true)} className="px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg">Elimina</button>
                             <div className="flex gap-3">
                                 <button onClick={onClose} className="px-4 py-2 text-sm font-bold bg-slate-200 dark:bg-slate-600 rounded-lg">Annulla</button>
-                                <button onClick={handleSave} className="px-4 py-2 text-sm font-bold bg-red-600 text-white rounded-lg">Salva</button>
+                                {/* FIX: Changed button color from red to purple for consistency. */}
+                                <button onClick={handleSave} className="px-4 py-2 text-sm font-bold bg-purple-600 text-white rounded-lg">Salva</button>
                             </div>
                         </div>
                     </>
@@ -177,6 +178,81 @@ const FolderTreeItem: React.FC<{
     );
 };
 
+const DocumentEditModal: React.FC<{
+    doc: ProcessedPageResult;
+    onClose: () => void;
+    onSave: (updates: Partial<ProcessedPageResult>) => void;
+}> = ({ doc, onClose, onSave }) => {
+    const [soggetto, setSoggetto] = useState(doc.analysis.soggetto || '');
+    const [categoria, setCategoria] = useState(doc.analysis.categoria || 'Altro');
+    const [tags, setTags] = useState((doc.tags || []).join(', '));
+    const [datiEstratti, setDatiEstratti] = useState(doc.analysis.datiEstratti || []);
+
+    const handleDatiChange = (index: number, keyOrValue: 'chiave' | 'valore', value: string) => {
+        const newDati = [...datiEstratti];
+        newDati[index] = { ...newDati[index], [keyOrValue]: value };
+        setDatiEstratti(newDati);
+    };
+    const addDato = () => setDatiEstratti([...datiEstratti, { chiave: '', valore: '' }]);
+    const removeDato = (indexToRemove: number) => setDatiEstratti(datiEstratti.filter((_, i) => i !== indexToRemove));
+
+    const handleSave = () => {
+        const updatedAnalysis = {
+            ...doc.analysis,
+            soggetto,
+            categoria,
+            datiEstratti,
+        };
+        const updatedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+        onSave({ analysis: updatedAnalysis, tags: updatedTags });
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-xl flex flex-col" onClick={e => e.stopPropagation()}>
+                <header className="p-5 border-b border-slate-200 dark:border-slate-700">
+                    <h3 className="font-bold text-lg">Modifica Documento</h3>
+                </header>
+                <main className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+                    <div>
+                        <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Soggetto</label>
+                        <input type="text" value={soggetto} onChange={e => setSoggetto(e.target.value)} className="mt-1 w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"/>
+                    </div>
+                     <div>
+                        <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Categoria</label>
+                        <select value={categoria} onChange={e => setCategoria(e.target.value)} className="mt-1 w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md">
+                           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tag (separati da virgola)</label>
+                        <input type="text" value={tags} onChange={e => setTags(e.target.value)} className="mt-1 w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"/>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                         <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Dati Estratti</label>
+                         <div className="mt-2 space-y-2">
+                             {datiEstratti.map((d, i) => (
+                                <div key={i} className="flex gap-2 items-center">
+                                    <input type="text" placeholder="Chiave" value={d.chiave} onChange={e => handleDatiChange(i, 'chiave', e.target.value)} className="flex-1 p-1.5 text-sm bg-slate-100 dark:bg-slate-700 rounded-md border-slate-300 dark:border-slate-600" />
+                                    <input type="text" placeholder="Valore" value={d.valore} onChange={e => handleDatiChange(i, 'valore', e.target.value)} className="flex-1 p-1.5 text-sm bg-slate-100 dark:bg-slate-700 rounded-md border-slate-300 dark:border-slate-600" />
+                                    <button onClick={() => removeDato(i)} className="p-1.5 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600"><XMarkIcon className="w-4 h-4"/></button>
+                                </div>
+                            ))}
+                         </div>
+                         {/* FIX: Changed button color from red to purple for consistency. */}
+                         <button onClick={addDato} className="mt-2 text-sm flex items-center gap-1 text-purple-600 dark:text-purple-400 font-semibold"><PlusCircleIcon className="w-4 h-4"/> Aggiungi Campo</button>
+                    </div>
+                </main>
+                <footer className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 text-sm font-bold bg-slate-200 dark:bg-slate-600 rounded-lg">Annulla</button>
+                    {/* FIX: Changed button color from red to purple for consistency. */}
+                    <button onClick={handleSave} className="px-4 py-2 text-sm font-bold bg-purple-600 text-white rounded-lg">Salva Modifiche</button>
+                </footer>
+            </div>
+        </div>
+    );
+};
+
 // --- COMPONENTE PRINCIPALE ---
 const Archivio: React.FC<ArchivioProps> = (props) => {
     const { folders, archivedDocs, onUpdateDocument, onAddFolder, onUpdateFolder, onDeleteFolder, onDeleteDocument } = props;
@@ -190,6 +266,7 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
     const [newFolderName, setNewFolderName] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [viewedDoc, setViewedDoc] = useState<ProcessedPageResult | null>(null);
+    const [editingDoc, setEditingDoc] = useState<ProcessedPageResult | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; folder: Folder } | null>(null);
     const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
     const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -368,12 +445,17 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
                                     {searchResults.length > 0 ? (
                                         <div className="space-y-2">
                                             {searchResults.map(doc => (
-                                                 <div key={doc.uuid} onClick={() => setViewedDoc(doc)} className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-4">
-                                                    <DocumentTextIcon className="w-6 h-6 text-slate-400 flex-shrink-0"/>
-                                                    <div className="flex-grow min-w-0">
-                                                        <p className="font-semibold truncate">{doc.analysis.soggetto}</p>
-                                                        <p className="text-xs text-slate-500">In: {folders.find(f => f.id === doc.folderId)?.name || 'Archivio Principale'}</p>
+                                                 <div key={doc.uuid} className="relative group p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-4">
+                                                    <div onClick={() => setViewedDoc(doc)} className="flex-grow flex items-center gap-4 cursor-pointer">
+                                                        <DocumentTextIcon className="w-6 h-6 text-slate-400 flex-shrink-0"/>
+                                                        <div className="flex-grow min-w-0">
+                                                            <p className="font-semibold truncate">{doc.analysis.soggetto}</p>
+                                                            <p className="text-xs text-slate-500">In: {folders.find(f => f.id === doc.folderId)?.name || 'Archivio Principale'}</p>
+                                                        </div>
                                                     </div>
+                                                    <button onClick={(e) => { e.stopPropagation(); setEditingDoc(doc); }} className="p-1.5 bg-white/50 dark:bg-slate-900/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Modifica documento">
+                                                        <PencilIcon className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+                                                    </button>
                                                 </div>
                                             ))}
                                         </div>
@@ -398,6 +480,7 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
                                                     onDragStart={() => setDraggedItem({ type: 'folder', id: folder.id })}
                                                     onDragEnd={() => setDraggedItem(null)}
                                                     onDoubleClick={() => setCurrentFolderId(folder.id)}
+                                                    // FIX: The onDrop handler was calling an undefined 'onDrop' function instead of 'handleDrop'.
                                                     onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDrop(folder.id); }}
                                                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                     onContextMenu={(e) => handleFolderContextMenu(e, folder)}
@@ -420,13 +503,15 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
                                                     draggable
                                                     onDragStart={() => setDraggedItem({ type: 'doc', id: doc.uuid })}
                                                     onDragEnd={() => setDraggedItem(null)}
-                                                    onClick={() => setViewedDoc(doc)}
-                                                    className="bg-white dark:bg-slate-800 rounded-lg shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col group"
+                                                    className="relative bg-white dark:bg-slate-800 rounded-lg shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col group"
                                                 >
-                                                    <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded-t-lg flex items-center justify-center overflow-hidden">
+                                                    <button onClick={(e) => { e.stopPropagation(); setEditingDoc(doc); }} className="absolute top-2 right-2 z-10 p-1.5 bg-white/50 dark:bg-slate-900/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Modifica documento">
+                                                        <PencilIcon className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+                                                    </button>
+                                                    <div onClick={() => setViewedDoc(doc)} className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded-t-lg flex items-center justify-center overflow-hidden">
                                                         <img src={doc.processedImageDataUrl || doc.originalImageDataUrl} alt={doc.analysis.soggetto} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                                                     </div>
-                                                    <div className="p-3">
+                                                    <div onClick={() => setViewedDoc(doc)} className="p-3">
                                                         <p className="font-semibold truncate text-sm">{doc.analysis.soggetto}</p>
                                                         <p className="text-xs text-slate-500">{new Date(doc.timestamp).toLocaleDateString('it-CH')}</p>
                                                     </div>
@@ -525,6 +610,18 @@ const Archivio: React.FC<ArchivioProps> = (props) => {
                     onDelete={() => {
                         onDeleteFolder(editingFolder.id);
                         setEditingFolder(null);
+                    }}
+                />
+            )}
+
+            {/* Document Edit Modal */}
+            {editingDoc && (
+                <DocumentEditModal
+                    doc={editingDoc}
+                    onClose={() => setEditingDoc(null)}
+                    onSave={(updates) => {
+                        onUpdateDocument(editingDoc.uuid, updates);
+                        setEditingDoc(null);
                     }}
                 />
             )}
