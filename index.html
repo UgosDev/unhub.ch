@@ -33,8 +33,6 @@
 
   <!-- Lib esterne async -->
   <script async src="https://docs.opencv.org/4.x/opencv.js" onload="dispatchEvent(new CustomEvent('opencv-ready'))"></script>
-  <script async defer src="https://accounts.google.com/gsi/client"></script>
-  <script async defer src="https://apis.google.com/js/api.js" onload="dispatchEvent(new CustomEvent('gapi-ready'))"></script>
 
   <!-- Import-map -->
   <script type="importmap">
@@ -44,7 +42,6 @@
     "react/jsx-runtime": "https://esm.sh/react@19.1.1/jsx-runtime",
     "react-dom": "https://esm.sh/react-dom@19.1.1",
     "react-dom/client": "https://esm.sh/react-dom@19.1.1/client",
-    "@google/genai": "https://esm.sh/@google/genai@^1.9.0?external=firebase",
     "react-dropzone": "https://esm.sh/react-dropzone@^14.3.8",
     "pdfjs-dist": "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs",
     "jszip": "https://esm.sh/jszip@3.10.1",
@@ -53,7 +50,6 @@
     "jspdf-autotable": "https://esm.sh/jspdf-autotable@3.8.2",
     "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
     "react/": "https://esm.sh/react@^19.1.1/",
-    "firebase/": "https://esm.sh/firebase@^12.1.0/",
     "otpauth": "https://esm.sh/otpauth@9.2.2",
     "qrcode": "https://esm.sh/qrcode@1.5.3",
     "tesseract.js": "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js"
@@ -173,20 +169,6 @@
       border-radius: 4px;
     }
 
-    /* --- NUOVO: Cursore lampeggiante per chatbot --- */
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
-    .blinking-cursor {
-      display: inline-block;
-      width: 8px;
-      height: 1em;
-      background-color: currentColor;
-      animation: blink 1s step-end infinite;
-      vertical-align: text-bottom;
-      margin-left: 2px;
-    }
-
     /* --- NUOVO: Stile per UnHubPage (Split-Screen) --- */
     .unhub-split-container {
         display: flex;
@@ -298,8 +280,7 @@
     @media (prefers-reduced-motion: reduce){
       .scanner-line,.mouse-scanner-line,.shimmer-effect,.animate-shake,
       .animate-toast-in, .animate-toast-out, .animate-fade-in-up,
-      .unhub-panel, .unhub-panel-content, .unhub-service-link,
-      .blinking-cursor {
+      .unhub-panel, .unhub-panel-content, .unhub-service-link {
         animation:none !important; transition:none !important;
       }
       #unhub-canvas { display: none; }

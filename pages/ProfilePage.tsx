@@ -7,8 +7,7 @@ import {
     DocumentTextIcon, BoltIcon, CreditCardIcon, SparklesIcon, BuildingOffice2Icon, BookOpenIcon, 
     DocumentPlusIcon, ClipboardDocumentIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DownloadIcon,
     UserCircleIcon, InformationCircleIcon, TrashIcon, ChatBubbleLeftRightIcon, XMarkIcon, ClockIcon,
-    EyeIcon, ShieldCheckIcon, DocumentDuplicateIcon, CheckCircleIcon, UsersIcon, MapPinIcon, QuestionMarkCircleIcon,
-    FolderIcon
+    EyeIcon, ShieldCheckIcon, DocumentDuplicateIcon, CheckCircleIcon, UsersIcon, MapPinIcon, QuestionMarkCircleIcon
 } from '../components/icons';
 import type { AppSettings } from '../services/settingsService';
 import { ProcessingModeSelector } from '../components/ProcessingModeSelector';
@@ -21,7 +20,6 @@ import type { ChatMessage } from '../components/Chatbot';
 import type { AccessLogEntry } from '../services/db';
 import * as otpauth from 'otpauth';
 import QRCode from 'qrcode';
-import { firebase } from '../services/firebase';
 
 // Helper for hashing recovery codes
 async function sha256(message: string): Promise<string> {
@@ -46,9 +44,6 @@ interface ProfilePageProps {
     scrollToSection: string | null;
     onScrolledToSection: () => void;
     accessLogs: AccessLogEntry[];
-    isExporting: boolean;
-    onExportAllData: () => Promise<void>;
-    onDeleteAccountData: (downloadFirst: boolean) => Promise<void>;
 }
 
 const allModesInfo = [
@@ -347,12 +342,12 @@ const TwoFactorAuthSetupModal: React.FC<{ onClose: () => void; onActivate: (secr
 const AccessLogs: React.FC<{ logs: AccessLogEntry[] }> = ({ logs }) => {
     const getMethodIcon = (method: AccessLogEntry['method']) => {
         switch (method) {
-            case 'Google': return <span title="Google"><UserCircleIcon className="w-5 h-5 text-blue-500" /></span>;
-            case '2FA': return <span title="2FA"><ShieldCheckIcon className="w-5 h-5 text-green-500" /></span>;
-            case 'Recovery Code': return <span title="Codice di Recupero"><ShieldCheckIcon className="w-5 h-5 text-amber-500" /></span>;
+            case 'Google': return <UserCircleIcon className="w-5 h-5 text-blue-500" title="Google" />;
+            case '2FA': return <ShieldCheckIcon className="w-5 h-5 text-green-500" title="2FA" />;
+            case 'Recovery Code': return <ShieldCheckIcon className="w-5 h-5 text-amber-500" title="Codice di Recupero" />;
             case 'Password':
             default:
-                return <span title="Password"><UserCircleIcon className="w-5 h-5 text-slate-500" /></span>;
+                return <UserCircleIcon className="w-5 h-5 text-slate-500" title="Password" />;
         }
     };
     
@@ -440,10 +435,7 @@ const InstallHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     </div>
 );
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ 
-    onLogout, currentPage, onNavigate, settings, onUpdateSettings, onStartTutorial, archivedChats, onDeleteArchivedChat, setScanHistory, 
-    onResetChat, scrollToSection, onScrolledToSection, accessLogs, isExporting, onExportAllData, onDeleteAccountData 
-}) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, currentPage, onNavigate, settings, onUpdateSettings, onStartTutorial, archivedChats, onDeleteArchivedChat, setScanHistory, onResetChat, scrollToSection, onScrolledToSection, accessLogs }) => {
     const { user, updateUser, reauthenticate } = useAuth();
     const { isInstallable, isInstalled, triggerInstall } = usePWA();
     const [isSaving, setIsSaving] = useState(false);
@@ -461,14 +453,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     const [familyIdToJoin, setFamilyIdToJoin] = useState('');
     const [inviteCopied, setInviteCopied] = useState(false);
     const [isInstallHelpModalOpen, setIsInstallHelpModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [shouldDownloadOnDelete, setShouldDownloadOnDelete] = useState(true);
     
     // State for user address
-    const [addressStreet, setAddressStreet] = useState(user?.addressStreet || '');
-    const [addressZip, setAddressZip] = useState(user?.addressZip || '');
-    const [addressCity, setAddressCity] = useState(user?.addressCity || '');
-    const [addressCountry, setAddressCountry] = useState(user?.addressCountry || 'Svizzera');
+    const [address, setAddress] = useState(user?.address || '');
     const [householdMembers, setHouseholdMembers] = useState<string[]>(user?.householdMembers || []);
     const [isAddressSaving, setIsAddressSaving] = useState(false);
     const [addressSaveSuccess, setAddressSaveSuccess] = useState(false);
@@ -490,20 +477,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     }, [scrollToSection, onScrolledToSection]);
 
     const handleAddressSave = async () => {
-        if (!user || (user.addressModificationCount || 0) >= 3) return;
+        if (!user || !address.trim()) return;
         setIsAddressSaving(true);
         setAddressSaveSuccess(false);
         try {
-            const newModificationCount = (user.addressModificationCount || 0) + 1;
-            await updateUser({ 
-                ...user,
-                addressStreet,
-                addressZip,
-                addressCity,
-                addressCountry,
-                householdMembers,
-                addressModificationCount: newModificationCount,
-            });
+            const isConfirmed = householdMembers.filter(m => m.trim() !== '').length > 0;
+            const finalMembers = householdMembers.filter(m => m.trim() !== '');
+
+            await updateUser(prev => (prev ? { ...prev, address, householdMembers: finalMembers, addressConfirmed: isConfirmed } : null));
             setAddressSaveSuccess(true);
             setTimeout(() => setAddressSaveSuccess(false), 2000);
         } catch (e) {
@@ -584,14 +565,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
 
             // Add to history
             const newHistoryEntry: ScanHistoryEntry = {
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                timestamp: new Date().toISOString(),
                 description: `Codice promozionale: ${promoCode}`,
                 amountInCoins: rewardAmount,
                 status: 'Credited',
                 type: 'promo',
             };
             await firestoreService.addScanHistoryEntry(user.uid, newHistoryEntry);
-            setScanHistory(prev => [newHistoryEntry, ...prev].sort((a,b) => (b.timestamp as any).toDate().getTime() - (a.timestamp as any).toDate().getTime()));
+            setScanHistory(prev => [newHistoryEntry, ...prev].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
             
             setPromoMessage({ type: 'success', text: `Successo! ${rewardAmount} ScanCoin sono stati aggiunti al tuo saldo.` });
             setPromoCode('');
@@ -663,7 +644,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
             await reauthenticate(password);
             // Re-authentication successful, now show confirmation dialog
             if (confirm("ATTENZIONE: Stai per disattivare l'autenticazione a due fattori. Questa azione ridurrà significativamente la sicurezza del tuo account. Sei sicuro di voler procedere?")) {
-                await updateUser(prev => prev ? { ...prev, is2faEnabled: false, twoFactorSecret: firebase.firestore.FieldValue.delete() as any, twoFactorRecoveryCodes: [] } : null);
+                await updateUser(prev => prev ? { ...prev, is2faEnabled: false, twoFactorSecret: undefined, twoFactorRecoveryCodes: [] } : null);
             }
             setDisabling2faStep('idle');
         } catch (err) {
@@ -688,9 +669,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
         return <div className="flex justify-center p-8"><LoadingSpinner /></div>;
     }
 
-    const handleDeleteClick = async () => {
-        setIsDeleteModalOpen(false);
-        await onDeleteAccountData(shouldDownloadOnDelete);
+    const handleClearAllData = async () => {
+        if (confirm("ATTENZIONE: Stai per cancellare il tuo account e tutti i dati locali (scansioni, storico costi). Questa azione è IRREVERSIBILE. Sei sicuro di voler procedere?")) {
+            try {
+                alert("Tutti i dati verranno cancellati. Verrai disconnesso.");
+                onLogout();
+            } catch(e) {
+                 alert("Errore durante la cancellazione dei dati.");
+                 console.error(e);
+            }
+        }
     };
     
     const handleInstallClick = () => {
@@ -722,8 +710,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
         }
     };
 
-    const remainingChanges = 3 - (user.addressModificationCount || 0);
-    const canModifyAddress = remainingChanges > 0;
 
     return (
         <>
@@ -748,63 +734,51 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 </div>
 
                 <div id="profile-section-address" className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-6 md:p-8">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">Indirizzo di Residenza</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Questo indirizzo verrà usato per precompilare i tuoi documenti (es. disdette).</p>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-3"><MapPinIcon className="w-7 h-7"/> Indirizzo di Residenza</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Questo indirizzo verrà usato per precompilare i tuoi documenti (es. disdette). L'indirizzo viene confermato e bloccato quando aggiungi almeno un membro del nucleo familiare.</p>
                     
                     {user.addressConfirmed ? (
                         <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-700">
-                            <p className="font-semibold text-green-800 dark:text-green-200 flex items-center gap-2"><CheckCircleIcon className="w-5 h-5"/> Indirizzo Confermato e Bloccato</p>
-                            <div className="mt-2 text-sm text-green-700 dark:text-green-300 whitespace-pre-wrap font-mono">
-                                {user.addressStreet}<br/>
-                                {user.addressZip} {user.addressCity}<br/>
-                                {user.addressCountry}
-                            </div>
+                            <p className="font-semibold text-green-800 dark:text-green-200 flex items-center gap-2"><ShieldCheckIcon className="w-5 h-5"/> Indirizzo Confermato</p>
+                            <div className="mt-2 text-sm text-green-700 dark:text-green-300 whitespace-pre-wrap font-mono">{user.address}</div>
                             {user.householdMembers && user.householdMembers.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-700">
+                                <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700">
                                     <p className="text-xs font-semibold">Membri del nucleo:</p>
-                                    <ul className="text-xs list-disc list-inside">
+                                    <ul className="text-sm list-disc list-inside ml-4">
                                         {user.householdMembers.map((m, i) => <li key={i}>{m}</li>)}
                                     </ul>
                                 </div>
                             )}
-                            <p className="text-xs text-green-600 dark:text-green-400 mt-2">Per modificare l'indirizzo, contatta il supporto.</p>
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-3">Per modificare un indirizzo confermato, contatta il supporto.</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                             <div className="p-3 rounded-md bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 text-sm flex flex-col gap-2">
-                                <div className="flex items-center gap-2">
-                                    <InformationCircleIcon className="w-5 h-5 flex-shrink-0" />
-                                    <span className="font-bold">Il tuo indirizzo non è ancora stato confermato.</span>
-                                </div>
-                                <p className="pl-7">Per confermare, scansiona 5 documenti ufficiali (es. fatture) a te intestati. Il sistema verificherà la corrispondenza.</p>
+                            <div>
+                                <label htmlFor="user-address" className="text-sm font-medium text-slate-500 dark:text-slate-400">Il tuo indirizzo completo</label>
+                                <textarea id="user-address" value={address} onChange={(e) => setAddress(e.target.value)} rows={3} placeholder="Via Esempio 123&#10;6900 Lugano&#10;Svizzera" className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md border-slate-300 dark:border-slate-600 focus:ring-purple-500 focus:border-purple-500"/>
                             </div>
-
-                             <div>
-                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Modifiche rimanenti quest'anno: <span className="font-bold text-lg text-slate-700 dark:text-slate-200">{remainingChanges}</span></p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="address-street" className="text-xs font-medium text-slate-500">Via e Numero Civico</label>
-                                    <input id="address-street" name="addressStreet" value={addressStreet} onChange={(e) => setAddressStreet(e.target.value)} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md border-slate-300 dark:border-slate-600 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50" disabled={!canModifyAddress}/>
-                                </div>
-                                <div>
-                                    <label htmlFor="address-zip" className="text-xs font-medium text-slate-500">CAP</label>
-                                    <input id="address-zip" name="addressZip" value={addressZip} onChange={(e) => setAddressZip(e.target.value)} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md border-slate-300 dark:border-slate-600 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50" disabled={!canModifyAddress}/>
-                                </div>
-                                 <div>
-                                    <label htmlFor="address-city" className="text-xs font-medium text-slate-500">Città</label>
-                                    <input id="address-city" name="addressCity" value={addressCity} onChange={(e) => setAddressCity(e.target.value)} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md border-slate-300 dark:border-slate-600 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50" disabled={!canModifyAddress}/>
-                                </div>
-                                 <div>
-                                    <label htmlFor="address-country" className="text-xs font-medium text-slate-500">Paese</label>
-                                    <input id="address-country" name="addressCountry" value={addressCountry} onChange={(e) => setAddressCountry(e.target.value)} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md border-slate-300 dark:border-slate-600 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50" disabled={!canModifyAddress}/>
+                            
+                            <div>
+                                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Membri del nucleo (opzionale)</label>
+                                <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">Aggiungendo almeno un membro, confermerai l'indirizzo.</p>
+                                <div className="space-y-2">
+                                    {householdMembers.map((member, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <input type="text" value={member} onChange={(e) => handleMemberChange(index, e.target.value)} placeholder={`Nome e Cognome Membro ${index + 1}`} className="flex-grow p-2 bg-slate-100 dark:bg-slate-700 rounded-md"/>
+                                            <button onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5"/></button>
+                                        </div>
+                                    ))}
+                                    {householdMembers.length < 5 && (
+                                        <button onClick={addMember} className="text-sm font-semibold text-purple-600 dark:text-purple-400 p-2 hover:bg-purple-50 dark:hover:bg-purple-900/50 rounded-md">
+                                            + Aggiungi membro
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="flex flex-col sm:flex-row justify-end items-center gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                                 {addressSaveSuccess && <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircleIcon className="w-4 h-4" /> Salvato!</span>}
-                                 <button onClick={handleAddressSave} disabled={isAddressSaving || !canModifyAddress} className="px-4 py-2 font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-slate-400 flex items-center justify-center w-full sm:w-auto">
+                                <button onClick={handleAddressSave} disabled={isAddressSaving || !address.trim()} className="px-4 py-2 font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-slate-400 flex items-center justify-center w-full sm:w-auto">
                                     {isAddressSaving ? <LoadingSpinner className="w-5 h-5" /> : 'Salva Indirizzo'}
                                 </button>
                             </div>
@@ -1169,16 +1143,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                     </div>
                 </div>
 
-                <div id="profile-section-data" className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-lg p-6 md:p-8">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-3"><FolderIcon className="w-7 h-7" /> Gestione Dati</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Esporta o elimina i tuoi dati in qualsiasi momento.</p>
-                    <button onClick={onExportAllData} disabled={isExporting} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold bg-purple-600 text-white rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-slate-400">
-                        {isExporting ? <LoadingSpinner className="w-5 h-5"/> : <DownloadIcon className="w-5 h-5"/>}
-                        {isExporting ? 'Esportazione in corso...' : 'Esporta un archivio di tutti i tuoi dati'}
-                    </button>
-                </div>
-
-
                 <div id="profile-section-danger" className="bg-red-50 dark:bg-red-900/20 rounded-2xl shadow-lg p-6 md:p-8 border border-red-300 dark:border-red-800">
                      <h2 className="text-2xl font-bold text-red-800 dark:text-red-200">Zona Pericolo</h2>
                      <p className="text-sm text-red-700 dark:text-red-300 mb-6">Azioni irreversibili. Procedere con cautela.</p>
@@ -1186,43 +1150,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                         <button onClick={onStartTutorial} className="w-full text-left font-semibold text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50">
                             Riavvia il tour guidato
                         </button>
-                        <button onClick={() => setIsDeleteModalOpen(true)} className="w-full text-left font-semibold text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50">
+                        <button onClick={handleClearAllData} className="w-full text-left font-semibold text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50">
                             Cancella tutti i dati dell'account
                         </button>
                      </div>
                 </div>
             </div>
-
-            {isDeleteModalOpen && (
-                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl">
-                        <header className="p-4 border-b border-slate-200 dark:border-slate-700">
-                            <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Conferma Eliminazione Dati Account</h3>
-                        </header>
-                        <main className="p-6 space-y-4">
-                            <p className="text-slate-600 dark:text-slate-300">Questa azione è **irreversibile**. Tutti i tuoi documenti, la cronologia e le impostazioni verranno eliminati definitivamente. Il tuo account di login non verrà eliminato, ma tutti i dati associati sì.</p>
-                            <label className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg cursor-pointer">
-                                <input type="checkbox" checked={shouldDownloadOnDelete} onChange={e => setShouldDownloadOnDelete(e.target.checked)} className="h-5 w-5 rounded text-purple-600 focus:ring-purple-500" />
-                                <span className="text-slate-800 dark:text-slate-200">Desidero scaricare un archivio dei miei dati prima di procedere.</span>
-                            </label>
-                        </main>
-                        <footer className="p-4 flex justify-end gap-3 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
-                            <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 font-bold bg-slate-200 dark:bg-slate-600 rounded-lg">Annulla</button>
-                            <button 
-                                onClick={handleDeleteClick}
-                                disabled={isExporting}
-                                className="px-4 py-2 font-bold bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center disabled:bg-red-400"
-                            >
-                                {isExporting ? <><LoadingSpinner className="w-5 h-5 mr-2" /> Esportazione...</> : 'Elimina Definitivamente i Dati'}
-                            </button>
-                        </footer>
-                    </div>
-                </div>
-            )}
-
             {viewingChat && <ArchivedChatModal chat={viewingChat} onClose={() => setViewingChat(null)} />}
             {isInstallHelpModalOpen && <InstallHelpModal onClose={() => setIsInstallHelpModalOpen(false)} />}
-            {is2faSetupModalOpen && user && <TwoFactorAuthSetupModal userEmail={user.email} onClose={() => setIs2faSetupModalOpen(false)} onActivate={handleActivate2fa} />}
+            {is2faSetupModalOpen && user && <TwoFactorAuthSetupModal userEmail={user.email!} onClose={() => setIs2faSetupModalOpen(false)} onActivate={handleActivate2fa} />}
             
             {managingRecoveryCodesStep !== 'idle' && (
                 <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
