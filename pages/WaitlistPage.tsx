@@ -53,10 +53,20 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
     const handleLike = () => {
         if (hasLiked) return;
         setHasLiked(true);
-        setLikeCount(prev => prev + 1);
+        setLikeCount(prev => prev + 1); // Optimistic update
         try {
             localStorage.setItem('waitlist_liked_v1', 'true');
         } catch (e) { console.warn("Could not save like status to localStorage."); }
+        
+        db.incrementWaitlistLikes().catch(err => {
+            console.error("Failed to increment likes:", err);
+            // Revert optimistic update on failure
+            setLikeCount(prev => prev - 1);
+            setHasLiked(false);
+            try {
+                localStorage.removeItem('waitlist_liked_v1');
+            } catch (e) {}
+        });
     };
 
     const handleDismissDonationBanner = () => {
@@ -194,7 +204,7 @@ const WaitlistPage: React.FC<WaitlistPageProps> = ({ onAccessGranted, brandKey, 
             <div className="absolute inset-0 z-0">
                 {brandKey === 'scan' ? currentContent.background : <InteractiveBackground brandKey={brandKey} />}
             </div>
-            
+
             <main className="relative z-10 text-center flex flex-col items-center w-full">
                 <Logo className="h-16 w-16 mb-4" />
                 <Wordmark className="h-10 mb-8" />

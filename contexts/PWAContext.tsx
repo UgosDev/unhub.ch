@@ -1,10 +1,12 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 
+// This is the event type for the beforeinstallprompt event.
+// It's not yet fully standardized in TypeScript's default libs.
 interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: Array<string>;
+  readonly platforms: string[];
   readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed',
-    platform: string
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
   }>;
   prompt(): Promise<void>;
 }
@@ -27,45 +29,50 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
-    const checkInstalledStatus = () => {
-      if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+    const handleAppInstalled = () => {
         setIsInstalled(true);
-      }
+        setDeferredPrompt(null);
     };
 
-    checkInstalledStatus();
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    });
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Check on initial load if the app is already in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+        setIsInstalled(true);
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
-  const triggerInstall = () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(({ outcome }) => {
-        if (outcome === 'accepted') {
-          console.log('User accepted the PWA installation');
-        } else {
-          console.log('User dismissed the PWA installation');
-        }
-        setDeferredPrompt(null);
-      });
+  const triggerInstall = async () => {
+    if (!deferredPrompt) {
+        console.warn("Installation prompt is not available.");
+        return;
     }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    if (outcome === 'accepted') {
+        setIsInstalled(true);
+    }
+    setDeferredPrompt(null);
   };
-
+  
   const value = {
-    isInstallable: !!deferredPrompt,
-    isInstalled,
-    triggerInstall,
+      isInstallable: !!deferredPrompt && !isInstalled,
+      isInstalled,
+      triggerInstall
   };
 
-  return <PWAContext.Provider value={value}>{children}</PWAContext.Provider>;
+  return (
+    <PWAContext.Provider value={value}>
+      {children}
+    </PWAContext.Provider>
+  );
 };
 
 export const usePWA = (): PWAContextType => {
