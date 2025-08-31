@@ -22,8 +22,6 @@ self.importScripts('https://docs.opencv.org/4.x/opencv.js');
 let cv = null;
 let running = false;
 let cooldownUntil = 0;
-let mats = {};
-let kernel;
 let isProcessingFrame = false;
 let clahe; 
 let firstFailTs = null;
@@ -59,100 +57,107 @@ function polyArea(pts) {
     return Math.abs(area / 2);
 }
 
-function findBestQuadFromLines(linesMat, width, height) {
-    if (linesMat.rows === 0) return null;
-    const getLineIntersection = (l1, l2) => {
-        const [[x1, y1], [x2, y2]] = l1;
-        const [[x3, y3], [x4, y4]] = l2;
-        const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-        if (den === 0) return null;
-        const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
-        const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
-        return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
-    };
-    const horizontals = [], verticals = [];
-    const minLength = Math.min(width, height) * 0.2;
-    for (let i = 0; i < linesMat.rows; i++) {
-        const [x1, y1, x2, y2] = linesMat.data32S.slice(i * 4, i * 4 + 4);
-        if (Math.hypot(x2 - x1, y2 - y1) < minLength) continue;
-        const angle = Math.abs(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI);
-        if (angle < 45 || angle > 135) horizontals.push([[x1, y1], [x2, y2]]);
-        else verticals.push([[x1, y1], [x2, y2]]);
-    }
-    if (horizontals.length < 2 || verticals.length < 2) return null;
-    let top = horizontals.reduce((a, b) => (a[0][1] + a[1][1] < b[0][1] + b[1][1] ? a : b));
-    let bottom = horizontals.reduce((a, b) => (a[0][1] + a[1][1] > b[0][1] + b[1][1] ? a : b));
-    let left = verticals.reduce((a, b) => (a[0][0] + a[1][0] < b[0][0] + b[1][0] ? a : b));
-    let right = verticals.reduce((a, b) => (a[0][0] + a[1][0] > b[0][0] + b[1][0] ? a : b));
-    const tl = getLineIntersection(top, left), tr = getLineIntersection(top, right);
-    const bl = getLineIntersection(bottom, left), br = getLineIntersection(bottom, right);
-    if (!tl || !tr || !bl || !br) return null;
-    const corners = [tl, tr, br, bl];
-    for (const p of corners) if (p.x < -width * 0.2 || p.x > width * 1.2 || p.y < -height * 0.2 || p.y > height * 1.2) return null;
-    return orderTLTRBRBL(corners);
-}
+function processFrame(imageData) {
+    if (!running || !cv || isProcessingFrame) return;
+    isProcessingFrame = true;
 
-async function processFrame(imageData) {
-    if (!running || !cv) return;
     const { width: w, height: h } = imageData;
     const inCooldown = performance.now() < cooldownUntil;
+
+    let src = cv.matFromImageData(imageData);
+    let gray = new cv.Mat();
+    let claheApplied = new cv.Mat();
+    let blur = new cv.Mat();
+    let canny = new cv.Mat();
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
     
-    mats.src = cv.matFromImageData(imageData);
-    mats.gray = mats.gray || new cv.Mat();
-    mats.claheApplied = mats.claheApplied || new cv.Mat(); // Per output CLAHE
-    mats.canny = mats.canny || new cv.Mat();
-    mats.lines = mats.lines || new cv.Mat();
-    kernel = kernel || cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
-    clahe = clahe || cv.createCLAHE(2.0, new cv.Size(8, 8)); // Istanzia CLAHE
+    clahe = clahe || cv.createCLAHE(2.0, new cv.Size(8, 8));
 
     let quality = 0, corners = null, feedback = 'Cerca un documento...';
 
-    cv.cvtColor(mats.src, mats.gray, cv.COLOR_RGBA2GRAY);
-    clahe.apply(mats.gray, mats.claheApplied); // Applica CLAHE
-    
-    let mean = new cv.Mat(), stdDev = new cv.Mat();
-    cv.meanStdDev(mats.gray, mean, stdDev);
-    const meanGray = mean.data64F[0];
-    
-    // Hough Line Transform pipeline
-    const sigma = 0.33;
-    const lowerThreshold = Math.max(0, (1.0 - sigma) * meanGray);
-    const upperThreshold = Math.min(255, (1.0 + sigma) * meanGray);
+    try {
+        // --- Vision Pipeline ---
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+        clahe.apply(gray, claheApplied);
+        cv.GaussianBlur(claheApplied, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+        cv.Canny(blur, canny, 75, 200);
+        cv.findContours(canny, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-    cv.Canny(mats.claheApplied, mats.canny, lowerThreshold, upperThreshold, 3);
-    cv.dilate(mats.canny, mats.canny, kernel, new cv.Point(-1,-1), 1);
-    cv.HoughLinesP(mats.canny, mats.lines, 1, Math.PI / 180, 50, w * 0.2, 15);
-    corners = findBestQuadFromLines(mats.lines, w, h);
+        let maxArea = 0;
+        let bestContour = null;
 
-    if (corners) {
-        firstFailTs = null; // Reset failure timer
-        const area = polyArea(corners);
-        const areaRatio = area / (w * h);
+        for (let i = 0; i < contours.size(); ++i) {
+            let cnt = contours.get(i);
+            let area = cv.contourArea(cnt, false);
+            if (area > (w * h * config.minAreaRatio)) {
+                let peri = cv.arcLength(cnt, true);
+                let approx = new cv.Mat();
+                cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
 
-        if (areaRatio > config.minAreaRatio) {
-            const rect = cv.minAreaRect(cv.matFromArray(4, 1, cv.CV_32SC2, corners.flatMap(p => [p.x, p.y])));
-            const rectangularity = area / (rect.size.width * rect.size.height);
-            const rectOk = rectangularity > config.rectangularityThreshold;
+                if (approx.rows === 4) {
+                    if (area > maxArea) {
+                        if (bestContour) bestContour.delete();
+                        maxArea = area;
+                        bestContour = approx.clone();
+                    }
+                }
+                approx.delete();
+            }
+        }
+        
+        if (bestContour) {
+            let points = [];
+            for (let i = 0; i < bestContour.rows; i++) {
+                points.push({ x: bestContour.data32S[i*2], y: bestContour.data32S[i*2+1] });
+            }
+            corners = orderTLTRBRBL(points);
+            bestContour.delete();
+        } else {
+            corners = null;
+        }
+        // --- End of Vision Pipeline ---
 
-            if (rectOk) {
-                feedback = 'Perfetto, tieni fermo!';
-                const areaScore = Math.min(1, (areaRatio - config.minAreaRatio) / 0.6);
-                quality = 0.5 * areaScore + 0.5; // Base quality for being rectangular
+        if (corners) {
+            firstFailTs = null;
+            const area = polyArea(corners);
+            const areaRatio = area / (w * h);
+
+            if (areaRatio > config.minAreaRatio) {
+                const rect = cv.minAreaRect(cv.matFromArray(4, 1, cv.CV_32SC2, corners.flatMap(p => [p.x, p.y])));
+                const rectangularity = area / (rect.size.width * rect.size.height);
+                const rectOk = rectangularity > config.rectangularityThreshold;
+
+                if (rectOk) {
+                    feedback = 'Perfetto, tieni fermo!';
+                    const areaScore = Math.min(1, (areaRatio - config.minAreaRatio) / 0.6);
+                    quality = 0.5 * areaScore + 0.5;
+                } else {
+                    feedback = 'Raddrizza la prospettiva';
+                }
             } else {
-                feedback = 'Raddrizza la prospettiva';
+                feedback = 'Avvicina il documento';
             }
         } else {
-            feedback = 'Avvicina il documento';
+            feedback = 'Cerca un documento...';
         }
-    } else {
-        feedback = 'Cerca un documento...';
-    }
-    
-    if(inCooldown) quality = 0;
+        
+        if(inCooldown) quality = 0;
 
-    self.postMessage({ type: 'result', payload: { corners, quality, feedback } });
-    
-    mats.src.delete(); mean.delete(); stdDev.delete();
+        self.postMessage({ type: 'result', payload: { corners, quality, feedback } });
+
+    } catch(e) {
+        console.error("Error in worker processFrame", e);
+    } finally {
+        src.delete();
+        gray.delete();
+        claheApplied.delete();
+        blur.delete();
+        canny.delete();
+        contours.delete();
+        hierarchy.delete();
+        isProcessingFrame = false;
+    }
 }
 
 self.onmessage = async e => {
@@ -171,10 +176,8 @@ self.onmessage = async e => {
             };
             break;
         case 'frame':
-            if (running && cv && !isProcessingFrame) {
-                isProcessingFrame = true;
-                await processFrame(payload.imageData);
-                isProcessingFrame = false;
+            if (running && cv) {
+                processFrame(payload.imageData);
             }
             break;
         case 'pause': running = false; break;

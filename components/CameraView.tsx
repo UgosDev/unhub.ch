@@ -235,6 +235,15 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
     sync(); const ro=new ResizeObserver(sync); ro.observe(canvas); return ()=>ro.disconnect();
   },[processingCanvasRef, videoRef]);
 
+  // Gestisce la pausa/ripresa del worker quando la CropView viene mostrata/nascosta
+  useEffect(() => {
+    if (imageToCrop) {
+      pause?.();
+    } else {
+      resume?.();
+    }
+  }, [imageToCrop, pause, resume]);
+
   const handleCapture = useCallback(async ()=>{
     if(!videoRef.current || !captureCanvasRef.current || isProcessingCapture) return;
     
@@ -295,7 +304,6 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
   const handleConfirmCrop = (warpedDataUrl: string) => {
     setCapturedImages(prev => [...prev, warpedDataUrl]);
     setImageToCrop(null); // Closes CropView
-    resume?.(); // Resumes scanning worker
   };
   
   const handleDeleteImage = (indexToDelete: number) => {
@@ -306,16 +314,6 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
       setCapturedImages(prev => prev.slice(0, -1));
   };
 
-
-  /* ==== Modali ==== */
-  if (imageToCrop){ pause?.(); return (
-    <CropView
-      imageDataUrl={imageToCrop.dataUrl}
-      initialCorners={imageToCrop.corners}
-      onConfirm={handleConfirmCrop}
-      onCancel={()=>{ setImageToCrop(null); resume?.(); }}
-    />
-  );}
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col text-white select-none">
@@ -427,6 +425,15 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
             </div>
         )}
       </footer>
+
+      {imageToCrop && (
+        <CropView
+          imageDataUrl={imageToCrop.dataUrl}
+          initialCorners={imageToCrop.corners}
+          onConfirm={handleConfirmCrop}
+          onCancel={()=>{ setImageToCrop(null); }}
+        />
+      )}
 
       {(isInitializing || streamError) && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30">

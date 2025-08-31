@@ -1037,4 +1037,47 @@ export const analyzePoliciesForInsights = async (policies: ProcessedPageResult[]
             type: Type.OBJECT,
             properties: {
                 insights: {
-                    
+                    type: Type.ARRAY,
+                    description: "A list of 3-4 actionable insights or suggestions based on the provided insurance policies. For example, potential coverage overlaps, missing common coverages, or suggestions for consolidation.",
+                    items: { type: Type.STRING }
+                },
+                upcomingRenewals: {
+                    type: Type.ARRAY,
+                    description: "A list of policies expiring within the next 90 days, sorted by date.",
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            date: { type: Type.STRING, description: "Expiry date in YYYY-MM-DD format." }
+                        },
+                        required: ['title', 'date']
+                    }
+                }
+            },
+            required: ['insights', 'upcomingRenewals']
+        };
+
+        const prompt = `Analyze the following summary of insurance policies. Provide actionable insights and identify upcoming renewals. Today's date is ${new Date().toISOString().split('T')[0]}.
+
+Policies (JSON):
+${JSON.stringify(policiesSummary, null, 2)}
+`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                systemInstruction: "You are an expert insurance portfolio analyst. Your goal is to provide helpful, neutral advice to the user. Do not recommend specific companies. Respond ONLY with the requested JSON object.",
+                responseMimeType: "application/json",
+                responseSchema: analysisSchema,
+                safetySettings
+            }
+        });
+        
+        return JSON.parse(response.text);
+
+    } catch (error) {
+        console.error("AI policy analysis failed:", error);
+        throw error;
+    }
+};

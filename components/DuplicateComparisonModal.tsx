@@ -34,13 +34,13 @@ export const DuplicateComparisonModal: React.FC<DuplicateComparisonModalProps> =
         </div>
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto">
           <div className="flex flex-col items-center">
-            <h3 className="font-semibold text-lg mb-2 text-slate-600 dark:text-slate-300">Documento Originale</h3>
+            <h3 className="font-semibold text-lg mb-2 text-slate-600 dark:text-slate-300">Documento Esistente</h3>
             <div className="w-full h-full bg-slate-100 dark:bg-slate-900/50 rounded-lg p-2">
                  <img src={originalImageUrl} alt="Original document" className="w-full h-full object-contain" />
             </div>
           </div>
           <div className="flex flex-col items-center">
-            <h3 className="font-semibold text-lg mb-2 text-slate-600 dark:text-slate-300">Scansione Corrente</h3>
+            <h3 className="font-semibold text-lg mb-2 text-slate-600 dark:text-slate-300">Nuova Scansione</h3>
              <div className="w-full h-full bg-slate-100 dark:bg-slate-900/50 rounded-lg p-2">
                 <img src={currentImageUrl} alt="Current scan" className="w-full h-full object-contain" />
             </div>

@@ -123,7 +123,7 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
     const { 
         documentGroups, error, processingQueue, currentTaskProgress, isProcessing, 
         pendingFiles, onFilesSelected, onConfirmProcessing, onClearPending, onRemovePendingFile,
-        suggestedMode, isSuggestingMode 
+        suggestedMode, isSuggestingMode, onConfirmDuplicate, onDenyDuplicate
     } = props;
     const hasResults = documentGroups.length > 0;
     
@@ -311,8 +311,8 @@ export const Workspace: React.FC<WorkspaceProps> = (props) => {
                             onClear={props.onClear}
                             onUpdateResult={props.onUpdateResult}
                             onUpdateGroupTags={props.onUpdateGroupTags}
-                            onConfirmDuplicate={props.onConfirmDuplicate}
-                            onDenyDuplicate={props.onDenyDuplicate}
+                            onConfirmDuplicate={onConfirmDuplicate}
+                            onDenyDuplicate={onDenyDuplicate}
                             onSendToApp={props.onSendToApp}
                             onSendAll={props.onSendAll}
                             onMoveSelectedToDefault={props.onMoveSelectedToDefault}

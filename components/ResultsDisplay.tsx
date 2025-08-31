@@ -500,7 +500,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = (props) => {
                         onSendToApp={props.onSendToApp}
                         onSelect={props.onSelectGroup}
                         isSelected={selectedGroupIds.includes(group.id)}
-                        onUngroup={props.onUngroup}
+                        onUngroup={() => props.onUngroup(group.id)}
                         onRetryScan={props.onRetryScan}
                         retryingPageIds={props.retryingPageIds}
                         isExpanded={props.expandedGroups.includes(group.id)}
