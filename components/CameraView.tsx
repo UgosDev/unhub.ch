@@ -309,7 +309,7 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
   const handleDeleteImage = (indexToDelete: number) => {
     setCapturedImages(prev => prev.filter((_, index) => index !== indexToDelete));
   };
-
+  
   const handleUndoLastCapture = () => {
       setCapturedImages(prev => prev.slice(0, -1));
   };
@@ -350,7 +350,7 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
         {isCvReady && videoDisplaySize.width>0 && (
           <DynamicMeshOverlay
             detectedCorners={detectedCorners || null}
-            isLockedOn={!!isAutoCaptureReady}
+            quality={quality}
             videoDisplaySize={videoDisplaySize}
             processingCanvasSize={processingSize}
           />

@@ -3,10 +3,10 @@ import React, { useEffect, useRef } from 'react';
 type Point = { x: number; y: number };
 
 interface DynamicMeshOverlayProps {
-  detectedCorners: Point[] | null;                  // in coordinate del processingCanvas
-  isLockedOn: boolean;
-  videoDisplaySize: { width: number; height: number };      // dimensioni del box video (container)
-  processingCanvasSize: { width: number; height: number };  // dimensioni del frame processato (stessa AR del video)
+  detectedCorners: Point[] | null;
+  quality: number; // Changed from isLockedOn
+  videoDisplaySize: { width: number; height: number };
+  processingCanvasSize: { width: number; height: number };
 }
 
 /** Mappatura corretta per object-cover: scale unico + offset (crop) */
@@ -33,9 +33,26 @@ function springStep(curr: number, target: number, vel: number, dt: number, omega
   return { pos: newPos, vel: newVel };
 }
 
+// Helper for color interpolation
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+// Colors
+const P_COLOR = { r: 192, g: 132, b: 252 }; // Purple
+const G_COLOR = { r: 74, g: 222, b: 128 }; // Green
+
+const qualityToRgba = (q: number, alpha: number) => {
+    // Ramp up quality effect more steeply
+    const t = Math.min(1, q * 1.5); 
+    const r = Math.round(lerp(P_COLOR.r, G_COLOR.r, t));
+    const g = Math.round(lerp(P_COLOR.g, G_COLOR.g, t));
+    const b = Math.round(lerp(P_COLOR.b, G_COLOR.b, t));
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+
 export const DynamicMeshOverlay: React.FC<DynamicMeshOverlayProps> = ({
   detectedCorners,
-  isLockedOn,
+  quality,
   videoDisplaySize,
   processingCanvasSize,
 }) => {
@@ -63,6 +80,8 @@ export const DynamicMeshOverlay: React.FC<DynamicMeshOverlayProps> = ({
     const svg = svgRef.current;
     const polygon = polyRef.current;
     if (!svg || !polygon) return;
+    
+    const isLockedOn = quality > 0.95;
 
     const run = (ts: number) => {
       const last = lastTsRef.current || ts;
@@ -128,13 +147,17 @@ export const DynamicMeshOverlay: React.FC<DynamicMeshOverlayProps> = ({
       // aggiorna DOM (evita re-render React)
       if (shouldDraw) {
           if (ptsRef.current && alphaRef.current > 0) {
-            const stroke = isLockedOn ? 'rgba(74, 222, 128, 0.9)' : 'rgba(192, 132, 252, 0.7)';
-            const fill   = isLockedOn ? 'rgba(74, 222, 128, 0.2)' : 'rgba(192, 132, 252, 0.1)';
+            const stroke = qualityToRgba(quality, 0.7 + quality * 0.2);
+            const fill   = qualityToRgba(quality, 0.1 + quality * 0.15);
+            const strokeWidth = 4 + 2 * quality;
+            
             const ptsStr = ptsRef.current.map(p => `${p.p.x.toFixed(1)},${p.p.y.toFixed(1)}`).join(' ');
             polygon.setAttribute('points', ptsStr);
             polygon.setAttribute('stroke', stroke);
             polygon.setAttribute('fill', fill);
+            polygon.setAttribute('stroke-width', strokeWidth.toFixed(1));
             polygon.setAttribute('opacity', alphaRef.current.toFixed(3));
+            polygon.style.filter = isLockedOn ? 'url(#glow)' : 'none';
           } else {
             polygon.setAttribute('opacity', '0');
           }
@@ -156,7 +179,7 @@ export const DynamicMeshOverlay: React.FC<DynamicMeshOverlayProps> = ({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [videoDisplaySize, processingCanvasSize, isLockedOn]);
+  }, [videoDisplaySize, processingCanvasSize, quality]);
 
   // Render minimale: niente state, solo SVG con refs
   return (
@@ -179,10 +202,8 @@ export const DynamicMeshOverlay: React.FC<DynamicMeshOverlayProps> = ({
       <polygon
         ref={polyRef}
         points=""
-        strokeWidth="4"
         strokeLinejoin="round"
-        style={{ transition: 'stroke 0.2s ease-in-out, fill 0.2s ease-in-out, filter 0.2s ease-in-out' }}
-        filter={isLockedOn ? 'url(#glow)' : 'none'}
+        style={{ transition: 'filter 0.2s ease-in-out' }}
       />
     </svg>
   );

@@ -24,10 +24,8 @@ let running = false;
 let cooldownUntil = 0;
 let isProcessingFrame = false;
 let clahe; 
-let firstFailTs = null;
 
 const config = {
-    sharpnessThreshold: 150,
     rectangularityThreshold: 0.92,
     minAreaRatio: 0.20,
     cooldownMs: 2000,
@@ -57,6 +55,57 @@ function polyArea(pts) {
     return Math.abs(area / 2);
 }
 
+const getLineIntersection = (l1, l2) => {
+    const [x1, y1, x2, y2] = l1;
+    const [x3, y3, x4, y4] = l2;
+    const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (den === 0) return null;
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+    return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
+};
+
+function findBestQuadFromLines(linesMat, width, height) {
+    if (linesMat.rows === 0) return null;
+
+    const horizontals = [];
+    const verticals = [];
+    const minLength = Math.min(width, height) * 0.2;
+
+    for (let i = 0; i < linesMat.rows; i++) {
+        const [x1, y1, x2, y2] = linesMat.data32S.slice(i * 4, i * 4 + 4);
+        const length = Math.hypot(x2 - x1, y2 - y1);
+        if (length < minLength) continue;
+        
+        const angle = Math.abs(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI);
+        if (angle < 45 || angle > 135) horizontals.push([x1, y1, x2, y2]);
+        else verticals.push([x1, y1, x2, y2]);
+    }
+
+    if (horizontals.length < 2 || verticals.length < 2) return null;
+
+    let top = horizontals.reduce((a, b) => (a[1] + a[3] < b[1] + b[3] ? a : b));
+    let bottom = horizontals.reduce((a, b) => (a[1] + a[3] > b[1] + b[3] ? a : b));
+    let left = verticals.reduce((a, b) => (a[0] + a[2] < b[0] + b[2] ? a : b));
+    let right = verticals.reduce((a, b) => (a[0] + a[2] > b[0] + b[2] ? a : b));
+
+    const tl = getLineIntersection(top, left);
+    const tr = getLineIntersection(top, right);
+    const bl = getLineIntersection(bottom, left);
+    const br = getLineIntersection(bottom, right);
+    
+    if (!tl || !tr || !bl || !br) return null;
+    const corners = [{x: tl.x, y: tl.y}, {x: tr.x, y: tr.y}, {x: br.x, y: br.y}, {x: bl.x, y: bl.y}];
+    
+    for (const corner of corners) {
+        if (corner.x < -width * 0.1 || corner.x > width * 1.1 || corner.y < -height * 0.1 || corner.y > height * 1.1) {
+            return null;
+        }
+    }
+    return orderTLTRBRBL(corners);
+}
+
+
 function processFrame(imageData) {
     if (!running || !cv || isProcessingFrame) return;
     isProcessingFrame = true;
@@ -66,80 +115,50 @@ function processFrame(imageData) {
 
     let src = cv.matFromImageData(imageData);
     let gray = new cv.Mat();
-    let claheApplied = new cv.Mat();
     let blur = new cv.Mat();
     let canny = new cv.Mat();
-    let contours = new cv.MatVector();
-    let hierarchy = new cv.Mat();
-    
-    clahe = clahe || cv.createCLAHE(2.0, new cv.Size(8, 8));
+    let dilated = new cv.Mat();
+    let lines = new cv.Mat();
+    let kernel = null;
 
     let quality = 0, corners = null, feedback = 'Cerca un documento...';
 
     try {
         // --- Vision Pipeline ---
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-        clahe.apply(gray, claheApplied);
-        cv.GaussianBlur(claheApplied, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-        cv.Canny(blur, canny, 75, 200);
-        cv.findContours(canny, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-        let maxArea = 0;
-        let bestContour = null;
-
-        for (let i = 0; i < contours.size(); ++i) {
-            let cnt = contours.get(i);
-            let area = cv.contourArea(cnt, false);
-            if (area > (w * h * config.minAreaRatio)) {
-                let peri = cv.arcLength(cnt, true);
-                let approx = new cv.Mat();
-                cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
-
-                if (approx.rows === 4) {
-                    if (area > maxArea) {
-                        if (bestContour) bestContour.delete();
-                        maxArea = area;
-                        bestContour = approx.clone();
-                    }
-                }
-                approx.delete();
-            }
-        }
+        cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
         
-        if (bestContour) {
-            let points = [];
-            for (let i = 0; i < bestContour.rows; i++) {
-                points.push({ x: bestContour.data32S[i*2], y: bestContour.data32S[i*2+1] });
-            }
-            corners = orderTLTRBRBL(points);
-            bestContour.delete();
-        } else {
-            corners = null;
-        }
+        cv.Canny(blur, canny, 50, 150, 3);
+        kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5,5));
+        cv.dilate(canny, canny, kernel, new cv.Point(-1,-1), 1);
+      
+        cv.HoughLinesP(canny, lines, 1, Math.PI / 180, 50, w * 0.2, 10);
+        corners = findBestQuadFromLines(lines, w, h);
         // --- End of Vision Pipeline ---
 
         if (corners) {
-            firstFailTs = null;
             const area = polyArea(corners);
             const areaRatio = area / (w * h);
 
             if (areaRatio > config.minAreaRatio) {
                 const rect = cv.minAreaRect(cv.matFromArray(4, 1, cv.CV_32SC2, corners.flatMap(p => [p.x, p.y])));
                 const rectangularity = area / (rect.size.width * rect.size.height);
-                const rectOk = rectangularity > config.rectangularityThreshold;
-
-                if (rectOk) {
+                
+                if (rectangularity > config.rectangularityThreshold) {
                     feedback = 'Perfetto, tieni fermo!';
                     const areaScore = Math.min(1, (areaRatio - config.minAreaRatio) / 0.6);
                     quality = 0.5 * areaScore + 0.5;
                 } else {
                     feedback = 'Raddrizza la prospettiva';
+                    quality = 0.2;
                 }
             } else {
                 feedback = 'Avvicina il documento';
+                quality = 0.1;
             }
         } else {
             feedback = 'Cerca un documento...';
+            quality = 0;
         }
         
         if(inCooldown) quality = 0;
@@ -151,11 +170,11 @@ function processFrame(imageData) {
     } finally {
         src.delete();
         gray.delete();
-        claheApplied.delete();
         blur.delete();
         canny.delete();
-        contours.delete();
-        hierarchy.delete();
+        dilated.delete();
+        lines.delete();
+        if(kernel) kernel.delete();
         isProcessingFrame = false;
     }
 }
