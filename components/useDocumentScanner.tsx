@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, RefObject, useCallback } from 'react';
 
 // --- TIPI ---
+export type ScanType = 'A4' | 'receipt' | 'credit-card' | 'business-card' | 'book' | 'unknown';
 type Point = { x: number; y: number };
 interface WorkerResult {
   corners: Point[] | null;
   quality: number; // 0..1
   feedback: string;
+  type: ScanType;
 }
 
 interface UseDocumentScannerProps {
@@ -105,6 +107,49 @@ function findBestQuadFromLines(linesMat, width, height) {
     return orderTLTRBRBL(corners);
 }
 
+function classifyByAspect(pts, frameArea) {
+  if (!pts || pts.length !== 4) return 'unknown';
+
+  const [tl, tr, br, bl] = orderTLTRBRBL(pts);
+  const wTop = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+  const wBot = Math.hypot(br.x - bl.x, br.y - bl.y);
+  const hLeft = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+  const hRight = Math.hypot(br.x - tr.x, br.y - tr.y);
+  
+  const width = Math.max(wTop, wBot);
+  const height = Math.max(hLeft, hRight);
+  const docArea = polyArea(pts);
+  const areaRatio = docArea / frameArea;
+
+  if (width === 0 || height === 0) return 'unknown';
+
+  const ar = Math.max(width, height) / Math.min(width, height);
+
+  // Book: very large area and aspect ratio of two pages.
+  if (areaRatio > 0.65 && ar > 1.25 && ar < 1.8) {
+      return 'book';
+  }
+
+  // Receipt: very long and narrow aspect ratio
+  if (ar > 2.5) {
+      return 'receipt';
+  }
+
+  // Credit Card or Business Card
+  if (ar > 1.55 && ar < 1.8) {
+      if (areaRatio < 0.4) {
+          return 'credit-card';
+      }
+  }
+
+  // A4 paper
+  if (ar > 1.3 && ar < 1.55) {
+      return 'A4';
+  }
+
+  return 'unknown';
+}
+
 
 function processFrame(imageData) {
     if (!running || !cv || isProcessingFrame) return;
@@ -121,24 +166,27 @@ function processFrame(imageData) {
     let lines = new cv.Mat();
     let kernel = null;
 
-    let quality = 0, corners = null, feedback = 'Cerca un documento...';
+    let quality = 0, corners = null, feedback = 'Cerca un documento...', type = 'unknown';
 
     try {
         // --- Vision Pipeline ---
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
         cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
         
-        cv.Canny(blur, canny, 50, 150, 3);
+        cv.adaptiveThreshold(blur, dilated, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 8);
+        
+        cv.Canny(dilated, canny, 100, 200, 3);
         kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5,5));
         cv.dilate(canny, canny, kernel, new cv.Point(-1,-1), 1);
       
-        cv.HoughLinesP(canny, lines, 1, Math.PI / 180, 50, w * 0.2, 10);
+        cv.HoughLinesP(canny, lines, 1, Math.PI / 180, 50, w * 0.2, 15);
         corners = findBestQuadFromLines(lines, w, h);
         // --- End of Vision Pipeline ---
 
         if (corners) {
             const area = polyArea(corners);
             const areaRatio = area / (w * h);
+            type = classifyByAspect(corners, w * h);
 
             if (areaRatio > config.minAreaRatio) {
                 const rect = cv.minAreaRect(cv.matFromArray(4, 1, cv.CV_32SC2, corners.flatMap(p => [p.x, p.y])));
@@ -163,7 +211,7 @@ function processFrame(imageData) {
         
         if(inCooldown) quality = 0;
 
-        self.postMessage({ type: 'result', payload: { corners, quality, feedback } });
+        self.postMessage({ type: 'result', payload: { corners, quality, feedback, type } });
 
     } catch(e) {
         console.error("Error in worker processFrame", e);
@@ -214,12 +262,13 @@ export function useDocumentScanner({
   detectedCorners: Point[] | null;
   feedback: string;
   quality: number;
+  detectedType: ScanType;
   isWorkerReady: boolean;
   pause: () => void;
   resume: () => void;
   triggerCooldown: () => void;
 } {
-  const [result, setResult] = useState<WorkerResult>({ corners: null, quality: 0, feedback: 'Avvio...' });
+  const [result, setResult] = useState<WorkerResult>({ corners: null, quality: 0, feedback: 'Avvio...', type: 'unknown' });
   const [isWorkerReady, setIsWorkerReady] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -293,6 +342,7 @@ export function useDocumentScanner({
     detectedCorners: result.corners,
     feedback: result.feedback,
     quality: result.quality,
+    detectedType: result.type,
     isWorkerReady: isWorkerReady,
     pause,
     resume,

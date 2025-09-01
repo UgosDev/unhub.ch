@@ -2,13 +2,14 @@ import React, { useRef, useEffect, useState, useCallback, useLayoutEffect } from
 import { 
   XMarkIcon, CheckIcon,
   ArrowUturnLeftIcon,
-  BoltIcon, BoltSlashIcon
+  BoltIcon, BoltSlashIcon,
+  ArrowPathIcon
 } from './icons';
 import { LoadingSpinner } from './LoadingSpinner';
 import type { ProcessingMode } from '../services/geminiService';
 import { useCameraStream } from './useCameraStream';
 // import { useDeviceTilt } from './useDeviceTilt';
-import { useDocumentScanner } from './useDocumentScanner';
+import { useDocumentScanner, type ScanType } from './useDocumentScanner';
 import { DynamicMeshOverlay } from './DynamicMeshOverlay';
 
 declare const cv: any;
@@ -156,6 +157,19 @@ const CropView: React.FC<CropViewProps> = ({ imageDataUrl, initialCorners, onCon
     }
   };
 
+  const handleReset = () => {
+    setCorners(initialCorners);
+  };
+  
+  const areCornersEqual = (c1: {x:number, y:number}[], c2: {x:number, y:number}[]) => {
+      if (!c1 || !c2 || c1.length !== c2.length) return false;
+      for (let i = 0; i < c1.length; i++) {
+          if (c1[i].x !== c2[i].x || c1[i].y !== c2[i].y) return false;
+      }
+      return true;
+  };
+  const hasBeenModified = !areCornersEqual(corners, initialCorners);
+
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col text-white" role="dialog" aria-modal="true">
       <header className="p-3 flex justify-between items-center bg-black/50 flex-shrink-0 backdrop-blur-sm">
@@ -171,7 +185,10 @@ const CropView: React.FC<CropViewProps> = ({ imageDataUrl, initialCorners, onCon
         <button onClick={confirm} disabled={busy} className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center ring-4 ring-black/30 disabled:bg-slate-400 transition-all active:scale-95" aria-label="Conferma ritaglio">
           {busy ? <LoadingSpinner className="w-10 h-10"/> : <CheckIcon className="w-12 h-12 text-white" />}
         </button>
-        <div className="w-24 h-20 flex items-center justify-center" />
+        <button onClick={handleReset} disabled={!hasBeenModified} className="w-24 flex flex-col items-center gap-1 text-yellow-400 font-semibold disabled:text-slate-500 disabled:cursor-not-allowed transition-colors">
+            <ArrowPathIcon className="w-8 h-8"/>
+            <span className="text-xs">Resetta</span>
+        </button>
       </footer>
     </div>
   );
@@ -202,7 +219,7 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
   } = useCameraStream(videoRef);
 
   // const { isLevel, sensorStatus, bubblePosition } = useDeviceTilt();
-  const { detectedCorners, feedback, quality, isWorkerReady, pause, resume, triggerCooldown } = useDocumentScanner({
+  const { detectedCorners, feedback, quality, detectedType, isWorkerReady, pause, resume, triggerCooldown } = useDocumentScanner({
     videoRef, processingCanvasRef, isCvReady
   });
   const isAutoCaptureReady = quality > 0.95;
@@ -369,9 +386,14 @@ export const CameraView: React.FC<CameraViewProps> = ({ onFinish, onClose, proce
       {/* Feedback Overlay */}
       <div className="absolute bottom-28 left-0 right-0 z-20 text-center px-4 pointer-events-none">
           {capturedImages.length === 0 && feedback && (
-              <p className="inline-block bg-black/50 text-white font-semibold px-4 py-2 rounded-full backdrop-blur-sm shadow-lg">
-                  {feedback}
-              </p>
+              <div className="inline-flex items-center gap-4 bg-black/50 text-white font-semibold px-4 py-2 rounded-full backdrop-blur-sm shadow-lg">
+                  <p>{feedback}</p>
+                  {detectedType && detectedType !== 'unknown' && (
+                      <span className="text-xs uppercase font-bold text-purple-300 border-l border-white/20 pl-3">
+                          {detectedType.replace('-', ' ')}
+                      </span>
+                  )}
+              </div>
           )}
       </div>
 
