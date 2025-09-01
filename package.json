@@ -2,16 +2,12 @@
   "name": "unhub-ch-app",
   "version": "1.0.0",
   "private": true,
-  "description": "Server configuration to run the buildless React app on Firebase App Hosting.",
   "scripts": {
-    "start": "serve -s .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm install && node replace.js"
   },
   "dependencies": {
-    "serve": "^14.2.3"
+    "replace-in-file": "^7.1.0"
   },
-  "author": "",
-  "license": "UNLICENSED",
   "engines": {
     "node": "20"
   }

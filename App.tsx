@@ -63,7 +63,11 @@ declare const cv: any; // Dichiarazione globale per OpenCV
 
 
 // Inizializzazione API Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY;
+if (!apiKey) {
+  console.error("API_KEY is not set. The application will not work correctly.");
+}
+const ai = new GoogleGenAI({ apiKey });
 
 // --- UTILITY ---
 const generateHash = async (dataUrl: string): Promise<string> => {
