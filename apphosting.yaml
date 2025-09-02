@@ -2,9 +2,9 @@
 runtime: nodejs20
 
 # Espone il segreto 'api_key' come variabile d'ambiente API_KEY.
-# Lo script di build dell'applicazione (replace.js) leggerà questa variabile.
+# La sintassi è stata corretta per usare una lista di oggetti, come richiesto.
 env:
-  API_KEY:
+  - variable: API_KEY
     secret: api_key
 
 # Definisce il comando per costruire l'applicazione.
