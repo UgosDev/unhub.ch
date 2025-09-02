@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm install && node replace.js"
+    "build": "npm install && node replace.js",
+    "start": "serve -s ."
   },
   "dependencies": {
-    "replace-in-file": "^7.1.0"
+    "replace-in-file": "^7.1.0",
+    "serve": "^14.2.3"
   },
   "engines": {
     "node": "20"

@@ -1,11 +1,11 @@
 const replace = require('replace-in-file');
 
-// Firebase App Hosting richiede che i nomi dei segreti siano in minuscolo.
-const apiKey = process.env.api_key;
+// Firebase App Hosting provides secrets as uppercase environment variables.
+const apiKey = process.env.API_KEY;
 
 if (!apiKey) {
-  // Messaggio di errore aggiornato per essere più specifico.
-  console.error("ERRORE: La variabile d'ambiente 'api_key' (tutto minuscolo) non è stata trovata nei segreti di Firebase! Assicurati di averla creata con questo nome esatto.");
+  // Updated error message for clarity.
+  console.error("ERRORE: La variabile d'ambiente 'API_KEY' (tutto maiuscolo) non è stata trovata! Assicurati di aver creato un segreto chiamato 'api_key' in Firebase App Hosting.");
   process.exit(1);
 }
 
@@ -16,9 +16,9 @@ const options = {
     'pages/AdminDashboard.tsx',
     'components/FileViews.tsx'
   ],
-  // Questo è il segnaposto nel codice sorgente, che va bene mantenere così.
+  // This placeholder must be consistent in the source code.
   from: /process\.env\.API_KEY/g,
-  to: `'${apiKey}'`, // Sostituisce con la chiave reale dalla variabile d'ambiente in minuscolo.
+  to: `'${apiKey}'`, // Replaces with the actual key from the uppercase environment variable.
 };
 
 try {
