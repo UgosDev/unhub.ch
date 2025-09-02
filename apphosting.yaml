@@ -5,7 +5,7 @@ runtime: nodejs20
 # La sintassi è stata corretta per usare una lista di oggetti, come richiesto.
 env:
   - variable: API_KEY
-    secret: api_key
+    secret: AIzaSyAbC-wVHwJFccWL2nRyV4vRQMHycmrDnOw
 
 # Definisce il comando per costruire l'applicazione.
 # Questo installa le dipendenze e inietta la API key nel codice sorgente.
@@ -21,3 +21,4 @@ serving:
   rewrites:
     - source: /.*
       destination: /index.html
+
