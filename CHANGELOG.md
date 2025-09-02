@@ -4,6 +4,11 @@ Tutte le modifiche degne di nota a questo progetto saranno documentate in questo
 
 Il formato si basa su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.5.0]
+
+### Migliorato
+* **[Fotocamera] Motore di Scansione Potenziato**: Sostituito l'algoritmo di rilevamento basato su linee (`HoughLines`) con una pipeline più robusta e moderna basata su `findContours`. Questo si traduce in un rilevamento dei bordi del documento **significativamente più stabile, veloce e preciso**, risolvendo i problemi di "jitter" e migliorando drasticamente l'esperienza di scansione.
+
 ## [9.4.0]
 
 ### Migliorato

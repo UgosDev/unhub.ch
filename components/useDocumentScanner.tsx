@@ -25,7 +25,6 @@ let cv = null;
 let running = false;
 let cooldownUntil = 0;
 let isProcessingFrame = false;
-let clahe; 
 
 const config = {
     rectangularityThreshold: 0.92,
@@ -55,56 +54,6 @@ function polyArea(pts) {
         area += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
     }
     return Math.abs(area / 2);
-}
-
-const getLineIntersection = (l1, l2) => {
-    const [x1, y1, x2, y2] = l1;
-    const [x3, y3, x4, y4] = l2;
-    const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (den === 0) return null;
-    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
-    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
-    return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
-};
-
-function findBestQuadFromLines(linesMat, width, height) {
-    if (linesMat.rows === 0) return null;
-
-    const horizontals = [];
-    const verticals = [];
-    const minLength = Math.min(width, height) * 0.2;
-
-    for (let i = 0; i < linesMat.rows; i++) {
-        const [x1, y1, x2, y2] = linesMat.data32S.slice(i * 4, i * 4 + 4);
-        const length = Math.hypot(x2 - x1, y2 - y1);
-        if (length < minLength) continue;
-        
-        const angle = Math.abs(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI);
-        if (angle < 45 || angle > 135) horizontals.push([x1, y1, x2, y2]);
-        else verticals.push([x1, y1, x2, y2]);
-    }
-
-    if (horizontals.length < 2 || verticals.length < 2) return null;
-
-    let top = horizontals.reduce((a, b) => (a[1] + a[3] < b[1] + b[3] ? a : b));
-    let bottom = horizontals.reduce((a, b) => (a[1] + a[3] > b[1] + b[3] ? a : b));
-    let left = verticals.reduce((a, b) => (a[0] + a[2] < b[0] + b[2] ? a : b));
-    let right = verticals.reduce((a, b) => (a[0] + a[2] > b[0] + b[2] ? a : b));
-
-    const tl = getLineIntersection(top, left);
-    const tr = getLineIntersection(top, right);
-    const bl = getLineIntersection(bottom, left);
-    const br = getLineIntersection(bottom, right);
-    
-    if (!tl || !tr || !bl || !br) return null;
-    const corners = [{x: tl.x, y: tl.y}, {x: tr.x, y: tr.y}, {x: br.x, y: br.y}, {x: bl.x, y: bl.y}];
-    
-    for (const corner of corners) {
-        if (corner.x < -width * 0.1 || corner.x > width * 1.1 || corner.y < -height * 0.1 || corner.y > height * 1.1) {
-            return null;
-        }
-    }
-    return orderTLTRBRBL(corners);
 }
 
 function classifyByAspect(pts, frameArea) {
@@ -162,34 +111,65 @@ function processFrame(imageData) {
     let gray = new cv.Mat();
     let blur = new cv.Mat();
     let canny = new cv.Mat();
-    let dilated = new cv.Mat();
-    let lines = new cv.Mat();
-    let kernel = null;
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
 
     let quality = 0, corners = null, feedback = 'Cerca un documento...', type = 'unknown';
 
     try {
-        // --- Vision Pipeline ---
+        // --- NEW Vision Pipeline using findContours ---
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
         cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-        
-        cv.adaptiveThreshold(blur, dilated, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 8);
-        
-        cv.Canny(dilated, canny, 100, 200, 3);
-        kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5,5));
-        cv.dilate(canny, canny, kernel, new cv.Point(-1,-1), 1);
-      
-        cv.HoughLinesP(canny, lines, 1, Math.PI / 180, 50, w * 0.2, 15);
-        corners = findBestQuadFromLines(lines, w, h);
-        // --- End of Vision Pipeline ---
+        cv.Canny(blur, canny, 75, 200);
+
+        cv.findContours(canny, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+        let bestContour = null;
+        let maxArea = 0;
+
+        for (let i = 0; i < contours.size(); ++i) {
+            const cnt = contours.get(i);
+            const area = cv.contourArea(cnt);
+
+            if (area > (w * h * 0.1)) {
+                const peri = cv.arcLength(cnt, true);
+                let approx = new cv.Mat();
+                cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
+
+                if (approx.rows === 4) {
+                    if (area > maxArea) {
+                        if (bestContour) bestContour.delete();
+                        maxArea = area;
+                        bestContour = approx;
+                    } else {
+                        approx.delete();
+                    }
+                } else {
+                    approx.delete();
+                }
+            }
+            cnt.delete();
+        }
+
+        if (bestContour) {
+            const points = [];
+            for (let i = 0; i < bestContour.rows; i++) {
+                points.push({ x: bestContour.data32S[i * 2], y: bestContour.data32S[i * 2 + 1] });
+            }
+            corners = orderTLTRBRBL(points);
+            bestContour.delete();
+        }
+        // --- End of NEW Pipeline ---
 
         if (corners) {
             const area = polyArea(corners);
             const areaRatio = area / (w * h);
-            type = classifyByAspect(corners, w * h);
+            type = classifyByAspect(corners, w*h);
 
             if (areaRatio > config.minAreaRatio) {
-                const rect = cv.minAreaRect(cv.matFromArray(4, 1, cv.CV_32SC2, corners.flatMap(p => [p.x, p.y])));
+                const mat = cv.matFromArray(4, 1, cv.CV_32SC2, corners.flatMap(p => [p.x, p.y]));
+                const rect = cv.minAreaRect(mat);
+                mat.delete();
                 const rectangularity = area / (rect.size.width * rect.size.height);
                 
                 if (rectangularity > config.rectangularityThreshold) {
@@ -220,9 +200,8 @@ function processFrame(imageData) {
         gray.delete();
         blur.delete();
         canny.delete();
-        dilated.delete();
-        lines.delete();
-        if(kernel) kernel.delete();
+        contours.delete();
+        hierarchy.delete();
         isProcessingFrame = false;
     }
 }
