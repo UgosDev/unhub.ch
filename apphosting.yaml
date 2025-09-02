@@ -1,0 +1,23 @@
+# Specifica la versione di Node.js da utilizzare.
+runtime: nodejs20
+
+# Espone il segreto 'api_key' come variabile d'ambiente API_KEY.
+# Lo script di build dell'applicazione (replace.js) leggerà questa variabile.
+env:
+  API_KEY:
+    secret: api_key
+
+# Definisce il comando per costruire l'applicazione.
+# Questo installa le dipendenze e inietta la API key nel codice sorgente.
+build: npm install && node replace.js
+
+# Definisce il comando per avviare l'applicazione.
+# 'npm start' eseguirà 'serve -s .' per servire il sito statico come SPA.
+run: npm start
+
+# Configura il comportamento di serving per una Single-Page Application (SPA).
+# Questo assicura che tutte le rotte siano gestite da index.html per il routing lato client.
+serving:
+  rewrites:
+    - source: /.*
+      destination: /index.html
