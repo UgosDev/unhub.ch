@@ -56,6 +56,7 @@ import Polizze from './pages/Polizze';
 import Disdette from './pages/Disdette';
 import AdminDashboard from './pages/AdminDashboard'; // Import AdminDashboard
 import UnHubPage from './pages/UnHubPage'; // Import UnHubPage
+import UnHubDashboard from './pages/UnHubDashboard'; // NUOVO: Import UnHubDashboard
 import type { AccessLogEntry } from './services/db';
 
 
@@ -473,7 +474,7 @@ function AuthenticatedApp() {
   const { isInstallable, isInstalled, triggerInstall } = usePWA();
   const { theme, setTheme } = useTheme();
 
-  const [currentPage, setCurrentPage] = useState('scan'); // scan, dashboard, guide, profile, etc.
+  const [currentPage, setCurrentPage] = useState('unhub'); // Default to the new hub
   const { state: results, setState: setResults, undo, redo, canUndo, canRedo, resetHistory } = useHistoryState<ProcessedPageResult[]>([]);
   
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
@@ -838,11 +839,10 @@ function AuthenticatedApp() {
             archivio: 'archivio',
             polizze: 'polizze',
             disdette: 'disdette',
-            // 'unhub' is for the unauthenticated landing, so it defaults to 'scan' for logged-in users.
-            unhub: 'scan',
-            default: 'scan'
+            unhub: 'unhub',
+            default: 'unhub'
         };
-        setCurrentPage(pageMap[brandKey] || 'scan');
+        setCurrentPage(pageMap[brandKey] || 'unhub');
     }, []);
 
     useEffect(() => {
@@ -3521,8 +3521,19 @@ function AuthenticatedApp() {
 
 
     const renderPage = () => {
-        const brandKey = ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) ? currentPage as BrandKey : 'scan';
+        const brandKey = ['scan', 'archivio', 'polizze', 'disdette', 'unhub'].includes(currentPage) ? currentPage as BrandKey : 'unhub';
         switch(currentPage) {
+            case 'unhub':
+                return <UnHubDashboard 
+                            user={user!}
+                            onNavigate={navigate}
+                            stats={{
+                                scanCoinBalance: user!.subscription.scanCoinBalance,
+                                archivedDocsCount: archivedDocs.length,
+                                polizzeCount: polizzeDocs.length,
+                                disdetteCount: disdetteDocs.length
+                            }}
+                        />;
             case 'archivio':
                 return <Archivio 
                             archivedDocs={archivedDocs} 
@@ -3679,9 +3690,9 @@ function AuthenticatedApp() {
                     onDeleteAccountData={handleDeleteAccountData}
                 />;
             case 'pricing':
-                return <PricingPage onNavigateToRegister={() => {}} onNavigateBack={() => navigate('scan')} onNavigate={navigate} isInsideApp={true} brandKey={brandKey} />;
+                return <PricingPage onNavigateToRegister={() => {}} onNavigateBack={() => navigate('unhub')} onNavigate={navigate} isInsideApp={true} brandKey={brandKey} />;
             case 'changelog':
-                return <ChangelogPage onNavigateBack={() => navigate('scan')} onNavigate={navigate} brandKey={brandKey} />;
+                return <ChangelogPage onNavigateBack={() => navigate('unhub')} onNavigate={navigate} brandKey={brandKey} />;
             case 'terms':
                 return <TermsOfServicePage onNavigateBack={() => navigate('profile')} onNavigate={navigate} brandKey={brandKey} />;
             case 'privacy':
@@ -3778,11 +3789,11 @@ function AuthenticatedApp() {
         }
     }
     
-    const brandKey = currentPage === 'profile'
+    const brandKey = (currentPage === 'profile' || currentPage === 'unhub')
         ? 'unhub' as BrandKey
         : ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage)
         ? currentPage as BrandKey
-        : 'scan';
+        : 'unhub';
 
     const targetGroup = useMemo(() => documentGroups.find(g => g.id === circularMenu.groupId), [documentGroups, circularMenu.groupId]);
 

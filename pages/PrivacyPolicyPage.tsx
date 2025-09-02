@@ -61,7 +61,7 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onNavigateBack, o
                     <li><strong>Dati di Registrazione:</strong> Quando crei un account, raccogliamo il tuo nome e il tuo indirizzo email.</li>
                     <li><strong>Contenuto Elaborato:</strong> I file (immagini, PDF) che carichi per l'analisi. Questi file possono contenere dati personali, di cui sei l'unico responsabile.</li>
                     <li><strong>Dati di Accesso:</strong> Per la tua sicurezza, registriamo l'indirizzo IP e la località approssimativa (città/paese) al momento di ogni accesso riuscito. Questi dati sono visibili solo a te nel tuo Profilo.</li>
-                    <li><strong>Dati di Utilizzo Anonimi:</strong> Utilizziamo strumenti di analisi per raccogliere dati anonimi su come interagisci con l'interfaccia dell'applicazione (es. click, scorrimento). Questi dati ci aiutano a identificare problemi e a migliorare l'esperienza utente.</li>
+                    <li><strong>Dati di Navigazione e Analisi (Google Analytics):</strong> Raccogliamo dati anonimi sulla tua navigazione, come le pagine visitate, il tempo di permanenza e il tipo di dispositivo, tramite Google Analytics. Il tuo indirizzo IP viene anonimizzato.</li>
                 </ul>
 
                 <h2>2. Come Utilizziamo i Dati</h2>
@@ -69,7 +69,7 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onNavigateBack, o
                     <li><strong>Per Fornire il Servizio:</strong> La funzione principale dell'app è analizzare i tuoi documenti. Questa analisi avviene tramite l'invio dei dati dell'immagine a servizi di terze parti, specificamente l'API di Google Gemini. <strong>In accordo con i termini di servizio di Google, i dati inviati tramite l'API non vengono utilizzati per addestrare i loro modelli di intelligenza artificiale.</strong></li>
                     <li><strong>Per la Sicurezza del Tuo Account:</strong> I dati di accesso (indirizzo IP, località) vengono raccolti per permetterti di monitorare attività sospette sul tuo account.</li>
                     <li><strong>Per la Comunicazione:</strong> Utilizziamo il tuo indirizzo email per comunicazioni essenziali relative al tuo account, come la reimpostazione della password o notifiche importanti sul servizio.</li>
-                    <li><strong>Per Migliorare l'Applicazione:</strong> I dati di utilizzo anonimi vengono analizzati in forma aggregata per capire quali funzionalità sono più usate e come possiamo rendere l'applicazione più intuitiva ed efficiente.</li>
+                    <li><strong>Per Migliorare l'Applicazione:</strong> I dati di utilizzo anonimi, raccolti anche tramite Google Analytics, vengono analizzati in forma aggregata per capire quali funzionalità sono più usate e come possiamo rendere l'applicazione più intuitiva ed efficiente.</li>
                      <li><strong>Per la Comunicazione tra Applicazioni:</strong> Quando utilizzi la funzione "Invia a...", i dati del fascicolo selezionato vengono trasmessi direttamente dal tuo browser all'applicazione partner (es. `archivio.ch`) tramite un Broadcast Channel, senza passare attraverso i nostri server.</li>
                 </ul>
 
@@ -87,7 +87,7 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onNavigateBack, o
                 <h2>5. Cookie e Tecnologie Simili</h2>
                  <ul>
                     <li><strong>Cookie Essenziali:</strong> Utilizziamo il `localStorage` (simile a un cookie) per gestire la tua sessione di login e salvare le tue preferenze (es. tema visivo). Questi sono necessari per il funzionamento dell'app.</li>
-                    <li><strong>Cookie di Analisi:</strong> A seguito del tuo consenso, potremmo utilizzare servizi di terze parti che impostano cookie per raccogliere dati di utilizzo anonimi, come descritto nella Sezione 1.</li>
+                    <li><strong>Cookie di Analisi (Google Analytics):</strong> A seguito del tuo consenso tramite il banner dei cookie, utilizziamo Google Analytics per raccogliere dati di utilizzo anonimi. Questi cookie ci aiutano a capire come viene utilizzato il nostro servizio per poterlo migliorare.</li>
                 </ul>
             </article>
         </div>

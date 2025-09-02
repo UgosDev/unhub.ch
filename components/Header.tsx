@@ -45,11 +45,11 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { user } = useAuth();
     
-    const brandKey = currentPage === 'profile'
+    const brandKey = (currentPage === 'profile' || currentPage === 'unhub')
         ? 'unhub' as BrandKey
         : ['scan', 'archivio', 'polizze', 'disdette'].includes(currentPage) 
         ? currentPage as BrandKey 
-        : 'default';
+        : 'unhub';
     const { Logo, Wordmark, colorClass } = brandAssets[brandKey];
     
     // Define logo colors for CSS variables
@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
         <div className="flex items-center justify-between h-16">
           
           <div className="flex items-center gap-2">
-            <button onClick={() => onNavigate(brandKey === 'default' ? 'scan' : brandKey)} className="flex items-center gap-2" aria-label="Vai alla pagina di scansione">
+            <button onClick={() => onNavigate('unhub')} className="flex items-center gap-2" aria-label="Vai alla dashboard principale">
                 <Logo className="h-8 w-8 flex-shrink-0" />
                 <div className="hidden sm:block">
                     <Wordmark className="h-6 text-slate-900 dark:text-slate-100" />
@@ -121,6 +121,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
           </div>
           
           <nav id="tutorial-header-nav" className="hidden lg:flex items-center gap-1 sm:gap-2">
+            <NavLink page="unhub" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Hub</NavLink>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
             <NavLink page="scan" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Scansione</NavLink>
             <NavLink page="archivio" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Archivio</NavLink>
             <NavLink page="polizze" currentPage={currentPage} onNavigate={onNavigate} brandColor={colorClass}>Polizze</NavLink>
@@ -187,6 +189,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogou
       {isMenuOpen && (
         <div className="lg:hidden" id="mobile-menu">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-slate-200 dark:border-slate-700">
+                <NavLink page="unhub" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Hub</NavLink>
+                <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
                 <NavLink page="scan" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Scansione</NavLink>
                 <NavLink page="archivio" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Archivio</NavLink>
                 <NavLink page="polizze" currentPage={currentPage} onNavigate={handleMobileNav} brandColor={colorClass} className="block w-full text-left !text-base">Polizze</NavLink>

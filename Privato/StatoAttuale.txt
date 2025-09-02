@@ -1,0 +1,112 @@
+# Panoramica Tecnica e Funzionale dell'Ecosistema UnHub.ch
+**Versione Documento:** 1.0 (corrispondente a v9.5.0 dell'app)
+
+Questo documento serve come riferimento completo per lo stato attuale dell'applicazione UnHub.ch, descrivendone l'architettura, le funzionalità, i flussi di dati e le decisioni di implementazione chiave.
+
+---
+
+## 1. Visione e Architettura Generale
+
+UnHub.ch è un ecosistema di micro-servizi digitali unificati sotto un unico ombrello, progettato per semplificare la vita digitale degli utenti in Svizzera.
+
+- **Frontend**: Applicazione a pagina singola (SPA) costruita con **React 19** e **TypeScript**.
+- **Styling**: **Tailwind CSS** per un design system rapido e responsivo.
+- **Backend (Dati & Auth)**: **Google Firebase** (Firestore e Auth). Sfrutta la sincronizzazione in tempo reale e la persistenza offline per un'esperienza fluida e cross-device.
+- **Intelligenza Artificiale**: Chiamate dirette **client-side** all'API di **Google Gemini** tramite la libreria `@google/genai`.
+- **Computer Vision**: **OpenCV.js** caricato in `index.html` per l'elaborazione delle immagini in tempo reale (rilevamento bordi, correzione prospettica) nella `CameraView`.
+- **PWA (Progressive Web App)**: L'applicazione è installabile e funziona offline grazie a un **Service Worker** (`service-worker.js`) che mette in cache le risorse principali.
+
+### 1.1. Criticità Architetturale Chiave
+L'attuale architettura espone la `API_KEY` di Gemini sul client. Sebbene sia iniettata durante il processo di build (`replace.js`) e non visibile nel codice sorgente pubblico, è una vulnerabilità di sicurezza in un ambiente di produzione. La roadmap strategica prevede la migrazione a un backend (es. Cloud Functions) che agisca da proxy verso **Vertex AI** per risolvere questo problema e sbloccare funzionalità enterprise (fine-tuning, monitoraggio avanzato).
+
+---
+
+## 2. Struttura del Progetto
+
+Il progetto è organizzato in directory modulari per separare le responsabilità:
+
+- `/components`: Componenti React riutilizzabili (es. `LoadingSpinner`, `Header`, `Chatbot`).
+- `/contexts`: Context API di React per la gestione dello stato globale (`AuthContext`, `ThemeContext`, `PWAContext`).
+- `/pages`: Componenti di alto livello che rappresentano le pagine principali dell'applicazione (`Dashboard`, `ProfilePage`, `Archivio`, ecc.).
+- `/services`: Logica di business e comunicazione con servizi esterni.
+  - `authService.ts`: Gestisce l'autenticazione con Firebase Auth.
+  - `firestoreService.ts`: Contiene tutta la logica di interazione con Firestore (lettura, scrittura, listener in tempo reale).
+  - `db.ts`: Un livello di astrazione (facade) che combina `firestoreService` e la gestione della coda in `IndexedDB`.
+  - `geminiService.ts`: Il "cervello" AI. Contiene i prompt, gli schemi JSON, i costi e la logica per chiamare l'API Gemini per ogni modalità di scansione.
+  - `brandingService.ts`: Gestisce il branding dinamico (loghi, colori, testi) in base al dominio di accesso.
+- `/Privato`: Contiene documenti di sviluppo interni non distribuiti.
+
+---
+
+## 3. Analisi dei Moduli dell'Ecosistema
+
+### 3.1. scansioni.ch (Workspace)
+È il punto di ingresso e l'area di lavoro temporanea.
+- **Input**: Accetta file tramite drag-and-drop, selezione manuale (`FileDropzone`), fotocamera (`CameraView`) o importazione simulata via email (`EmailImportView`).
+- **Flusso di Lavoro**:
+  1. I file vengono aggiunti a una "staging area" dove l'AI suggerisce la modalità di scansione.
+  2. L'utente conferma e i file vengono aggiunti a una coda di elaborazione persistente (`IndexedDB`).
+  3. Un processore in `App.tsx` prende i file dalla coda uno per uno.
+  4. Ogni pagina viene inviata a `geminiService` per l'analisi.
+  5. I risultati vengono salvati su Firestore e appaiono in tempo reale nella UI.
+- **Modalità di Scansione**: Offre modalità specializzate (`Chroma`, `Quick`, `Scontrino`, `Fotografia`, `Doc. Identità`, ecc.), ognuna con un costo in `ScanCoin` e uno schema JSON specifico per Gemini.
+- **Risultati**: I documenti vengono raggruppati in "fascicoli" intelligenti. L'utente può espandere, modificare i dati, scaricare (ZIP/PDF) o spostare i fascicoli nei moduli permanenti.
+
+### 3.2. archivio.ch
+Il "caveau" digitale per l'archiviazione a lungo termine.
+- **Organizzazione**: Sistema gerarchico di cartelle, gestibili tramite drag-and-drop e menu contestuali.
+- **Privacy**: Supporta un archivio **Privato** e uno **Familiare** condiviso.
+- **Ricerca Semantica**: Utilizza Gemini (`performSemanticSearch`) per permettere ricerche in linguaggio naturale sul contenuto dei documenti.
+- **UI**: Dashboard con widget intelligenti (Accesso Rapido, In Scadenza, Da Organizzare) e viste multiple (Griglia, Calendario, Timeline).
+
+### 3.3. polizze.ch
+Il portafoglio assicurativo digitale.
+- **Centralizzazione**: Raccoglie tutte le polizze in un unico posto.
+- **Analisi AI**: Una funzione dedicata (`analyzePoliciesForInsights`) usa Gemini per analizzare il portafoglio, trovare scadenze imminenti e suggerire ottimizzazioni.
+- **Condivisione con Consulenti**: Sistema per invitare consulenti e condividere con loro documenti specifici in modo sicuro.
+
+### 3.4. disdette.ch
+Strumento per la creazione e gestione delle lettere di disdetta.
+- **Wizard Guidato**: Un wizard (`DisdettaWizard`) semplifica la creazione della lettera.
+- **Integrazione Rubrica**: Si integra con la rubrica (`addressBook` in Firestore), che viene popolata automaticamente dai dati estratti da `scansioni.ch`, per pre-compilare i dati del destinatario.
+- **Gestione Stati**: Traccia lo stato di ogni disdetta (Bozza, Generata, Inviata, ecc.) e permette di impostare promemoria.
+
+---
+
+## 4. Funzionalità Chiave Trasversali
+
+### 4.1. Assistente AI "Ugo" (`Chatbot.tsx` e `App.tsx`)
+- **Architettura**: Basato su `ai.chats.create` di Gemini per conversazioni stabili.
+- **Capacità**:
+  - **Contestuale**: Può analizzare i documenti presenti nel workspace per rispondere a domande specifiche.
+  - **Esecutore di Azioni**: Interpreta comandi in linguaggio naturale (es. "unisci le fatture E-Corp") e li traduce in azioni JSON che l'app esegue.
+  - **Proattivo**: Offre aiuto non richiesto se rileva problemi (es. documenti non sicuri, saldo ScanCoin basso).
+- **Gamification & Easter Eggs**: Include logiche per premiare utenti gentili, gestire reclami con rimborsi e supportare dialetti svizzeri.
+
+### 4.2. Autenticazione e Sicurezza
+- **Provider**: Firebase Authentication (Email/Password, Google).
+- **2FA**: Supporto completo per l'autenticazione a due fattori tramite app TOTP, con codici di recupero.
+- **Passkey**: Implementazione **simulata** (solo frontend) per la registrazione e l'autenticazione WebAuthn.
+- **Log di Accesso**: Ogni login viene registrato in Firestore con IP, località e metodo, visibile all'utente nella pagina Profilo.
+
+### 4.3. Branding Dinamico (`brandingService.ts`)
+Un servizio centrale che, basandosi sul dominio di accesso (`getBrandKey`), fornisce i componenti (loghi, wordmark), i colori e i testi specifici per ogni modulo, permettendo a un'unica codebase di servire più "siti".
+
+### 4.4. Gestione Dati Utente (`ProfilePage.tsx`)
+- **Profilo Completo**: L'utente può gestire i propri dati personali (indirizzo, membri famiglia), le preferenze dell'app (tema, modalità di scansione, automazioni), la sicurezza (2FA, Passkey, log accessi) e le impostazioni del chatbot.
+- **Privacy**: Offre funzionalità per l'esportazione completa di tutti i dati utente e per la cancellazione irreversibile dell'account.
+
+---
+
+## 5. Flusso Dati Principale (dal file alla UI)
+
+1.  **Input Utente**: Un file viene caricato in `Workspace.tsx`.
+2.  **Staging**: Il file viene messo in una lista di attesa (`pendingFiles`) in `App.tsx`.
+3.  **Accodamento**: L'utente conferma; il file viene aggiunto come `QueuedFile` alla coda in `IndexedDB` tramite `db.ts`.
+4.  **Elaborazione**: Il processore in `App.tsx` preleva il task, legge il file e lo converte in `base64`.
+5.  **Analisi AI**: I dati dell'immagine vengono inviati a `geminiService.ts` (`processPage`). Gemini restituisce un JSON strutturato.
+6.  **Salvataggio**: Il risultato (`ProcessedPageResult`) viene salvato su **Firestore** tramite una scrittura batch in `db.ts`. Anche lo storico (`ScanHistoryEntry`) viene aggiornato.
+7.  **Sincronizzazione UI**: Il listener `onWorkspaceUpdate` in `App.tsx` riceve la notifica da Firestore e aggiorna lo stato React.
+8.  **Render**: `ResultsDisplay.tsx` renderizza il nuovo risultato.
+
+Questo ciclo garantisce che l'UI sia sempre sincronizzata con il database, che funge da unica fonte di verità.

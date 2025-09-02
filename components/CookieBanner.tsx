@@ -22,8 +22,8 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onNavigate
       `}</style>
       <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-sm text-slate-700 dark:text-slate-300">
-          Utilizziamo cookie e tecnologie simili per analizzare il traffico e migliorare la tua esperienza. 
-          <button onClick={onNavigateToPrivacy} className={`font-semibold ${brandColors.text} hover:underline`}>
+          Utilizziamo cookie essenziali e, con il tuo consenso, cookie di analisi (Google Analytics) per migliorare la tua esperienza.
+          <button onClick={onNavigateToPrivacy} className={`font-semibold ${brandColors.text} hover:underline ml-1`}>
             Leggi la nostra policy
           </button>.
         </p>

@@ -36,6 +36,15 @@
   <script async defer src="https://accounts.google.com/gsi/client"></script>
   <script async defer src="https://apis.google.com/js/api.js" onload="dispatchEvent(new CustomEvent('gapi-ready'))"></script>
 
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-E4SMRP3VWB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-E4SMRP3VWB');
+  </script>
+
   <!-- Import-map -->
   <script type="importmap">
 {

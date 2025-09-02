@@ -60,29 +60,32 @@ const TermsOfServicePage: React.FC<TermsOfServicePageProps> = ({ onNavigateBack,
                 
                 <h2>2. Descrizione del Servizio</h2>
                 <p>scansioni.ch ("Servizio") fornisce strumenti software per la digitalizzazione, l'analisi tramite intelligenza artificiale (utilizzando API di terze parti come Google Gemini) e l'organizzazione di documenti. Il servizio opera su un modello basato su crediti virtuali ("ScanCoin").</p>
+
+                <h2>3. Privacy e Dati di Utilizzo</h2>
+                <p>L'utilizzo del Servizio è soggetto alla nostra Informativa sulla Privacy, che è parte integrante di questi Termini. Accetti la raccolta e l'utilizzo di informazioni come descritto nell'Informativa sulla Privacy, inclusa la raccolta di dati di utilizzo anonimi tramite servizi come Google Analytics per migliorare il Servizio.</p>
                 
-                <h2>3. Account Utente e Sicurezza</h2>
+                <h2>4. Account Utente e Sicurezza</h2>
                 <p>Per utilizzare il servizio è necessario registrare un account. Sei responsabile della sicurezza del tuo account e della riservatezza della tua password. Accetti di essere l'unico responsabile per tutte le attività che si verificano sotto il tuo account. Devi notificarci immediatamente qualsiasi violazione della sicurezza o uso non autorizzato del tuo account.</p>
 
-                <h2>4. Contenuto dell'Utente e Licenza</h2>
+                <h2>5. Contenuto dell'Utente e Licenza</h2>
                 <p>Sei l'unico proprietario e responsabile dei documenti e dei dati che carichi ("Contenuto"). Utilizzando il servizio, ci concedi una licenza limitata, non esclusiva, revocabile e mondiale per elaborare il tuo Contenuto al solo fine di fornirti il Servizio. Non rivendichiamo alcuna proprietà sul tuo Contenuto e la sua riservatezza è protetta come descritto nella nostra Informativa sulla Privacy.</p>
 
-                <h2>5. Utilizzo degli ScanCoin e Pagamenti</h2>
+                <h2>6. Utilizzo degli ScanCoin e Pagamenti</h2>
                 <p>Tutte le operazioni di analisi AI hanno un costo in ScanCoin, come specificato nell'applicazione. Gli ScanCoin vengono acquistati in pacchetti o forniti tramite abbonamenti. Non hanno valore monetario reale al di fuori della piattaforma, non sono trasferibili e non sono rimborsabili, salvo diversamente specificato da offerte promozionali o richiesto dalla legge applicabile.</p>
 
-                <h2>6. Condotta dell'Utente</h2>
+                <h2>7. Condotta dell'Utente</h2>
                 <p>Accetti di non utilizzare il Servizio per scopi illegali o non autorizzati. Ti impegni a non caricare documenti che contengano virus, malware, o che violino i diritti di proprietà intellettuale, la privacy o altri diritti di terzi. È severamente vietato tentare di decodificare, alterare o accedere in modo improprio ai nostri sistemi.</p>
 
-                <h2>7. Limitazione di Responsabilità</h2>
+                <h2>8. Limitazione di Responsabilità</h2>
                 <p>Il Servizio è fornito "così com'è" e "come disponibile", senza garanzie di alcun tipo. Non garantiamo che l'analisi AI sarà sempre accurata al 100% o priva di errori. È tua esclusiva responsabilità verificare l'accuratezza dei dati estratti. Nella misura massima consentita dalla legge, scansioni.ch non sarà responsabile per danni diretti, indiretti, incidentali o consequenziali derivanti dall'uso o dall'impossibilità di usare il Servizio.</p>
                 
-                <h2>8. Modifiche ai Termini</h2>
+                <h2>9. Modifiche ai Termini</h2>
                 <p>Ci riserviamo il diritto, a nostra esclusiva discrezione, di modificare o sostituire questi Termini in qualsiasi momento. In caso di modifiche sostanziali, faremo uno sforzo ragionevole per fornire un preavviso di almeno 30 giorni, tramite email o con un avviso ben visibile all'interno dell'applicazione. L'uso continuato del Servizio dopo l'entrata in vigore di tali modifiche costituirà la tua accettazione dei nuovi Termini.</p>
 
-                <h2>9. Risoluzione del Contratto</h2>
+                <h2>10. Risoluzione del Contratto</h2>
                 <p>Puoi terminare il tuo account e smettere di usare il Servizio in qualsiasi momento tramite la tua pagina Profilo. Ci riserviamo il diritto di sospendere o chiudere il tuo account, senza preavviso, in caso di violazione di questi Termini.</p>
 
-                <h2>10. Legge Applicabile e Foro Competente</h2>
+                <h2>11. Legge Applicabile e Foro Competente</h2>
                 <p>Questi Termini saranno regolati e interpretati in conformità con il diritto materiale svizzero, ad esclusione delle norme sul conflitto di leggi. Qualsiasi controversia derivante da o in relazione a questi Termini sarà soggetta alla giurisdizione esclusiva dei tribunali competenti del Canton Ticino, Svizzera.</p>
             </article>
         </div>
