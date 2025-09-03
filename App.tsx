@@ -2577,7 +2577,6 @@ function AuthenticatedApp() {
   };
 
     // --- CHATBOT LOGIC ---
-
     const parseBotResponse = (text: string) => {
         const actionRegex = /\[ACTION:([\w_]+)]/;
         const quickReplyRegex = /\[QUICK_REPLY:(.*?)]/;
