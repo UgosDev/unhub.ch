@@ -4,31 +4,40 @@ const replace = require('replace-in-file');
 const apiKey = process.env.API_KEY;
 
 if (!apiKey) {
-  // Updated error message for clarity.
-  console.error("ERRORE: La variabile d'ambiente 'API_KEY' (tutto maiuscolo) non è stata trovata! Assicurati di aver creato un segreto chiamato 'api_key' in Firebase App Hosting.");
+  console.error("ERRORE: La variabile d'ambiente 'API_KEY' non è stata trovata!");
+  console.error("Assicurati di aver creato un segreto chiamato 'api_key' in Firebase App Hosting.");
   process.exit(1);
 }
 
+console.log('🔑 API Key trovata, inizio sostituzione...');
+
 const options = {
   files: [
-    'App.tsx',
-    'services/geminiService.ts',
-    'pages/AdminDashboard.tsx',
-    'components/FileViews.tsx'
+    'dist/**/*.js',
+    'dist/**/*.html'
   ],
-  // This placeholder must be consistent in the source code.
-  from: /process\.env\.API_KEY/g,
-  to: `'${apiKey}'`, // Replaces with the actual key from the uppercase environment variable.
+  from: [/PLACEHOLDER_API_KEY/g, /process\.env\.API_KEY/g],
+  to: apiKey,
 };
 
 try {
   const results = replace.sync(options);
-  if (results.filter(r => r.hasChanged).length === 0) {
-    console.warn("ATTENZIONE: La API Key non è stata sostituita in nessun file. Controlla che i percorsi in `files` siano corretti e che `process.env.API_KEY` sia presente nei file di origine.");
+  const changedFiles = results.filter(r => r.hasChanged);
+  
+  if (changedFiles.length === 0) {
+    console.warn('⚠️  ATTENZIONE: Nessuna API Key placeholder trovata nei file compilati.');
+    console.log('File processati:', results.map(r => r.file));
   } else {
-    console.log('Sostituzione API Key completata:', results.filter(r => r.hasChanged).map(r => r.file));
+    console.log('✅ Sostituzione API Key completata con successo!');
+    console.log('📁 File modificati:');
+    changedFiles.forEach(r => {
+      console.log(`   - ${r.file}`);
+    });
   }
+  
+  console.log('🚀 Build completato! L\'applicazione è pronta per il deploy.');
+  
 } catch (error) {
-  console.error('Errore durante la sostituzione della API Key:', error);
+  console.error('❌ Errore durante la sostituzione della API Key:', error);
   process.exit(1);
 }
