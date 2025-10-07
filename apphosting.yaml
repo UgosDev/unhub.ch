@@ -6,13 +6,16 @@ env:
   - variable: API_KEY
     secret: api_key
 
-# Build process: installa dipendenze, compila con Vite, inietta API key
-build: npm install && npm run build
+# Build process completo: installa dipendenze, compila TypeScript, builda con Vite, inietta API key
+build: |
+  npm ci
+  npm run build
+  node replace.js
 
-# Serve the compiled application from dist folder
+# Serve l'applicazione compilata dalla cartella dist
 run: npm start
 
-# SPA routing configuration
+# Configurazione SPA routing
 serving:
   rewrites:
     - source: /.*
