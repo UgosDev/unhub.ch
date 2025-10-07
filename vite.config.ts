@@ -9,14 +9,21 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     }
   },
+  define: {
+    'process.env.API_KEY': JSON.stringify(process.env.VITE_API_KEY || 'PLACEHOLDER_API_KEY')
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html')
+      },
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom']
+          react: ['react', 'react-dom'],
+          vendor: ['@google/genai', 'firebase/app', 'firebase/firestore']
         }
       }
     }
@@ -24,10 +31,5 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true
-  },
-  define: {
-    // Durante lo sviluppo, usa la variabile d'ambiente
-    // In produzione, sarà sostituita da replace.js dopo il build
-    'process.env.API_KEY': JSON.stringify(process.env.VITE_API_KEY || 'PLACEHOLDER_API_KEY')
   }
 })
