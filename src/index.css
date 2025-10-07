@@ -1,0 +1,6 @@
+/* Base CSS for Vite build */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles already defined in index.html will be preserved */
