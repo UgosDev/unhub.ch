@@ -35,11 +35,7 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
+    "dist",
+    "vite.config.ts"
   ]
 }
