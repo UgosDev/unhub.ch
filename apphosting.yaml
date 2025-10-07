@@ -6,7 +6,7 @@ env:
   - variable: API_KEY
     secret: api_key
 
-# Build process completo: installa dipendenze, compila TypeScript, builda con Vite, inietta API key
+# Build process semplificato: installa dipendenze, build con Vite, inietta API key
 build: |
   npm ci
   npm run build
